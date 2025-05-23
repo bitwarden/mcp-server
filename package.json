@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@bitwarden/mcp-server",
   "version": "0.0.0",
   "description": "Bitwarden MCP Server",
@@ -12,15 +13,30 @@
     "url": "https://github.com/bitwarden/mcp-server/issues"
   },
   "homepage": "https://bitwarden.com",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "shx": "^0.4.0",
+    "zod": "^3.25.25"
+  },
   "devDependencies": {
+    "@types/node": "^22.15.21",
     "husky": "9.1.7",
     "lint-staged": "15.5.1",
-    "prettier": "3.5.3"
+    "prettier": "3.5.3",
+    "typescript": "^5.8.3"
   },
+  "bin": {
+    "mcp-server-bitwarden": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "lint-staged": {
     "*": "prettier --cache --write --ignore-unknown"
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky && npm run build",
+    "build": "tsc && shx chmod +x dist/*.js",
+    "watch": "tsc --watch"
   }
 }

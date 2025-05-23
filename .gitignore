@@ -22,3 +22,6 @@ Thumbs.db
 # Node
 node_modules
 npm-debug.log
+
+# Distribution
+dist/
