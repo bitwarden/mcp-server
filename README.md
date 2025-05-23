@@ -1,3 +1,3 @@
-# Template Repository
+# Bitwarden MCP Server
 
-This repository serves as a template for others and establishes very basic structure and tooling setup for later customization.
+MCP server for interaction with the Bitwarden vault.

@@ -1,15 +1,15 @@
 {
-  "name": "@bitwarden/template",
+  "name": "@bitwarden/mcp-server",
   "version": "0.0.0",
-  "description": "Bitwarden Template",
+  "description": "Bitwarden MCP Server",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bitwarden/template.git"
+    "url": "git+https://github.com/bitwarden/mcp-server.git"
   },
   "author": "Bitwarden Inc. <hello@bitwarden.com> (https://bitwarden.com)",
   "license": "SEE LICENSE IN LICENSE.txt",
   "bugs": {
-    "url": "https://github.com/bitwarden/template/issues"
+    "url": "https://github.com/bitwarden/mcp-server/issues"
   },
   "homepage": "https://bitwarden.com",
   "devDependencies": {
