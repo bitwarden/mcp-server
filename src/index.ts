@@ -1,43 +1,132 @@
 #!/usr/bin/env node
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-const server = new McpServer({
+// define tools
+const LOCK_TOOL: Tool = {
+  name: 'bitwarden_lock',
+  description: 'Lock the vault',
+  inputSchema: {
+    type: 'object',
+  },
+};
+
+const BITWARDEN_TOOLS = [LOCK_TOOL] as const;
+
+// define handlers that implement tools
+export interface CliResponse {
+  output?: string;
+  errorOutput?: string;
+}
+
+const execPromise = promisify(exec);
+
+async function executeCliCommand(command: string): Promise<CliResponse> {
+  try {
+    const { stdout, stderr } = await execPromise('bw ${command}');
+    return {
+      output: stdout,
+      errorOutput: stderr,
+    };
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      return {
+        errorOutput: e.message,
+      };
+    }
+  }
+
+  return {
+    errorOutput: 'An error occurred while executing the command',
+  };
+}
+
+// require session from environment variable
+function getSession(): string {
+  const session = process.env.BW_SESSION;
+
+  if (!session) {
+    console.error('Please set the BW_SESSION environment variable');
+    process.exit(1);
+  }
+
+  return session;
+}
+
+const BW_SESSION = getSession();
+
+// set up server
+const server = new Server({
   name: 'bitwarden',
-  version: '1.0.0',
+  version: '0.1.0',
   capabilities: {
     resources: {},
     tools: {},
   },
 });
 
-server.tool(
-  'get-username',
-  'Get username for a domain',
-  {
-    domain: z.string().url().describe('Domain to get username for'),
-  },
-  async ({ domain }) => {
+// register tools
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: BITWARDEN_TOOLS,
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  try {
+    switch (request.params.name) {
+      case 'bitwarden_lock': {
+        const result = await executeCliCommand('lock');
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: result.output || result.errorOutput,
+            },
+          ],
+          isError: result.errorOutput ? true : false,
+        };
+      }
+
+      default:
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Unknown tool: ${request.params.name}`,
+            },
+          ],
+          isError: true,
+        };
+    }
+  } catch (error) {
     return {
       content: [
         {
           type: 'text',
-          text: `Username lookup for domain: ${domain} not yet implemented.`,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
+      isError: true,
     };
-  },
-);
+  }
+});
 
-async function main() {
+// start server
+async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('Bitwarden MCP Server running on stdio');
 }
 
-main().catch((error) => {
-  console.error('Fatal error in main():', error);
+runServer().catch((error) => {
+  console.error('Fatal error running server:', error);
   process.exit(1);
 });
