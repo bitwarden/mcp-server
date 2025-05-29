@@ -19,6 +19,7 @@
     "zod": "3.25.25"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.13.0",
     "@types/node": "22.15.21",
     "husky": "9.1.7",
     "lint-staged": "16.0.0",
@@ -37,6 +38,6 @@
   "scripts": {
     "prepare": "husky && npm run build",
     "build": "tsc && shx chmod +x dist/*.js",
-    "watch": "tsc --watch"
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
   }
 }
