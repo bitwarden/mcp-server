@@ -10,17 +10,6 @@ import {
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-// define tools
-const LOCK_TOOL: Tool = {
-  name: 'bitwarden_lock',
-  description: 'Lock the vault',
-  inputSchema: {
-    type: 'object',
-  },
-};
-
-const BITWARDEN_TOOLS = [LOCK_TOOL] as const;
-
 // define handlers that implement tools
 export interface CliResponse {
   output?: string;
@@ -68,20 +57,33 @@ const server = new Server({
   name: 'bitwarden',
   version: '0.1.0',
   capabilities: {
-    resources: {},
     tools: {},
   },
 });
 
 // register tools
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: BITWARDEN_TOOLS,
-}));
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: 'lock',
+        description: 'Lock the vault.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+    ],
+  };
+});
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
-    switch (request.params.name) {
-      case 'bitwarden_lock': {
+    const { name } = request.params;
+
+    switch (name) {
+      case 'lock': {
         const result = await executeCliCommand('lock');
 
         return {
