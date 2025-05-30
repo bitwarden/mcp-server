@@ -31,7 +31,7 @@ const execPromise = promisify(exec);
 
 async function executeCliCommand(command: string): Promise<CliResponse> {
   try {
-    const { stdout, stderr } = await execPromise('bw ${command}');
+    const { stdout, stderr } = await execPromise(`bw ${command}`);
     return {
       output: stdout,
       errorOutput: stderr,
