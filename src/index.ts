@@ -5,7 +5,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -37,20 +36,6 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
     errorOutput: 'An error occurred while executing the command',
   };
 }
-
-// require session from environment variable
-function getSession(): string {
-  const session = process.env.BW_SESSION;
-
-  if (!session) {
-    console.error('Please set the BW_SESSION environment variable');
-    process.exit(1);
-  }
-
-  return session;
-}
-
-const BW_SESSION = getSession();
 
 // set up server
 const server = new Server({
@@ -123,6 +108,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // start server
 async function runServer() {
+  // require session from environment variable
+  if (!process.env.BW_SESSION) {
+    console.error('Please set the BW_SESSION environment variable');
+    process.exit(1);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('Bitwarden MCP Server running on stdio');
