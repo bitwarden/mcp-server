@@ -23,5 +23,8 @@ Thumbs.db
 node_modules
 npm-debug.log
 
+# Cache
+.eslintcache
+
 # Distribution
 dist/

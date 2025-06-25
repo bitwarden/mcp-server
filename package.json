@@ -19,12 +19,16 @@
     "zod": "3.25.67"
   },
   "devDependencies": {
+    "@eslint/js": "9.29.0",
     "@modelcontextprotocol/inspector": "0.14.2",
     "@types/node": "22.15.32",
+    "eslint": "9.29.0",
+    "globals": "16.2.0",
     "husky": "9.1.7",
     "lint-staged": "16.1.2",
     "prettier": "3.5.3",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.35.0"
   },
   "bin": {
     "mcp-server-bitwarden": "dist/index.js"
@@ -33,10 +37,13 @@
     "dist"
   ],
   "lint-staged": {
-    "*": "prettier --cache --write --ignore-unknown"
+    "*": "prettier --cache --write --ignore-unknown",
+    "*.ts": "eslint --cache --cache-strategy content --fix"
   },
   "scripts": {
     "prepare": "husky && npm run build",
+    "lint": "eslint . --cache --cache-strategy content && prettier --check .",
+    "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
   }
