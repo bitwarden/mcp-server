@@ -12,23 +12,34 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { z } from 'zod';
 
-// Define zod schemas for tool validation
+// Zod schemas for validating Bitwarden CLI tool inputs
+
+// Schema for validating 'lock' command parameters (no parameters required) */
 const lockSchema = z.object({});
 
+// Schema for validating 'unlock' command parameters */
 const unlockSchema = z.object({
+  // Master password for unlocking the vault */
   password: z.string().min(1, 'Password is required'),
 });
 
+// Schema for validating 'sync' command parameters (no parameters required) */
 const syncSchema = z.object({});
 
+// Schema for validating 'status' command parameters (no parameters required) */
 const statusSchema = z.object({});
 
+// Schema for validating 'list' command parameters */
 const listSchema = z.object({
+  // Type of items to list from the vault */
   type: z.enum(['items', 'folders', 'collections', 'organizations']),
+  // Optional search term to filter results */
   search: z.string().optional(),
 });
 
+// Schema for validating 'get' command parameters */
 const getSchema = z.object({
+  // Type of object to retrieve from the vault */
   object: z.enum([
     'item',
     'username',
@@ -42,19 +53,30 @@ const getSchema = z.object({
     'collection',
     'organization',
   ]),
+  // ID or search term to identify the object */
   id: z.string().min(1, 'ID or search term is required'),
 });
 
+// Schema for validating 'generate' command parameters */
 const generateSchema = z
   .object({
+    // Length of the generated password (minimum 5) */
     length: z.number().int().min(5).optional(),
+    // Include uppercase characters in the password */
     uppercase: z.boolean().optional(),
+    // Include lowercase characters in the password */
     lowercase: z.boolean().optional(),
+    // Include numbers in the password */
     number: z.boolean().optional(),
+    // Include special characters in the password */
     special: z.boolean().optional(),
+    // Generate a passphrase instead of a password */
     passphrase: z.boolean().optional(),
+    // Number of words to include in the passphrase */
     words: z.number().int().min(1).optional(),
+    // Character to use between words in the passphrase */
     separator: z.string().optional(),
+    // Capitalize the first letter of each word in the passphrase */
     capitalize: z.boolean().optional(),
   })
   .refine(
@@ -73,8 +95,11 @@ const generateSchema = z
     },
   );
 
+// Schema for validating URI objects in login items */
 const uriSchema = z.object({
+  // URI associated with the login (e.g., https://example.com) */
   uri: z.string().url('Must be a valid URL'),
+  // URI match type for auto-fill functionality (0: Domain, 1: Host, 2: Starts With, 3: Exact, 4: Regular Expression, 5: Never)
   match: z
     .union([
       z.literal(0),
@@ -87,23 +112,33 @@ const uriSchema = z.object({
     .optional(),
 });
 
+// Schema for validating login information in vault items */
 const loginSchema = z.object({
+  // Username for the login */
   username: z.string().optional(),
+  // Password for the login */
   password: z.string().optional(),
+  // List of URIs associated with the login */
   uris: z.array(uriSchema).optional(),
+  // Time-based one-time password (TOTP) secret */
   totp: z.string().optional(),
 });
 
+// Schema for validating 'create' command parameters */
 const createSchema = z
   .object({
+    // Name of the item to create */
     name: z.string().min(1, 'Name is required'),
+    // Type of item to create */
     type: z.union([
       z.literal(1), // Login
       z.literal(2), // Secure Note
       z.literal(3), // Card
       z.literal(4), // Identity
     ]),
+    // Optional notes for the item */
     notes: z.string().optional(),
+    // Login details (required when type is 1) */
     login: loginSchema.optional(),
   })
   .refine(
@@ -119,25 +154,37 @@ const createSchema = z
     },
   );
 
+// Schema for validating login fields during item editing */
 const editLoginSchema = z.object({
+  // New username for the login */
   username: z.string().optional(),
+  // New password for the login */
   password: z.string().optional(),
 });
 
+// Schema for validating 'edit' command parameters */
 const editSchema = z.object({
+  // ID of the item to edit */
   id: z.string().min(1, 'Item ID is required'),
+  // New name for the item */
   name: z.string().optional(),
+  // New notes for the item */
   notes: z.string().optional(),
+  // Updated login information */
   login: editLoginSchema.optional(),
 });
 
+// Schema for validating 'delete' command parameters */
 const deleteSchema = z.object({
+  // Type of object to delete */
   object: z.enum(['item', 'attachment', 'folder', 'org-collection']),
+  // ID of the object to delete */
   id: z.string().min(1, 'Object ID is required'),
+  // Whether to permanently delete the item (skip trash) */
   permanent: z.boolean().optional(),
 });
 
-// define tools
+// Define tools
 const lockTool: Tool = {
   name: 'lock',
   description: 'Lock the vault',
@@ -405,7 +452,15 @@ const deleteTool: Tool = {
   },
 };
 
-// implement logic to support tools
+// Implement logic to support tools
+
+/**
+ * Interface representing the response from a Bitwarden CLI command execution.
+ *
+ * @interface
+ * @property {string} [output] - Standard output from the command, if successful
+ * @property {string} [errorOutput] - Error output from the command, if an error occurred
+ */
 export interface CliResponse {
   output?: string;
   errorOutput?: string;
@@ -446,6 +501,7 @@ function validateInput<T>(
         },
       ];
     }
+
     // Re-throw any non-ZodError
     throw validationError;
   }
@@ -453,6 +509,13 @@ function validateInput<T>(
 
 const execPromise = promisify(exec);
 
+/**
+ * Executes a Bitwarden CLI command and returns the result.
+ *
+ * @async
+ * @param {string} command - The Bitwarden CLI command to execute (without 'bw' prefix)
+ * @returns {Promise<CliResponse>} A promise that resolves to an object containing output and/or error output
+ */
 async function executeCliCommand(command: string): Promise<CliResponse> {
   try {
     const { stdout, stderr } = await execPromise(`bw ${command}`);
@@ -473,15 +536,21 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
   };
 }
 
-// start server
+/**
+ * Initializes and starts the MCP server for handling Bitwarden CLI commands.
+ * Requires the BW_SESSION environment variable to be set.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 async function runServer() {
-  // require session from environment variable
+  // Require session from environment variable
   if (!process.env.BW_SESSION) {
     console.error('Please set the BW_SESSION environment variable');
     process.exit(1);
   }
 
-  // set up server
+  // Set up server
   console.error('Bitwarden MCP Server starting ...');
   const server = new Server(
     {
@@ -823,15 +892,30 @@ async function runServer() {
             }
 
             // Parse the current item
+            /**
+             * Interface representing a Bitwarden vault item structure.
+             * Used to parse and modify items during edit operations.
+             *
+             * @interface
+             */
             interface BitwardenItem {
+              // Unique identifier for the item */
               id?: string;
+              // Display name of the item */
               name?: string;
+              // Additional notes for the item */
               notes?: string;
+              // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity) */
               type?: number;
+              // Login-specific details, only applicable for type=1 */
               login?: {
+                // Username for the login */
                 username?: string;
+                // Password for the login */
                 password?: string;
+                // List of URIs associated with the login */
                 uris?: { uri: string; match?: number }[];
+                // Time-based one-time password secret */
                 totp?: string;
               };
             }
