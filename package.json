@@ -14,15 +14,15 @@
   },
   "homepage": "https://bitwarden.com",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.12.1",
+    "@modelcontextprotocol/sdk": "1.12.3",
     "shx": "0.4.0",
-    "zod": "3.25.42"
+    "zod": "3.25.67"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "0.14.1",
-    "@types/node": "22.15.28",
+    "@modelcontextprotocol/inspector": "0.14.2",
+    "@types/node": "22.15.32",
     "husky": "9.1.7",
-    "lint-staged": "16.1.0",
+    "lint-staged": "16.1.2",
     "prettier": "3.5.3",
     "typescript": "5.8.3"
   },
