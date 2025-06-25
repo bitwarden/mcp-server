@@ -10,6 +10,132 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { z } from 'zod';
+
+// Define zod schemas for tool validation
+const lockSchema = z.object({});
+
+const unlockSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+
+const syncSchema = z.object({});
+
+const statusSchema = z.object({});
+
+const listSchema = z.object({
+  type: z.enum(['items', 'folders', 'collections', 'organizations']),
+  search: z.string().optional(),
+});
+
+const getSchema = z.object({
+  object: z.enum([
+    'item',
+    'username',
+    'password',
+    'uri',
+    'totp',
+    'notes',
+    'exposed',
+    'attachment',
+    'folder',
+    'collection',
+    'organization',
+  ]),
+  id: z.string().min(1, 'ID or search term is required'),
+});
+
+const generateSchema = z
+  .object({
+    length: z.number().int().min(5).optional(),
+    uppercase: z.boolean().optional(),
+    lowercase: z.boolean().optional(),
+    number: z.boolean().optional(),
+    special: z.boolean().optional(),
+    passphrase: z.boolean().optional(),
+    words: z.number().int().min(1).optional(),
+    separator: z.string().optional(),
+    capitalize: z.boolean().optional(),
+  })
+  .refine(
+    (data) => {
+      // If passphrase is true, words and separator are relevant
+      // If not, then length, uppercase, lowercase, etc. are relevant
+      if (data.passphrase) {
+        return true; // Accept any combination for passphrase
+      } else {
+        return true; // Accept any combination for regular password
+      }
+    },
+    {
+      message:
+        'Provide valid options based on whether generating a passphrase or password',
+    },
+  );
+
+const uriSchema = z.object({
+  uri: z.string().url('Must be a valid URL'),
+  match: z
+    .union([
+      z.literal(0),
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+      z.literal(5),
+    ])
+    .optional(),
+});
+
+const loginSchema = z.object({
+  username: z.string().optional(),
+  password: z.string().optional(),
+  uris: z.array(uriSchema).optional(),
+  totp: z.string().optional(),
+});
+
+const createSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+    type: z.union([
+      z.literal(1), // Login
+      z.literal(2), // Secure Note
+      z.literal(3), // Card
+      z.literal(4), // Identity
+    ]),
+    notes: z.string().optional(),
+    login: loginSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // If type is login (1), login object should be provided
+      if (data.type === 1) {
+        return !!data.login; // login object should exist
+      }
+      return true; // For other types, login is optional
+    },
+    {
+      message: 'Login details are required for login items',
+    },
+  );
+
+const editLoginSchema = z.object({
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
+
+const editSchema = z.object({
+  id: z.string().min(1, 'Item ID is required'),
+  name: z.string().optional(),
+  notes: z.string().optional(),
+  login: editLoginSchema.optional(),
+});
+
+const deleteSchema = z.object({
+  object: z.enum(['item', 'attachment', 'folder', 'org-collection']),
+  id: z.string().min(1, 'Object ID is required'),
+  permanent: z.boolean().optional(),
+});
 
 // define tools
 const lockTool: Tool = {
@@ -285,6 +411,46 @@ export interface CliResponse {
   errorOutput?: string;
 }
 
+/**
+ * Validates input against a Zod schema and returns either the validated data or a structured error response.
+ *
+ * @template T - Type of the validated output
+ * @param {z.ZodType<T>} schema - The Zod schema to validate against
+ * @param {unknown} args - The input arguments to validate
+ * @returns {[true, T] | [false, { content: Array<{ type: string; text: string }>; isError: true }]}
+ *   A tuple with either:
+ *   - [true, validatedData] if validation succeeds
+ *   - [false, errorObject] if validation fails
+ */
+function validateInput<T>(
+  schema: z.ZodType<T>,
+  args: unknown,
+):
+  | [true, T]
+  | [false, { content: Array<{ type: string; text: string }>; isError: true }] {
+  try {
+    const validatedInput = schema.parse(args || {});
+    return [true, validatedInput];
+  } catch (validationError) {
+    if (validationError instanceof z.ZodError) {
+      return [
+        false,
+        {
+          content: [
+            {
+              type: 'text',
+              text: `Validation error: ${validationError.errors.map((e) => e.message).join(', ')}`,
+            },
+          ],
+          isError: true,
+        },
+      ];
+    }
+    // Re-throw any non-ZodError
+    throw validationError;
+  }
+}
+
 const execPromise = promisify(exec);
 
 async function executeCliCommand(command: string): Promise<CliResponse> {
@@ -337,6 +503,16 @@ async function runServer() {
 
         switch (name) {
           case 'lock': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              lockSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
             const result = await executeCliCommand('lock');
 
             return {
@@ -349,11 +525,18 @@ async function runServer() {
               isError: result.errorOutput ? true : false,
             };
           }
-
           case 'unlock': {
-            const { password } = request.params.arguments as {
-              password: string;
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              unlockSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { password } = validationResult;
             // Use echo to pipe password to bw unlock
             const result = await executeCliCommand(
               `unlock "${password}" --raw`,
@@ -374,6 +557,16 @@ async function runServer() {
           }
 
           case 'sync': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              syncSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
             const result = await executeCliCommand('sync');
 
             return {
@@ -391,6 +584,16 @@ async function runServer() {
           }
 
           case 'status': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              statusSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
             const result = await executeCliCommand('status');
 
             return {
@@ -405,10 +608,17 @@ async function runServer() {
           }
 
           case 'list': {
-            const { type, search } = request.params.arguments as {
-              type: string;
-              search?: string;
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { type, search } = validationResult;
 
             // Construct the command with the optional search parameter
             let command = `list ${type}`;
@@ -430,11 +640,17 @@ async function runServer() {
           }
 
           case 'get': {
-            const { object, id } = request.params.arguments as {
-              object: string;
-              id: string;
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getSchema,
+              request.params.arguments,
+            );
 
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { object, id } = validationResult;
             const result = await executeCliCommand(`get ${object} "${id}"`);
 
             return {
@@ -449,18 +665,17 @@ async function runServer() {
           }
 
           case 'generate': {
-            const args = request.params.arguments as {
-              length?: number;
-              uppercase?: boolean;
-              lowercase?: boolean;
-              number?: boolean;
-              special?: boolean;
-              passphrase?: boolean;
-              words?: number;
-              separator?: string;
-              capitalize?: boolean;
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              generateSchema,
+              request.params.arguments,
+            );
 
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const args = validationResult;
             let command = 'generate';
 
             if (args.passphrase) {
@@ -514,22 +729,22 @@ async function runServer() {
           }
 
           case 'create': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              createSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
             const {
               name: itemName,
               type: itemType,
               notes,
               login,
-            } = request.params.arguments as {
-              name: string;
-              type: number;
-              notes?: string;
-              login?: {
-                username?: string;
-                password?: string;
-                uris?: { uri: string; match?: number }[];
-                totp?: string;
-              };
-            };
+            } = validationResult;
 
             // For login items (type 1), we need to construct the login data
             let createCommand = `create item "{"name":"${itemName}","type":${itemType}`;
@@ -580,20 +795,17 @@ async function runServer() {
           }
 
           case 'edit': {
-            const {
-              id,
-              name: itemName,
-              notes,
-              login,
-            } = request.params.arguments as {
-              id: string;
-              name?: string;
-              notes?: string;
-              login?: {
-                username?: string;
-                password?: string;
-              };
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              editSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, name: itemName, notes, login } = validationResult;
 
             // First, get the current item to edit
             const getResult = await executeCliCommand(`get item ${id}`);
@@ -684,11 +896,17 @@ async function runServer() {
           }
 
           case 'delete': {
-            const { object, id, permanent } = request.params.arguments as {
-              object: string;
-              id: string;
-              permanent?: boolean;
-            };
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              deleteSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { object, id, permanent } = validationResult;
 
             let command = `delete ${object} ${id}`;
             if (permanent) {
