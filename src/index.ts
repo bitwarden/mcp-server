@@ -14,32 +14,32 @@ import { z } from 'zod';
 
 // Zod schemas for validating Bitwarden CLI tool inputs
 
-// Schema for validating 'lock' command parameters (no parameters required) */
+// Schema for validating 'lock' command parameters (no parameters required)
 const lockSchema = z.object({});
 
-// Schema for validating 'unlock' command parameters */
+// Schema for validating 'unlock' command parameters
 const unlockSchema = z.object({
-  // Master password for unlocking the vault */
+  // Master password for unlocking the vault
   password: z.string().min(1, 'Password is required'),
 });
 
-// Schema for validating 'sync' command parameters (no parameters required) */
+// Schema for validating 'sync' command parameters (no parameters required)
 const syncSchema = z.object({});
 
-// Schema for validating 'status' command parameters (no parameters required) */
+// Schema for validating 'status' command parameters (no parameters required)
 const statusSchema = z.object({});
 
-// Schema for validating 'list' command parameters */
+// Schema for validating 'list' command parameters
 const listSchema = z.object({
-  // Type of items to list from the vault */
+  // Type of items to list from the vault
   type: z.enum(['items', 'folders', 'collections', 'organizations']),
-  // Optional search term to filter results */
+  // Optional search term to filter results
   search: z.string().optional(),
 });
 
-// Schema for validating 'get' command parameters */
+// Schema for validating 'get' command parameters
 const getSchema = z.object({
-  // Type of object to retrieve from the vault */
+  // Type of object to retrieve from the vault
   object: z.enum([
     'item',
     'username',
@@ -53,30 +53,30 @@ const getSchema = z.object({
     'collection',
     'organization',
   ]),
-  // ID or search term to identify the object */
+  // ID or search term to identify the object
   id: z.string().min(1, 'ID or search term is required'),
 });
 
-// Schema for validating 'generate' command parameters */
+// Schema for validating 'generate' command parameters
 const generateSchema = z
   .object({
-    // Length of the generated password (minimum 5) */
+    // Length of the generated password (minimum 5)
     length: z.number().int().min(5).optional(),
-    // Include uppercase characters in the password */
+    // Include uppercase characters in the password
     uppercase: z.boolean().optional(),
-    // Include lowercase characters in the password */
+    // Include lowercase characters in the password
     lowercase: z.boolean().optional(),
-    // Include numbers in the password */
+    // Include numbers in the password
     number: z.boolean().optional(),
-    // Include special characters in the password */
+    // Include special characters in the password
     special: z.boolean().optional(),
-    // Generate a passphrase instead of a password */
+    // Generate a passphrase instead of a password
     passphrase: z.boolean().optional(),
-    // Number of words to include in the passphrase */
+    // Number of words to include in the passphrase
     words: z.number().int().min(1).optional(),
-    // Character to use between words in the passphrase */
+    // Character to use between words in the passphrase
     separator: z.string().optional(),
-    // Capitalize the first letter of each word in the passphrase */
+    // Capitalize the first letter of each word in the passphrase
     capitalize: z.boolean().optional(),
   })
   .refine(
@@ -95,9 +95,9 @@ const generateSchema = z
     },
   );
 
-// Schema for validating URI objects in login items */
+// Schema for validating URI objects in login items
 const uriSchema = z.object({
-  // URI associated with the login (e.g., https://example.com) */
+  // URI associated with the login (e.g., https://example.com)
   uri: z.string().url('Must be a valid URL'),
   // URI match type for auto-fill functionality (0: Domain, 1: Host, 2: Starts With, 3: Exact, 4: Regular Expression, 5: Never)
   match: z
@@ -112,33 +112,33 @@ const uriSchema = z.object({
     .optional(),
 });
 
-// Schema for validating login information in vault items */
+// Schema for validating login information in vault items
 const loginSchema = z.object({
-  // Username for the login */
+  // Username for the login
   username: z.string().optional(),
-  // Password for the login */
+  // Password for the login
   password: z.string().optional(),
-  // List of URIs associated with the login */
+  // List of URIs associated with the login
   uris: z.array(uriSchema).optional(),
-  // Time-based one-time password (TOTP) secret */
+  // Time-based one-time password (TOTP) secret
   totp: z.string().optional(),
 });
 
-// Schema for validating 'create' command parameters */
+// Schema for validating 'create' command parameters
 const createSchema = z
   .object({
-    // Name of the item to create */
+    // Name of the item to create
     name: z.string().min(1, 'Name is required'),
-    // Type of item to create */
+    // Type of item to create
     type: z.union([
       z.literal(1), // Login
       z.literal(2), // Secure Note
       z.literal(3), // Card
       z.literal(4), // Identity
     ]),
-    // Optional notes for the item */
+    // Optional notes for the item
     notes: z.string().optional(),
-    // Login details (required when type is 1) */
+    // Login details (required when type is 1)
     login: loginSchema.optional(),
   })
   .refine(
@@ -154,33 +154,33 @@ const createSchema = z
     },
   );
 
-// Schema for validating login fields during item editing */
+// Schema for validating login fields during item editing
 const editLoginSchema = z.object({
-  // New username for the login */
+  // New username for the login
   username: z.string().optional(),
-  // New password for the login */
+  // New password for the login
   password: z.string().optional(),
 });
 
-// Schema for validating 'edit' command parameters */
+// Schema for validating 'edit' command parameters
 const editSchema = z.object({
-  // ID of the item to edit */
+  // ID of the item to edit
   id: z.string().min(1, 'Item ID is required'),
-  // New name for the item */
+  // New name for the item
   name: z.string().optional(),
-  // New notes for the item */
+  // New notes for the item
   notes: z.string().optional(),
-  // Updated login information */
+  // Updated login information
   login: editLoginSchema.optional(),
 });
 
-// Schema for validating 'delete' command parameters */
+// Schema for validating 'delete' command parameters
 const deleteSchema = z.object({
-  // Type of object to delete */
+  // Type of object to delete
   object: z.enum(['item', 'attachment', 'folder', 'org-collection']),
-  // ID of the object to delete */
+  // ID of the object to delete
   id: z.string().min(1, 'Object ID is required'),
-  // Whether to permanently delete the item (skip trash) */
+  // Whether to permanently delete the item (skip trash)
   permanent: z.boolean().optional(),
 });
 
@@ -899,23 +899,23 @@ async function runServer() {
              * @interface
              */
             interface BitwardenItem {
-              // Unique identifier for the item */
+              // Unique identifier for the item
               id?: string;
-              // Display name of the item */
+              // Display name of the item
               name?: string;
-              // Additional notes for the item */
+              // Additional notes for the item
               notes?: string;
-              // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity) */
+              // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
               type?: number;
-              // Login-specific details, only applicable for type=1 */
+              // Login-specific details, only applicable for type=1
               login?: {
-                // Username for the login */
+                // Username for the login
                 username?: string;
-                // Password for the login */
+                // Password for the login
                 password?: string;
-                // List of URIs associated with the login */
+                // List of URIs associated with the login
                 uris?: { uri: string; match?: number }[];
-                // Time-based one-time password secret */
+                // Time-based one-time password secret
                 totp?: string;
               };
             }
