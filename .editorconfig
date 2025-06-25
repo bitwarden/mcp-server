@@ -18,8 +18,8 @@ guidelines = 120
 [*.{json,yml}]
 indent_size = 2
 
-# JS / TS
-[*.{js,ts}]
+# JS / TS / Markdown
+[*.{js,ts,md}]
 charset = utf-8
 indent_style = space
 indent_size = 2
