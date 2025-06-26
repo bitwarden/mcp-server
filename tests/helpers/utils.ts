@@ -1,5 +1,5 @@
 export function setUpTests(): void {
-  beforeAll(() => {
+  beforeEach(() => {
     process.env.BW_SESSION = 'session';
   });
 }
