@@ -122,7 +122,7 @@ The server provides the following Bitwarden CLI tools:
   echo $BW_SESSION
   ```
 
-## Security Considerations
+## Security considerations
 
 - **Never commit** the `BW_SESSION` token
 - **Use environment variables** for sensitive configuration
