@@ -23,6 +23,10 @@ Thumbs.db
 node_modules
 npm-debug.log
 
+# Testing
+coverage/
+junit.xml
+
 # Cache
 .eslintcache
 

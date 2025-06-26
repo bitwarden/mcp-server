@@ -477,7 +477,7 @@ export interface CliResponse {
  *   - [true, validatedData] if validation succeeds
  *   - [false, errorObject] if validation fails
  */
-function validateInput<T>(
+export function validateInput<T>(
   schema: z.ZodType<T>,
   args: unknown,
 ):

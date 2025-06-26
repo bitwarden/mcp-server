@@ -20,13 +20,18 @@
   },
   "devDependencies": {
     "@eslint/js": "9.29.0",
+    "@jest/globals": "30.0.3",
     "@modelcontextprotocol/inspector": "0.14.2",
+    "@types/jest": "30.0.0",
     "@types/node": "22.15.32",
     "eslint": "9.29.0",
     "globals": "16.2.0",
     "husky": "9.1.7",
+    "jest": "30.0.3",
+    "jest-junit": "16.0.0",
     "lint-staged": "16.1.2",
     "prettier": "3.5.3",
+    "ts-jest": "29.4.0",
     "typescript": "5.8.3",
     "typescript-eslint": "8.35.0"
   },
@@ -45,6 +50,10 @@
     "lint": "eslint . --cache --cache-strategy content && prettier --check .",
     "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",
-    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:run": "npm run test",
+    "check-exports": "node -e \"require('./dist/index.js')\""
   }
 }
