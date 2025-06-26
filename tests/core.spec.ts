@@ -1,6 +1,9 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { z } from 'zod';
 import { validateInput } from '../src/index.js';
+import { setUpTests } from './helpers/utils.js';
+
+setUpTests();
 
 describe('Password Generation Schema', () => {
   const generateSchema = z.object({
