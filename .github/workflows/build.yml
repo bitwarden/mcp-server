@@ -15,7 +15,7 @@ jobs:
     name: Build
     runs-on: ubuntu-24.04
     permissions:
-      id-token: write
+      contents: read
       security-events: write
     env:
       _AZ_REGISTRY: bitwardenprod.azurecr.io
