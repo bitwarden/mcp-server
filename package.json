@@ -14,17 +14,27 @@
   },
   "homepage": "https://bitwarden.com",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.12.1",
+    "@bitwarden/cli": "2025.6.0",
+    "@modelcontextprotocol/sdk": "1.13.0",
     "shx": "0.4.0",
-    "zod": "3.25.42"
+    "zod": "3.25.67"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "0.13.0",
-    "@types/node": "22.15.28",
+    "@eslint/js": "9.29.0",
+    "@jest/globals": "30.0.3",
+    "@modelcontextprotocol/inspector": "0.14.3",
+    "@types/jest": "30.0.0",
+    "@types/node": "22.15.32",
+    "eslint": "9.29.0",
+    "globals": "16.2.0",
     "husky": "9.1.7",
-    "lint-staged": "16.1.0",
+    "jest": "30.0.3",
+    "jest-junit": "16.0.0",
+    "lint-staged": "16.1.2",
     "prettier": "3.5.3",
-    "typescript": "5.8.3"
+    "ts-jest": "29.4.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.35.0"
   },
   "bin": {
     "mcp-server-bitwarden": "dist/index.js"
@@ -33,11 +43,18 @@
     "dist"
   ],
   "lint-staged": {
-    "*": "prettier --cache --write --ignore-unknown"
+    "*": "prettier --cache --write --ignore-unknown",
+    "*.ts": "eslint --cache --cache-strategy content --fix"
   },
   "scripts": {
     "prepare": "husky && npm run build",
+    "lint": "eslint . --cache --cache-strategy content && prettier --check .",
+    "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",
-    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "test": "jest --silent",
+    "test:watch": "jest --watch",
+    "test:run": "npm run test",
+    "check-exports": "node -e \"require('./dist/index.js')\""
   }
 }
