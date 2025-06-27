@@ -14,6 +14,11 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+    env:
+      _AZ_REGISTRY: bitwardenprod.azurecr.io
+      _PROJECT_NAME: mcp-server
 
     steps:
       - name: Check out repo
@@ -45,22 +50,9 @@ jobs:
       - name: Upload archive to GitHub
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: mcp-server.zip
+          name: mcp-server
           path: mcp-server.zip
           if-no-files-found: error
-
-  build-docker:
-    name: Build Docker images
-    runs-on: ubuntu-24.04
-    permissions:
-      security-events: write
-    env:
-      _AZ_REGISTRY: bitwardenprod.azurecr.io
-      _PROJECT_NAME: mcp-server
-
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
 
       - name: Generate Docker image tag
         id: tag
