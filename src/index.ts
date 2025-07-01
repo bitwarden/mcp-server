@@ -467,6 +467,34 @@ export interface CliResponse {
 }
 
 /**
+ * Interface representing a Bitwarden vault item structure.
+ * Used to parse and modify items during create and edit operations.
+ *
+ * @interface
+ */
+interface BitwardenItem {
+  // Unique identifier for the item
+  id?: string;
+  // Display name of the item
+  name?: string;
+  // Additional notes for the item
+  notes?: string;
+  // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
+  type?: number;
+  // Login-specific details, only applicable for type=1
+  login?: {
+    // Username for the login
+    username?: string;
+    // Password for the login
+    password?: string;
+    // List of URIs associated with the login
+    uris?: { uri: string; match?: number }[];
+    // Time-based one-time password secret
+    totp?: string;
+  };
+}
+
+/**
  * Validates input against a Zod schema and returns either the validated data or a structured error response.
  *
  * @template T - Type of the validated output
@@ -815,41 +843,38 @@ async function runServer() {
               login,
             } = validationResult;
 
-            // For login items (type 1), we need to construct the login data
-            let createCommand = `create item "{"name":"${itemName}","type":${itemType}`;
+            // Build the item object
+            const itemObject: BitwardenItem = {
+              name: itemName,
+              type: itemType,
+            };
 
             if (notes) {
-              createCommand += `,"notes":"${notes}"`;
+              itemObject.notes = notes;
             }
 
             // Add login properties for login items
             if (itemType === 1 && login) {
-              createCommand += ',"login":{';
-
-              const loginProps = [];
+              itemObject.login = {};
 
               if (login.username) {
-                loginProps.push(`"username":"${login.username}"`);
+                itemObject.login.username = login.username;
               }
 
               if (login.password) {
-                loginProps.push(`"password":"${login.password}"`);
+                itemObject.login.password = login.password;
               }
 
               if (login.totp) {
-                loginProps.push(`"totp":"${login.totp}"`);
+                itemObject.login.totp = login.totp;
               }
 
               if (login.uris && login.uris.length > 0) {
-                const urisJson = JSON.stringify(login.uris);
-                loginProps.push(`"uris":${urisJson}`);
+                itemObject.login.uris = login.uris;
               }
-
-              createCommand += `${loginProps.join(',')}}"`;
-            } else {
-              createCommand += '}"';
             }
 
+            const createCommand = `create item '${JSON.stringify(itemObject)}'`;
             const result = await executeCliCommand(createCommand);
 
             return {
@@ -892,34 +917,6 @@ async function runServer() {
             }
 
             // Parse the current item
-            /**
-             * Interface representing a Bitwarden vault item structure.
-             * Used to parse and modify items during edit operations.
-             *
-             * @interface
-             */
-            interface BitwardenItem {
-              // Unique identifier for the item
-              id?: string;
-              // Display name of the item
-              name?: string;
-              // Additional notes for the item
-              notes?: string;
-              // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
-              type?: number;
-              // Login-specific details, only applicable for type=1
-              login?: {
-                // Username for the login
-                username?: string;
-                // Password for the login
-                password?: string;
-                // List of URIs associated with the login
-                uris?: { uri: string; match?: number }[];
-                // Time-based one-time password secret
-                totp?: string;
-              };
-            }
-
             let currentItem: BitwardenItem;
             try {
               currentItem = JSON.parse(
