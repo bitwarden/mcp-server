@@ -78,18 +78,18 @@ This will:
 
 The server provides the following Bitwarden CLI tools:
 
-| Tool       | Description                  | Required Parameters                              |
-| ---------- | ---------------------------- | ------------------------------------------------ |
-| `lock`     | Lock the vault               | None                                             |
-| `unlock`   | Unlock with master password  | `password`                                       |
-| `sync`     | Sync vault data              | None                                             |
-| `status`   | Check CLI status             | None                                             |
-| `list`     | List vault items             | `type` (items/folders/collections/organizations) |
-| `get`      | Get specific item            | `object`, `id`                                   |
-| `generate` | Generate password/passphrase | Various optional parameters                      |
-| `create`   | Create new vault item        | `name`, `type`, optional `login` details         |
-| `edit`     | Edit existing item           | `id`, optional fields to update                  |
-| `delete`   | Delete vault item            | `object`, `id`, optional `permanent`             |
+| Tool       | Description                  | Required Parameters                               |
+| ---------- | ---------------------------- | ------------------------------------------------- |
+| `lock`     | Lock the vault               | None                                              |
+| `unlock`   | Unlock with master password  | `password`                                        |
+| `sync`     | Sync vault data              | None                                              |
+| `status`   | Check CLI status             | None                                              |
+| `list`     | List vault items/folders     | `type` (items/folders/collections/organizations)  |
+| `get`      | Get specific item/folder     | `object`, `id`                                    |
+| `generate` | Generate password/passphrase | Various optional parameters                       |
+| `create`   | Create new item or folder    | `objectType`, `name`, additional fields for items |
+| `edit`     | Edit existing item or folder | `objectType`, `id`, optional fields to update     |
+| `delete`   | Delete vault item/folder     | `object`, `id`, optional `permanent`              |
 
 ### Manual testing
 
