@@ -874,7 +874,9 @@ async function runServer() {
               }
             }
 
-            const createCommand = `create item '${JSON.stringify(itemObject)}'`;
+            const itemJson = JSON.stringify(itemObject);
+            const itemBase64 = Buffer.from(itemJson, 'utf8').toString('base64');
+            const createCommand = `create item ${itemBase64}`;
             const result = await executeCliCommand(createCommand);
 
             return {
@@ -959,7 +961,9 @@ async function runServer() {
             }
 
             // Perform the edit
-            const editCommand = `edit item ${id} '${JSON.stringify(currentItem)}'`;
+            const itemJson = JSON.stringify(currentItem);
+            const itemBase64 = Buffer.from(itemJson, 'utf8').toString('base64');
+            const editCommand = `edit item ${id} ${itemBase64}`;
             const result = await executeCliCommand(editCommand);
 
             return {
