@@ -629,18 +629,11 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
 
 /**
  * Initializes and starts the MCP server for handling Bitwarden CLI commands.
- * Requires the BW_SESSION environment variable to be set.
  *
  * @async
  * @returns {Promise<void>}
  */
 async function runServer() {
-  // Require session from environment variable
-  if (!process.env.BW_SESSION) {
-    console.error('Please set the BW_SESSION environment variable');
-    process.exit(1);
-  }
-
   // Set up server
   console.error('Bitwarden MCP Server starting ...');
   const server = new Server(
@@ -701,6 +694,12 @@ async function runServer() {
             const result = await executeCliCommand(
               `unlock "${password}" --raw`,
             );
+
+            // If unlock was successful, set the BW_SESSION environment variable
+            if (!result.errorOutput && result.output) {
+              const sessionToken = result.output.trim();
+              process.env.BW_SESSION = sessionToken;
+            }
 
             return {
               content: [
