@@ -21,4 +21,6 @@ WORKDIR /app
 
 RUN npm ci --ignore-scripts --omit-dev
 
+RUN npm install @bitwarden/cli@2025.6.1
+
 ENTRYPOINT ["node", "dist/index.js"]
