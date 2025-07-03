@@ -127,15 +127,19 @@ const loginSchema = z.object({
 // Schema for validating 'create' command parameters
 const createSchema = z
   .object({
-    // Name of the item to create
+    // Name of the item/folder to create
     name: z.string().min(1, 'Name is required'),
-    // Type of item to create
-    type: z.union([
-      z.literal(1), // Login
-      z.literal(2), // Secure Note
-      z.literal(3), // Card
-      z.literal(4), // Identity
-    ]),
+    // Type of object to create: 'item' or 'folder'
+    objectType: z.enum(['item', 'folder']),
+    // Type of item to create (only for items)
+    type: z
+      .union([
+        z.literal(1), // Login
+        z.literal(2), // Secure Note
+        z.literal(3), // Card
+        z.literal(4), // Identity
+      ])
+      .optional(),
     // Optional notes for the item
     notes: z.string().optional(),
     // Login details (required when type is 1)
@@ -143,14 +147,29 @@ const createSchema = z
   })
   .refine(
     (data) => {
-      // If type is login (1), login object should be provided
-      if (data.type === 1) {
-        return !!data.login; // login object should exist
+      // If objectType is item, type should be provided
+      if (data.objectType === 'item') {
+        if (!data.type) {
+          return false;
+        }
+        // If type is login (1), login object should be provided
+        if (data.type === 1) {
+          return !!data.login; // login object should exist
+        }
       }
-      return true; // For other types, login is optional
+      // Notes should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.notes) {
+        return false;
+      }
+      // Login should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.login) {
+        return false;
+      }
+      return true;
     },
     {
-      message: 'Login details are required for login items',
+      message:
+        'Item type is required for items, login details are required for login items, and notes/login are only valid for items',
     },
   );
 
@@ -163,16 +182,36 @@ const editLoginSchema = z.object({
 });
 
 // Schema for validating 'edit' command parameters
-const editSchema = z.object({
-  // ID of the item to edit
-  id: z.string().min(1, 'Item ID is required'),
-  // New name for the item
-  name: z.string().optional(),
-  // New notes for the item
-  notes: z.string().optional(),
-  // Updated login information
-  login: editLoginSchema.optional(),
-});
+const editSchema = z
+  .object({
+    // Type of object to edit: 'item' or 'folder'
+    objectType: z.enum(['item', 'folder']),
+    // ID of the item/folder to edit
+    id: z.string().min(1, 'ID is required'),
+    // New name for the item/folder
+    name: z.string().optional(),
+    // New notes for the item
+    notes: z.string().optional(),
+    // Updated login information (only for items)
+    login: editLoginSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Notes should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.notes) {
+        return false;
+      }
+      // Login should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.login) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'Notes and login information are only valid for items, not folders',
+    },
+  );
 
 // Schema for validating 'delete' command parameters
 const deleteSchema = z.object({
@@ -330,23 +369,28 @@ const generateTool: Tool = {
 
 const createTool: Tool = {
   name: 'create',
-  description: 'Create a new item in your vault',
+  description: 'Create a new item or folder in your vault',
   inputSchema: {
     type: 'object',
     properties: {
+      objectType: {
+        type: 'string',
+        description: 'Type of object to create',
+        enum: ['item', 'folder'],
+      },
       name: {
         type: 'string',
-        description: 'Name of the item',
+        description: 'Name of the item or folder',
       },
       type: {
         type: 'number',
         description:
-          'Type of item (1: Login, 2: Secure Note, 3: Card, 4: Identity)',
+          'Type of item (1: Login, 2: Secure Note, 3: Card, 4: Identity) - required for items',
         enum: [1, 2, 3, 4],
       },
       notes: {
         type: 'string',
-        description: 'Notes for the item',
+        description: 'Notes for the item (only valid for items, not folders)',
       },
       login: {
         type: 'object',
@@ -387,31 +431,37 @@ const createTool: Tool = {
         },
       },
     },
-    required: ['name', 'type'],
+    required: ['objectType', 'name'],
   },
 };
 
 const editTool: Tool = {
   name: 'edit',
-  description: 'Edit an existing item in your vault',
+  description: 'Edit an existing item or folder in your vault',
   inputSchema: {
     type: 'object',
     properties: {
+      objectType: {
+        type: 'string',
+        description: 'Type of object to edit',
+        enum: ['item', 'folder'],
+      },
       id: {
         type: 'string',
-        description: 'ID of the item to edit',
+        description: 'ID of the item or folder to edit',
       },
       name: {
         type: 'string',
-        description: 'New name for the item',
+        description: 'New name for the item or folder',
       },
       notes: {
         type: 'string',
-        description: 'New notes for the item',
+        description:
+          'New notes for the item (only valid for items, not folders)',
       },
       login: {
         type: 'object',
-        description: 'Login information to update',
+        description: 'Login information to update (only for items)',
         properties: {
           username: {
             type: 'string',
@@ -424,7 +474,7 @@ const editTool: Tool = {
         },
       },
     },
-    required: ['id'],
+    required: ['objectType', 'id'],
   },
 };
 
@@ -464,6 +514,47 @@ const deleteTool: Tool = {
 export interface CliResponse {
   output?: string;
   errorOutput?: string;
+}
+
+/**
+ * Interface representing a Bitwarden vault item structure.
+ * Used to parse and modify items during create and edit operations.
+ *
+ * @interface
+ */
+interface BitwardenItem {
+  // Unique identifier for the item
+  id?: string;
+  // Display name of the item
+  name?: string;
+  // Additional notes for the item
+  notes?: string;
+  // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
+  type?: number;
+  // Login-specific details, only applicable for type=1
+  login?: {
+    // Username for the login
+    username?: string;
+    // Password for the login
+    password?: string;
+    // List of URIs associated with the login
+    uris?: { uri: string; match?: number }[];
+    // Time-based one-time password secret
+    totp?: string;
+  };
+}
+
+/**
+ * Interface representing a Bitwarden folder structure.
+ * Used to parse and modify folders during create and edit operations.
+ *
+ * @interface
+ */
+interface BitwardenFolder {
+  // Unique identifier for the folder
+  id?: string;
+  // Display name of the folder
+  name?: string;
 }
 
 /**
@@ -809,58 +900,84 @@ async function runServer() {
             }
 
             const {
+              objectType,
               name: itemName,
               type: itemType,
               notes,
               login,
             } = validationResult;
 
-            // For login items (type 1), we need to construct the login data
-            let createCommand = `create item "{"name":"${itemName}","type":${itemType}`;
+            if (objectType === 'folder') {
+              // Create folder
+              const folderObject: BitwardenFolder = {
+                name: itemName,
+              };
 
-            if (notes) {
-              createCommand += `,"notes":"${notes}"`;
-            }
+              const folderJson = JSON.stringify(folderObject);
+              const folderBase64 = Buffer.from(folderJson, 'utf8').toString(
+                'base64',
+              );
+              const createCommand = `create folder ${folderBase64}`;
+              const result = await executeCliCommand(createCommand);
 
-            // Add login properties for login items
-            if (itemType === 1 && login) {
-              createCommand += ',"login":{';
-
-              const loginProps = [];
-
-              if (login.username) {
-                loginProps.push(`"username":"${login.username}"`);
-              }
-
-              if (login.password) {
-                loginProps.push(`"password":"${login.password}"`);
-              }
-
-              if (login.totp) {
-                loginProps.push(`"totp":"${login.totp}"`);
-              }
-
-              if (login.uris && login.uris.length > 0) {
-                const urisJson = JSON.stringify(login.uris);
-                loginProps.push(`"uris":${urisJson}`);
-              }
-
-              createCommand += `${loginProps.join(',')}}"`;
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: result.output || result.errorOutput,
+                  },
+                ],
+                isError: result.errorOutput ? true : false,
+              };
             } else {
-              createCommand += '}"';
+              // Create item
+              const itemObject: BitwardenItem = {
+                name: itemName,
+                type: itemType,
+              };
+
+              if (notes) {
+                itemObject.notes = notes;
+              }
+
+              // Add login properties for login items
+              if (itemType === 1 && login) {
+                itemObject.login = {};
+
+                if (login.username) {
+                  itemObject.login.username = login.username;
+                }
+
+                if (login.password) {
+                  itemObject.login.password = login.password;
+                }
+
+                if (login.totp) {
+                  itemObject.login.totp = login.totp;
+                }
+
+                if (login.uris && login.uris.length > 0) {
+                  itemObject.login.uris = login.uris;
+                }
+              }
+
+              const itemJson = JSON.stringify(itemObject);
+              const itemBase64 = Buffer.from(itemJson, 'utf8').toString(
+                'base64',
+              );
+              const createCommand = `create item ${itemBase64}`;
+              const result = await executeCliCommand(createCommand);
+
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: result.output || result.errorOutput,
+                  },
+                ],
+                isError: result.errorOutput ? true : false,
+              };
             }
-
-            const result = await executeCliCommand(createCommand);
-
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: result.output || result.errorOutput,
-                },
-              ],
-              isError: result.errorOutput ? true : false,
-            };
           }
 
           case 'edit': {
@@ -874,109 +991,151 @@ async function runServer() {
               return validationResult;
             }
 
-            const { id, name: itemName, notes, login } = validationResult;
+            const {
+              objectType,
+              id,
+              name: itemName,
+              notes,
+              login,
+            } = validationResult;
 
-            // First, get the current item to edit
-            const getResult = await executeCliCommand(`get item ${id}`);
+            if (objectType === 'folder') {
+              // Edit folder
+              const getResult = await executeCliCommand(`get folder ${id}`);
 
-            if (getResult.errorOutput) {
+              if (getResult.errorOutput) {
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error retrieving folder to edit: ${getResult.errorOutput}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+
+              // Parse the current folder
+              let currentFolder: BitwardenFolder;
+              try {
+                currentFolder = JSON.parse(
+                  getResult.output || '{}',
+                ) as BitwardenFolder;
+              } catch (error) {
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error parsing folder data: ${error}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+
+              // Update folder name
+              if (itemName) {
+                currentFolder.name = itemName;
+              }
+
+              const folderJson = JSON.stringify(currentFolder);
+              const folderBase64 = Buffer.from(folderJson, 'utf8').toString(
+                'base64',
+              );
+              const editCommand = `edit folder ${id} ${folderBase64}`;
+              const result = await executeCliCommand(editCommand);
+
               return {
                 content: [
                   {
                     type: 'text',
-                    text: `Error retrieving item to edit: ${getResult.errorOutput}`,
+                    text:
+                      result.output ||
+                      result.errorOutput ||
+                      `Folder ${id} updated successfully`,
                   },
                 ],
-                isError: true,
+                isError: result.errorOutput ? true : false,
               };
-            }
+            } else {
+              // Edit item
+              const getResult = await executeCliCommand(`get item ${id}`);
 
-            // Parse the current item
-            /**
-             * Interface representing a Bitwarden vault item structure.
-             * Used to parse and modify items during edit operations.
-             *
-             * @interface
-             */
-            interface BitwardenItem {
-              // Unique identifier for the item
-              id?: string;
-              // Display name of the item
-              name?: string;
-              // Additional notes for the item
-              notes?: string;
-              // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
-              type?: number;
-              // Login-specific details, only applicable for type=1
-              login?: {
-                // Username for the login
-                username?: string;
-                // Password for the login
-                password?: string;
-                // List of URIs associated with the login
-                uris?: { uri: string; match?: number }[];
-                // Time-based one-time password secret
-                totp?: string;
-              };
-            }
+              if (getResult.errorOutput) {
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error retrieving item to edit: ${getResult.errorOutput}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
 
-            let currentItem: BitwardenItem;
-            try {
-              currentItem = JSON.parse(
-                getResult.output || '{}',
-              ) as BitwardenItem;
-            } catch (error) {
+              // Parse the current item
+              let currentItem: BitwardenItem;
+              try {
+                currentItem = JSON.parse(
+                  getResult.output || '{}',
+                ) as BitwardenItem;
+              } catch (error) {
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error parsing item data: ${error}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+
+              // Update fields
+              if (itemName) {
+                currentItem.name = itemName;
+              }
+
+              if (notes) {
+                currentItem.notes = notes;
+              }
+
+              // Update login fields if this is a login item
+              if (currentItem.type === 1 && login) {
+                if (!currentItem.login) {
+                  currentItem.login = {};
+                }
+
+                if (login.username) {
+                  currentItem.login.username = login.username;
+                }
+
+                if (login.password) {
+                  currentItem.login.password = login.password;
+                }
+              }
+
+              // Perform the edit
+              const itemJson = JSON.stringify(currentItem);
+              const itemBase64 = Buffer.from(itemJson, 'utf8').toString(
+                'base64',
+              );
+              const editCommand = `edit item ${id} ${itemBase64}`;
+              const result = await executeCliCommand(editCommand);
+
               return {
                 content: [
                   {
                     type: 'text',
-                    text: `Error parsing item data: ${error}`,
+                    text:
+                      result.output ||
+                      result.errorOutput ||
+                      `Item ${id} updated successfully`,
                   },
                 ],
-                isError: true,
+                isError: result.errorOutput ? true : false,
               };
             }
-
-            // Update fields
-            if (itemName) {
-              currentItem.name = itemName;
-            }
-
-            if (notes) {
-              currentItem.notes = notes;
-            }
-
-            // Update login fields if this is a login item
-            if (currentItem.type === 1 && login) {
-              if (!currentItem.login) {
-                currentItem.login = {};
-              }
-
-              if (login.username) {
-                currentItem.login.username = login.username;
-              }
-
-              if (login.password) {
-                currentItem.login.password = login.password;
-              }
-            }
-
-            // Perform the edit
-            const editCommand = `edit item ${id} '${JSON.stringify(currentItem)}'`;
-            const result = await executeCliCommand(editCommand);
-
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text:
-                    result.output ||
-                    result.errorOutput ||
-                    `Item ${id} updated successfully`,
-                },
-              ],
-              isError: result.errorOutput ? true : false,
-            };
           }
 
           case 'delete': {
