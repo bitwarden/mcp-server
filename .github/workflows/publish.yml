@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
 
-      - name: Version output
+      - name: Output version
         id: version-output
         run: |
           if [[ "${{ inputs.version }}" == "latest" || "${{ inputs.version }}" == "" ]]; then
