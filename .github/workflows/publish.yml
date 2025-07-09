@@ -34,15 +34,15 @@ jobs:
       deployments: write
 
     steps:
-      # - name: Check branch
-      #   if: ${{ inputs.publish_type != 'Dry Run' }}
-      #   run: |
-      #     if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-      #       echo "==================================="
-      #       echo "[!] Can only publish from the 'main' branch"
-      #       echo "==================================="
-      #       exit 1
-      #     fi
+      - name: Check branch
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "==================================="
+            echo "[!] Can only publish from the 'main' branch"
+            echo "==================================="
+            exit 1
+          fi
 
       - name: Output version
         id: version-output
@@ -83,45 +83,45 @@ jobs:
         with:
           ref: refs/tags/v${{ env._PKG_VERSION }}
 
-      # - name: Log in to Azure
-      #   uses: bitwarden/gh-actions/azure-login@main
-      #   with:
-      #     subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      #     tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-      #     client_id: ${{ secrets.AZURE_CLIENT_ID }}
+      - name: Log in to Azure
+        uses: bitwarden/gh-actions/azure-login@main
+        with:
+          subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          client_id: ${{ secrets.AZURE_CLIENT_ID }}
 
-      # - name: Retrieve secrets
-      #   id: retrieve-secrets
-      #   uses: bitwarden/gh-actions/get-keyvault-secrets@main
-      #   with:
-      #     keyvault: "bitwarden-ci"
-      #     secrets: "npm-api-key"
+      - name: Retrieve secrets
+        id: retrieve-secrets
+        uses: bitwarden/gh-actions/get-keyvault-secrets@main
+        with:
+          keyvault: "bitwarden-ci"
+          secrets: "npm-api-key"
 
-      # - name: Log out from Azure
-      #   uses: bitwarden/gh-actions/azure-logout@main
+      - name: Log out from Azure
+        uses: bitwarden/gh-actions/azure-logout@main
 
-      # - name: Download and set up artifact
-      #   run: |
-      #     wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
-      #     unzip mcp-server-${{ env._PKG_VERSION }}.zip
+      - name: Download and set up artifact
+        run: |
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
+          unzip mcp-server-${{ env._PKG_VERSION }}.zip
 
-      # - name: Set up NPM
-      #   run: |
-      #     echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
-      #     echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
-      #   env:
-      #     NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
+      - name: Set up NPM
+        run: |
+          echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
+        env:
+          NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
 
-      # - name: Install Husky
-      #   run: npm install -g husky
+      - name: Install Husky
+        run: npm install -g husky
 
-      # - name: Publish to NPM (Dry Run)
-      #   if: ${{ inputs.publish_type == 'Dry Run' }}
-      #   run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --dry-run
+      - name: Publish to NPM (Dry Run)
+        if: ${{ inputs.publish_type == 'Dry Run' }}
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --dry-run
 
-      # - name: Publish to NPM
-      #   if: ${{ inputs.publish_type != 'Dry Run' }}
-      #   run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
+      - name: Publish to NPM
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
 
   publish-ghpr:
     name: Publish to GitHub Package Registry
