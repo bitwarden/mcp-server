@@ -50,6 +50,7 @@ jobs:
     needs: setup
     permissions:
       contents: write
+      packages: read
 
     steps:
       - name: Download all release artifacts
