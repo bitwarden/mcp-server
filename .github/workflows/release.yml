@@ -50,6 +50,7 @@ jobs:
     needs: setup
     permissions:
       contents: write
+
     steps:
       - name: Download all Release artifacts
         if: ${{ inputs.release_type != 'Dry Run' }}
