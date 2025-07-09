@@ -96,9 +96,8 @@ jobs:
 
       - name: Download and set up artifact
         run: |
-          mkdir -p build
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
-          unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
+          unzip mcp-server-${{ env._PKG_VERSION }}.zip
 
       - name: Set up NPM
         run: |
@@ -126,9 +125,8 @@ jobs:
     steps:
       - name: Download and set up artifact
         run: |
-          mkdir -p build
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
-          unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
+          unzip mcp-server-${{ env._PKG_VERSION }}.zip
 
       - name: Set up GHPR
         run: |
