@@ -48,6 +48,8 @@ jobs:
     name: Release
     runs-on: ubuntu-24.04
     needs: setup
+    env:
+      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
     permissions:
       contents: write
       packages: read
