@@ -100,7 +100,7 @@ jobs:
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
           unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
 
-      - name: Setup NPM
+      - name: Set up NPM
         run: |
           echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
