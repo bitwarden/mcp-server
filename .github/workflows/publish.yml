@@ -117,7 +117,7 @@ jobs:
 
       - name: Publish to NPM
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
+        run: npm publish ./dist --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --ignore-scripts --dry-run
 
   publish-ghpr:
     name: Publish to GitHub Package Registry
@@ -149,7 +149,7 @@ jobs:
 
       - name: Publish to GHPR
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
+        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc --ignore-scripts --dry-run
 
   update-deployment:
     name: Update deployment status
