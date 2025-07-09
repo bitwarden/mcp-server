@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_type:
-        description: "Publish Options"
+        description: "Publish options"
         required: true
         default: "Publish"
         type: choice
