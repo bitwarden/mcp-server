@@ -76,7 +76,13 @@ jobs:
       id-token: write
     env:
       _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
+
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/tags/v${{ env._PKG_VERSION }}
+
       - name: Log in to Azure
         uses: bitwarden/gh-actions/azure-login@main
         with:
@@ -123,6 +129,11 @@ jobs:
       packages: write
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/tags/v${{ env._PKG_VERSION }}
+
       - name: Download and set up artifact
         run: |
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
