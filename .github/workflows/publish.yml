@@ -25,7 +25,7 @@ defaults:
 jobs:
   setup:
     name: Setup
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       release_version: ${{ steps.version-output.outputs.version }}
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
@@ -67,20 +67,16 @@ jobs:
           description: "Deployment ${{ steps.version-output.outputs.version }} from branch ${{ github.ref_name }}"
           task: release
 
-  npm:
+  publish-npm:
     name: Publish NPM
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: setup
     permissions:
-      contents: read
       packages: read
       id-token: write
     env:
       _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
       - name: Log in to Azure
         uses: bitwarden/gh-actions/azure-login@main
         with:
@@ -102,7 +98,7 @@ jobs:
         run: |
           mkdir -p build
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
-          unzip mcp-server-${{ env._PKG_VERSION }}-npm-build.zip -d build
+          unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
 
       - name: Setup NPM
         run: |
@@ -118,12 +114,41 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
 
+  publish-ghpr:
+    name: Publish GitHub Package Registry
+    runs-on: ubuntu-24.04
+    needs: setup
+    env:
+      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
+    permissions:
+      packages: write
+
+    steps:
+      - name: Download and set up artifact
+        run: |
+          mkdir -p build
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
+          unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
+
+      - name: Setup NPM
+        run: |
+          echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
+          echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
+
+      - name: Install Husky
+        run: npm install -g husky
+
+      - name: Publish NPM
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
+
   update-deployment:
     name: Update Deployment Status
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - setup
-      - npm
+      - publish-npm
+      - publish-ghpr
     permissions:
       contents: read
       deployments: write
