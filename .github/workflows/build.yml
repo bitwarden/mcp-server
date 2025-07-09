@@ -67,14 +67,21 @@ jobs:
           echo "GITHUB_REF=${GITHUB_REF}"
           echo "GITHUB_REF:11=${GITHUB_REF:11}"
           IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" || "${GITHUB_EVENT_NAME}" == "pull_request_target" ]]; then
+            IMAGE_TAG="pull-request-${{ github.event.pull_request.number }}"
+          fi
           echo "IMAGE_TAG=${IMAGE_TAG}"
 
       - name: Generate Docker image tag
         id: tag
         run: |
-          IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
-          if [[ "$IMAGE_TAG" == "main" ]]; then
-            IMAGE_TAG=dev
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" || "${GITHUB_EVENT_NAME}" == "pull_request_target" ]]; then
+            IMAGE_TAG="merge-${{ github.event.pull_request.number }}"
+          else
+            IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
+            if [[ "$IMAGE_TAG" == "main" ]]; then
+              IMAGE_TAG=dev
+            fi
           fi
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
