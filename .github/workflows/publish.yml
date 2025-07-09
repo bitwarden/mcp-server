@@ -110,7 +110,7 @@ jobs:
       - name: Install Husky
         run: npm install -g husky
 
-      - name: Publish NPM
+      - name: Publish to NPM
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
 
