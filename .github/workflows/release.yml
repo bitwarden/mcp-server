@@ -58,6 +58,7 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
+          artifacts: "mcp-server-${{ env.PKG_VERSION }}.zip"
           branch: ${{ github.ref_name }}
 
       - name: Dry Run - Download all artifacts
@@ -66,6 +67,7 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
+          artifacts: "mcp-server-${{ env.PKG_VERSION }}.zip"
           branch: main
 
       - name: Create release
