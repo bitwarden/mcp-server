@@ -130,7 +130,7 @@ jobs:
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
           unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
 
-      - name: Setup NPM
+      - name: Setup GHPR
         run: |
           echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
           echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
@@ -138,7 +138,7 @@ jobs:
       - name: Install Husky
         run: npm install -g husky
 
-      - name: Publish NPM
+      - name: Publish GHPR
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
 
