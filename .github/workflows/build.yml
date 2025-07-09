@@ -62,6 +62,13 @@ jobs:
           path: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}.zip
           if-no-files-found: error
 
+      - name: Show github ref
+        run: |
+          echo "GITHUB_REF=${GITHUB_REF}"
+          echo "GITHUB_REF:11=${GITHUB_REF:11}"
+          IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+
       - name: Generate Docker image tag
         id: tag
         run: |
