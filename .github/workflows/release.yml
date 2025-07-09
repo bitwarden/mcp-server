@@ -44,6 +44,12 @@ jobs:
           project-type: ts
           file: ./package.json
 
+      - name: Show values
+        run: |
+          echo "Release Type: ${{ inputs.release_type }}"
+          echo "Release Version: ${{ steps.version.outputs.version }}"
+          echo "Branch: ${{ github.ref_name }}"
+
   release:
     name: Release
     runs-on: ubuntu-24.04
