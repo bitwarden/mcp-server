@@ -138,12 +138,12 @@ jobs:
       - name: Install Husky
         run: npm install -g husky
 
-      - name: Publish GHPR
+      - name: Publish to GHPR
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
 
   update-deployment:
-    name: Update Deployment Status
+    name: Update deployment status
     runs-on: ubuntu-24.04
     needs:
       - setup
