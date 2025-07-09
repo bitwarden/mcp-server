@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: "Release Options"
+        description: "Release options"
         required: true
         default: "Initial Release"
         type: choice
