@@ -34,7 +34,7 @@ jobs:
       deployments: write
 
     steps:
-      - name: Branch check
+      - name: Check branch
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
