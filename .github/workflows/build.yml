@@ -64,8 +64,10 @@ jobs:
 
       - name: Generate Docker image tag
         id: tag
+        env:
+          EVENT_TYPE: ${{ contains(github.event_name, 'pull_request') && 'pull_request' || '' }}
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" || "${GITHUB_EVENT_NAME}" == "pull_request_target" ]]; then
+          if [[ "$EVENT_TYPE" == "pull_request" ]]; then
             IMAGE_TAG="merge-${{ github.event.pull_request.number }}"
           else
             IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
