@@ -23,13 +23,13 @@ jobs:
     outputs:
       release_version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout repo
+      - name: Check out repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Check branch
         if: ${{ inputs.release_type != 'Dry Run' }}
         run: |
-          if [[ "$GITHUB_REF" != "main" ]]; then
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "==================================="
             echo "[!] Can only release from the 'main' branch"
             echo "==================================="
@@ -48,8 +48,12 @@ jobs:
     name: Release
     runs-on: ubuntu-24.04
     needs: setup
+    env:
+      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
     permissions:
       contents: write
+      packages: read
+      actions: read
 
     steps:
       - name: Download all release artifacts
@@ -58,6 +62,7 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
+          artifacts: "mcp-server-${{ env._PKG_VERSION }}.zip"
           branch: ${{ github.ref_name }}
 
       - name: Dry Run - Download all artifacts
@@ -66,18 +71,17 @@ jobs:
         with:
           workflow: build.yml
           workflow_conclusion: success
+          artifacts: "mcp-server-${{ env._PKG_VERSION }}.zip"
           branch: main
 
       - name: Create release
         if: ${{ inputs.release_type != 'Dry Run' }}
         uses: ncipollo/release-action@cdcc88a9acf3ca41c16c37bb7d21b9ad48560d87 # v1.15.0
-        env:
-          PKG_VERSION: ${{ needs.setup.outputs.release_version }}
         with:
-          artifacts: "./mcp-server-${{ env.PKG_VERSION }}.zip"
+          artifacts: "./mcp-server-${{ env._PKG_VERSION }}.zip"
           commit: ${{ github.sha }}
-          tag: v${{ env.PKG_VERSION }}
-          name: v${{ env.PKG_VERSION }}
+          tag: v${{ env._PKG_VERSION }}
+          name: v${{ env._PKG_VERSION }}
           body: "<insert release notes here>"
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true

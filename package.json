@@ -46,7 +46,7 @@
     "*.ts": "eslint --cache --cache-strategy content --fix"
   },
   "scripts": {
-    "prepare": "husky && npm run build",
+    "prepare": "husky",
     "lint": "eslint . --cache --cache-strategy content && prettier --check .",
     "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",

@@ -119,4 +119,8 @@ jobs:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
+            -Dsonar.tests=.
+            -Dsonar.sources=.
+            -Dsonar.test.inclusions=**/*.spec.ts
+            -Dsonar.exclusions=**/*.spec.ts
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
