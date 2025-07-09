@@ -109,6 +109,7 @@ jobs:
         run: |
           echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
+          echo "ignore-scripts=true" >> ./.npmrc
         env:
           NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
 
@@ -117,11 +118,11 @@ jobs:
 
       - name: Publish to NPM
         if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --ignore-scripts --dry-run
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --dry-run
 
       - name: Publish to NPM
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --ignore-scripts
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
 
   publish-ghpr:
     name: Publish to GitHub Package Registry
@@ -147,17 +148,18 @@ jobs:
         run: |
           echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
           echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
+          echo "ignore-scripts=true" >> ./.npmrc
 
       - name: Install Husky
         run: npm install -g husky
 
       - name: Publish to GHPR
         if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc --ignore-scripts --dry-run
+        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc --dry-run
 
       - name: Publish to GHPR
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc --ignore-scripts
+        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc
 
   update-deployment:
     name: Update deployment status
