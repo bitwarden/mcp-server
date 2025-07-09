@@ -1,0 +1,151 @@
+name: Publish
+run-name: ${{ inputs.publish_type == 'Dry Run' && 'Publish (Dry Run)' || 'Publish' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_type:
+        description: "Publish Options"
+        required: true
+        default: "Publish"
+        type: choice
+        options:
+          - Publish
+          - Dry Run
+      version:
+        description: "Version to publish (default: latest release)"
+        required: true
+        type: string
+        default: latest
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-22.04
+    outputs:
+      release_version: ${{ steps.version-output.outputs.version }}
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Branch check
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "==================================="
+            echo "[!] Can only publish from the 'main' branch"
+            echo "==================================="
+            exit 1
+          fi
+
+      - name: Version output
+        id: version-output
+        run: |
+          if [[ "${{ inputs.version }}" == "latest" || "${{ inputs.version }}" == "" ]]; then
+            VERSION=$(curl  "https://api.github.com/repos/bitwarden/mcp-server/releases" | jq -c '.[] | select(.tag_name | contains("v")) | .tag_name' | head -1 | grep -ohE '20[0-9]{2}\.([1-9]|1[0-2])\.[0-9]+')
+            echo "Latest Released Version: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "Release Version: ${{ inputs.version }}"
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub deployment
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
+        id: deployment
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          initial-status: "in_progress"
+          environment: "NPM"
+          description: "Deployment ${{ steps.version-output.outputs.version }} from branch ${{ github.ref_name }}"
+          task: release
+
+  npm:
+    name: Publish NPM
+    runs-on: ubuntu-22.04
+    needs: setup
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    env:
+      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Log in to Azure
+        uses: bitwarden/gh-actions/azure-login@main
+        with:
+          subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          client_id: ${{ secrets.AZURE_CLIENT_ID }}
+
+      - name: Retrieve secrets
+        id: retrieve-secrets
+        uses: bitwarden/gh-actions/get-keyvault-secrets@main
+        with:
+          keyvault: "bitwarden-ci"
+          secrets: "npm-api-key"
+
+      - name: Log out from Azure
+        uses: bitwarden/gh-actions/azure-logout@main
+
+      - name: Download and set up artifact
+        run: |
+          mkdir -p build
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
+          unzip mcp-server-${{ env._PKG_VERSION }}-npm-build.zip -d build
+
+      - name: Setup NPM
+        run: |
+          echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
+        env:
+          NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
+
+      - name: Install Husky
+        run: npm install -g husky
+
+      - name: Publish NPM
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
+
+  update-deployment:
+    name: Update Deployment Status
+    runs-on: ubuntu-22.04
+    needs:
+      - setup
+      - npm
+    permissions:
+      contents: read
+      deployments: write
+
+    if: ${{ always() && inputs.publish_type != 'Dry Run' }}
+    steps:
+      - name: Check if any job failed
+        if: contains(needs.*.result, 'failure')
+        run: exit 1
+
+      - name: Update deployment status to Success
+        if: ${{ inputs.publish_type != 'Dry Run' && success() }}
+        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "success"
+          deployment-id: ${{ needs.setup.outputs.deployment_id }}
+
+      - name: Update deployment status to Failure
+        if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
+        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          state: "failure"
+          deployment-id: ${{ needs.setup.outputs.deployment_id }}
