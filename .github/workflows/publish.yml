@@ -115,7 +115,7 @@ jobs:
         run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
 
   publish-ghpr:
-    name: Publish GitHub Package Registry
+    name: Publish to GitHub Package Registry
     runs-on: ubuntu-24.04
     needs: setup
     env:
