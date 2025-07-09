@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@bitwarden/mcp-server",
-  "version": "0.0.0",
+  "version": "2025.7.0",
   "description": "Bitwarden MCP Server",
   "repository": {
     "type": "git",
@@ -14,7 +14,6 @@
   },
   "homepage": "https://bitwarden.com",
   "dependencies": {
-    "@bitwarden/cli": "2025.6.0",
     "@modelcontextprotocol/sdk": "1.13.0",
     "shx": "0.4.0",
     "zod": "3.25.67"
