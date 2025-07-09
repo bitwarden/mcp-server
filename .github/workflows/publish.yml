@@ -109,7 +109,6 @@ jobs:
         run: |
           echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
-          echo "ignore-scripts=true" >> ./.npmrc
         env:
           NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
 
@@ -148,7 +147,6 @@ jobs:
         run: |
           echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
           echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
-          echo "ignore-scripts=true" >> ./.npmrc
 
       - name: Install Husky
         run: npm install -g husky
