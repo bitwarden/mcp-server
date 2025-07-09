@@ -117,7 +117,7 @@ jobs:
 
       - name: Publish to NPM
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish ./dist --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --ignore-scripts --dry-run
+        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --ignore-scripts --dry-run
 
   publish-ghpr:
     name: Publish to GitHub Package Registry
