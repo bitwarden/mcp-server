@@ -4,11 +4,30 @@ Model Context Protocol (MCP) server that enables interaction with the Bitwarden 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22
 - Bitwarden CLI (`bw`) installed and authenticated
 - Valid Bitwarden session token
 
 ## Installation
+
+### Option One: Configuration in your AI app
+
+Open up your application configuration, e.g. for Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "bitwarden": {
+      "command": "npx",
+      "args": ["-y", "@bitwarden/mcp-server"]
+    }
+  }
+}
+```
+
+### Option Two: Local checkout
+
+Requires that this repository be checked out locally. Once that's done:
 
 ```bash
 npm install
@@ -145,7 +164,7 @@ The server provides the following Bitwarden CLI tools:
 3. **Inspector not starting**
 
    - Check that the server builds successfully: `npm run build`
-   - Verify Node.js version is 18+
+   - Verify Node.js version is 22
 
 4. **CLI commands failing**
    - Verify Bitwarden CLI is installed: `bw --version`
