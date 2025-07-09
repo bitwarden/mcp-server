@@ -130,7 +130,7 @@ jobs:
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
           unzip mcp-server-${{ env._PKG_VERSION }}.zip -d build
 
-      - name: Setup GHPR
+      - name: Set up GHPR
         run: |
           echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
           echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
