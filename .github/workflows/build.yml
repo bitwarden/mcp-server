@@ -25,7 +25,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Get Package Version
+      - name: Get package version
         id: retrieve-package-version
         run: |
           PKG_VERSION=$(jq -r .version package.json)
