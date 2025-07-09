@@ -68,7 +68,7 @@ jobs:
           task: release
 
   publish-npm:
-    name: Publish NPM
+    name: Publish to NPM
     runs-on: ubuntu-24.04
     needs: setup
     permissions:
