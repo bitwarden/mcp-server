@@ -68,7 +68,7 @@ jobs:
           EVENT_TYPE: ${{ contains(github.event_name, 'pull_request') && 'pull_request' || '' }}
         run: |
           if [[ "$EVENT_TYPE" == "pull_request" ]]; then
-            IMAGE_TAG="pull-request-${{ github.event.pull_request.number }}"
+            IMAGE_TAG="pr-${{ github.event.pull_request.number }}"
           else
             IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
             if [[ "$IMAGE_TAG" == "main" ]]; then
