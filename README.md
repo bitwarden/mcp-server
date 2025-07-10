@@ -147,6 +147,7 @@ The server provides the following Bitwarden CLI tools:
 - **Use environment variables** for sensitive configuration
 - **Validate all inputs** using Zod schemas (already implemented)
 - **Test with non-production data** when possible
+- Understand the security and privacy impacts of exposing sensitive vault data to an LLM and AI tools. Using a self-hosted LLM may be appropriate, for example.
 
 ## Troubleshooting
 
