@@ -768,7 +768,7 @@ async function runServer() {
   const server = new Server(
     {
       name: 'Bitwarden MCP Server',
-      version: '2025.7.1',
+      version: '2025.7.2',
     },
     {
       capabilities: {
