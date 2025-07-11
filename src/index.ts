@@ -601,7 +601,117 @@ export function validateInput<T>(
 const execPromise = promisify(exec);
 
 /**
- * Executes a Bitwarden CLI command and returns the result.
+ * Sanitizes a string to prevent command injection by removing dangerous characters
+ * and escape sequences that could be used to execute arbitrary commands.
+ *
+ * @param {string} input - The input string to sanitize
+ * @returns {string} The sanitized string safe for use in shell commands
+ */
+export function sanitizeInput(input: string): string {
+  if (typeof input !== 'string') {
+    throw new Error('Input must be a string');
+  }
+
+  // Remove or escape dangerous characters that could be used for command injection
+  return (
+    input
+      // Remove null bytes
+      .replace(/\0/g, '')
+      // Remove command separators and operators
+      .replace(/[;&|`$(){}[\]<>'"]/g, '')
+      // Remove escape sequences and control characters
+      .replace(/\\./g, '')
+      // Remove newlines and carriage returns
+      .replace(/[\r\n]/g, '')
+      // Remove tab characters
+      .replace(/\t/g, ' ')
+      // Collapse multiple spaces
+      .replace(/\s+/g, ' ')
+      // Trim whitespace
+      .trim()
+  );
+}
+
+/**
+ * Safely escapes a parameter value for use in shell commands by using single quotes
+ * and properly escaping any single quotes within the value.
+ *
+ * @param {string} value - The parameter value to escape
+ * @returns {string} The safely escaped parameter
+ */
+export function escapeShellParameter(value: string): string {
+  if (typeof value !== 'string') {
+    throw new Error('Parameter must be a string');
+  }
+
+  // Replace single quotes with '\'' (end quote, escaped quote, start quote)
+  // This is the safest way to handle single quotes in shell parameters
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Builds a safe Bitwarden CLI command with properly escaped parameters.
+ *
+ * @param {string} baseCommand - The base command (e.g., 'get', 'list')
+ * @param {string[]} parameters - Array of parameters to append safely
+ * @returns {string} The safely constructed command
+ */
+export function buildSafeCommand(
+  baseCommand: string,
+  parameters: string[] = [],
+): string {
+  // Sanitize the base command
+  const sanitizedBase = sanitizeInput(baseCommand);
+
+  // Escape all parameters
+  const escapedParams = parameters.map((param) => escapeShellParameter(param));
+
+  // Combine base command with escaped parameters
+  return [sanitizedBase, ...escapedParams].join(' ');
+}
+
+/**
+ * Validates that a command is safe and contains only allowed Bitwarden CLI commands.
+ *
+ * @param {string} command - The command to validate
+ * @returns {boolean} True if the command is safe, false otherwise
+ */
+export function isValidBitwardenCommand(command: string): boolean {
+  // List of allowed Bitwarden CLI commands
+  const allowedCommands = [
+    'lock',
+    'unlock',
+    'sync',
+    'status',
+    'list',
+    'get',
+    'generate',
+    'create',
+    'edit',
+    'delete',
+    'confirm',
+    'import',
+    'export',
+    'serve',
+    'config',
+    'login',
+    'logout',
+  ];
+
+  // Split command into parts
+  const parts = command.trim().split(/\s+/);
+
+  if (parts.length === 0) {
+    return false;
+  }
+
+  // First part should be a valid Bitwarden command
+  const baseCommand = parts[0];
+  return allowedCommands.includes(baseCommand);
+}
+
+/**
+ * Executes a Bitwarden CLI command safely with input sanitization and validation.
  *
  * @async
  * @param {string} command - The Bitwarden CLI command to execute (without 'bw' prefix)
@@ -609,7 +719,19 @@ const execPromise = promisify(exec);
  */
 async function executeCliCommand(command: string): Promise<CliResponse> {
   try {
-    const { stdout, stderr } = await execPromise(`bw ${command}`);
+    // Sanitize the command input
+    const sanitizedCommand = sanitizeInput(command);
+
+    // Validate that it's a safe Bitwarden command
+    if (!isValidBitwardenCommand(sanitizedCommand)) {
+      return {
+        errorOutput:
+          'Invalid or unsafe command. Only Bitwarden CLI commands are allowed.',
+      };
+    }
+
+    // Execute the sanitized command with bw prefix
+    const { stdout, stderr } = await execPromise(`bw ${sanitizedCommand}`);
     return {
       output: stdout,
       errorOutput: stderr,
@@ -811,7 +933,8 @@ async function runServer() {
             }
 
             const { object, id } = validationResult;
-            const result = await executeCliCommand(`get ${object} "${id}"`);
+            const command = buildSafeCommand('get', [object, id]);
+            const result = await executeCliCommand(command);
 
             return {
               content: [
@@ -917,7 +1040,10 @@ async function runServer() {
               const folderBase64 = Buffer.from(folderJson, 'utf8').toString(
                 'base64',
               );
-              const createCommand = `create folder ${folderBase64}`;
+              const createCommand = buildSafeCommand('create', [
+                'folder',
+                folderBase64,
+              ]);
               const result = await executeCliCommand(createCommand);
 
               return {
@@ -965,7 +1091,10 @@ async function runServer() {
               const itemBase64 = Buffer.from(itemJson, 'utf8').toString(
                 'base64',
               );
-              const createCommand = `create item ${itemBase64}`;
+              const createCommand = buildSafeCommand('create', [
+                'item',
+                itemBase64,
+              ]);
               const result = await executeCliCommand(createCommand);
 
               return {
@@ -1001,7 +1130,8 @@ async function runServer() {
 
             if (objectType === 'folder') {
               // Edit folder
-              const getResult = await executeCliCommand(`get folder ${id}`);
+              const command = buildSafeCommand('get', ['folder', id]);
+              const getResult = await executeCliCommand(command);
 
               if (getResult.errorOutput) {
                 return {
@@ -1042,7 +1172,11 @@ async function runServer() {
               const folderBase64 = Buffer.from(folderJson, 'utf8').toString(
                 'base64',
               );
-              const editCommand = `edit folder ${id} ${folderBase64}`;
+              const editCommand = buildSafeCommand('edit', [
+                'folder',
+                id,
+                folderBase64,
+              ]);
               const result = await executeCliCommand(editCommand);
 
               return {
@@ -1059,7 +1193,8 @@ async function runServer() {
               };
             } else {
               // Edit item
-              const getResult = await executeCliCommand(`get item ${id}`);
+              const command = buildSafeCommand('get', ['item', id]);
+              const getResult = await executeCliCommand(command);
 
               if (getResult.errorOutput) {
                 return {
@@ -1120,7 +1255,11 @@ async function runServer() {
               const itemBase64 = Buffer.from(itemJson, 'utf8').toString(
                 'base64',
               );
-              const editCommand = `edit item ${id} ${itemBase64}`;
+              const editCommand = buildSafeCommand('edit', [
+                'item',
+                id,
+                itemBase64,
+              ]);
               const result = await executeCliCommand(editCommand);
 
               return {
