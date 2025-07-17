@@ -585,7 +585,7 @@ export function validateInput<T>(
           content: [
             {
               type: 'text',
-              text: `Validation error: ${validationError.errors.map((e) => e.message).join(', ')}`,
+              text: `Validation error: ${validationError.issues.map((e) => e.message).join(', ')}`,
             },
           ],
           isError: true,
