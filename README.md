@@ -154,16 +154,13 @@ The server provides the following Bitwarden CLI tools:
 ### Common issues
 
 1. **"Please set the BW_SESSION environment variable"**
-
    - Run: `export BW_SESSION=$(bw unlock --raw)`
 
 2. **Tests failing with environment errors**
-
    - Use the environment mocking helpers in tests
    - Ensure test cleanup with `restoreEnvVars()`
 
 3. **Inspector not starting**
-
    - Check that the server builds successfully: `npm run build`
    - Verify Node.js version is 22
 

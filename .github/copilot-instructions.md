@@ -2,77 +2,132 @@
 
 ## Project overview
 
-- **Technology**: TypeScript/Node.js
+- **Technology**: TypeScript/Node.js ES modules with strict type checking
 - **Framework**: Model Context Protocol SDK (@modelcontextprotocol/sdk)
-- **Main functionality**: Provides tools to interact with the Bitwarden CLI
+- **Main functionality**: Secure MCP server that bridges AI models to Bitwarden CLI
+- **Architecture**: Single-file server (`src/index.ts`) with comprehensive security layers
 
-## Coding standards
+## Core architecture patterns
 
-When working with this codebase, follow these guidelines:
+### MCP tool structure
 
-1. **Security First**: This code deals with password vault data -- never suggest code that could compromise security
-2. **Error Handling**: All external calls (especially CLI commands) must have proper error handling
-3. **Type Safety**: Use TypeScript's static typing features for maximum safety and clarity
-4. **Clean Architecture**: Keep tool definitions separate from their implementations
-5. **Linting**: All code must pass ESLint and Prettier checks before being committed -- run `npm run lint` to check code
-6. **Documentation**: Use JSDoc comments for all public functions and classes to ensure clarity
-7. **Version Control**: Use meaningful commit messages
-8. **Unit Testing**: Write unit tests with Jest for all new features and ensure they pass before merging
-9. **Environment Variables**: Use `.env` files for configuration and sensitive data, ensuring they are not committed to version control
-10. **Code Reviews**: All code changes must go through a pull request and be reviewed by at least one other developer
-11. **Dependency Management**: Keep dependencies up to date and use `npm audit` to check for vulnerabilities
-12. **Performance**: Optimize for performance, especially in tools that interact with the Bitwarden CLI
-13. **Logging**: Use structured logging for all operations, especially those that interact with the Bitwarden CLI
-14. **Modular Design**: Keep tools modular and reusable, allowing for easy addition of new tools in the future
-15. **Consistent Naming**: Use consistent naming conventions for variables, functions, and classes
-16. **Avoid Hardcoding**: Do not hardcode sensitive information or configuration values; use environment variables instead
-17. **Use of Promises**: Prefer using async/await syntax for asynchronous operations to improve readability
+Each Bitwarden operation follows a consistent 4-layer pattern:
 
-## Project structure
+1. **Schema Definition** (Zod): `const lockSchema = z.object({...})`
+2. **Tool Declaration**: `const lockTool: Tool = { name, description, inputSchema }`
+3. **Handler Registration**: Switch case in `CallToolRequestSchema` handler
+4. **Security Layer**: `validateInput() → buildSafeCommand() → executeCliCommand()`
 
-- `src/index.ts`: Main entry point defining MCP server setup and tool handlers
-- Other source files should be organized by functionality
+### Security-first command execution
 
-## Adding new tools
-
-When adding new tools to the MCP server:
-
-1. Define the tool object with proper name, description, and input schema
-2. Add the tool to the list of tools returned by the ListTools handler
-3. Implement the tool's logic in the CallTool handler
-4. Add comprehensive error handling for the tool
-
-Example of a tool definition:
+**CRITICAL**: All CLI commands use the security pipeline:
 
 ```typescript
-const newTool: Tool = {
-  name: 'toolName',
-  description: 'Description of what the tool does',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      param1: {
-        type: 'string',
-        description: 'Description of parameter 1',
-      },
-      // Add more parameters as needed
-    },
-    required: ['param1'], // List required parameters
-  },
+// Pattern for all command executions
+const [isValid, validationResult] = validateInput(
+  schema,
+  request.params.arguments,
+);
+const command = buildSafeCommand('baseCommand', [param1, param2]);
+const result = await executeCliCommand(command);
+```
+
+**Never** use string interpolation or concatenation for CLI commands. Always use `buildSafeCommand()`.
+
+### Input validation pattern
+
+```typescript
+const [isValid, validationResult] = validateInput(schema, input);
+if (!isValid) {
+  return validationResult; // Pre-formatted error response
+}
+// validationResult contains validated, typed data
+```
+
+## Development workflows
+
+### Essential commands
+
+- **Build**: `npm run build` (required before testing CLI integration)
+- **Test**: `npm test` (includes security, validation, CLI, and core tests)
+- **Interactive Testing**: `npm run inspect` (MCP Inspector - browser-based tool testing)
+- **Linting**: `npm run lint` (ESLint + Prettier, enforced in CI)
+
+### Environment requirements
+
+- **BW_SESSION**: Required environment variable for Bitwarden CLI authentication
+- **Test Setup**: Uses `.jest/setEnvVars.js` to mock environment in tests
+- **Node.js**: Specifically requires Node.js 22 (see `.nvmrc`)
+
+### Testing strategy
+
+- **Security Tests**: `tests/security.spec.ts` - Command injection protection
+- **Validation Tests**: `tests/validation.spec.ts` - Zod schema validation
+- **CLI Tests**: `tests/cli-commands.spec.ts` - Bitwarden CLI integration
+- **Core Tests**: `tests/core.spec.ts` - Tool logic and edge cases
+
+## Project-specific conventions
+
+### Security functions
+
+```typescript
+// Always use these for command construction:
+sanitizeInput(input: string): string          // Removes dangerous characters
+escapeShellParameter(value: string): string   // Safely quotes parameters
+buildSafeCommand(base: string, params: string[]): string // Combines safely
+isValidBitwardenCommand(command: string): boolean // Validates against whitelist
+```
+
+### Base64 pattern for complex data
+
+Create/edit operations encode JSON data as base64:
+
+```typescript
+const itemJson = JSON.stringify(itemObject);
+const itemBase64 = Buffer.from(itemJson, 'utf8').toString('base64');
+const command = buildSafeCommand('create', ['item', itemBase64]);
+```
+
+### Error response format
+
+All tool responses follow MCP standard:
+
+```typescript
+return {
+  content: [{ type: 'text', text: result.output || result.errorOutput }],
+  isError: result.errorOutput ? true : false,
 };
 ```
 
-## Functional testing
+## Integration points
 
-Use the MCP inspector tool for testing your server implementation:
+### External dependencies
 
-```
-npm run inspect
-```
+- **Bitwarden CLI** (`bw`): Must be installed and authenticated on host system
+- **MCP SDK**: Provides server framework and type definitions (`@modelcontextprotocol/sdk`)
+- **Zod**: Schema validation library
+
+### Tool categories
+
+- **Session Management**: `lock`, `unlock`, `sync`, `status`
+- **Data Retrieval**: `list`, `get`
+- **Data Modification**: `create`, `edit`, `delete`
+- **Utility**: `generate` (passwords/passphrases)
+
+### Critical files
+
+- `src/index.ts`: Complete server implementation (1300+ lines)
+- `tests/security.spec.ts`: Security validation suite
+- `.jest/setEnvVars.js`: Test environment setup
+- `package.json`: ES module configuration with strict TypeScript
 
 ## Security considerations
 
-- Always validate user input
-- Never expose sensitive information in logs or responses
-- Use the Bitwarden CLI's security mechanisms properly
-- Remember that the BW_SESSION environment variable must be set securely
+**NEVER BYPASS** the security functions. This codebase handles sensitive password vault data with multiple protection layers:
+
+- Input sanitization removes injection characters: `[;&|`$(){}[\]<>'"\\]`
+- Command validation against Bitwarden CLI whitelist
+- Parameter escaping with single quotes
+- No direct shell command construction
+
+When adding new tools, always implement the full security pipeline and add comprehensive tests to `tests/security.spec.ts`.
