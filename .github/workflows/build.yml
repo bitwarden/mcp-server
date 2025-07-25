@@ -89,7 +89,13 @@ jobs:
         id: image-name
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
-        run: echo "name=${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          SHORT_SHA: ${{ substring(github.sha, 0, 7) }}
+        run: |
+          if [[ "$IMAGE_TAG" == "dev" ]]; then
+            echo "name=${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG},${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Docker image
         id: build-docker
