@@ -257,7 +257,10 @@ describe('Security - Command Injection Protection', () => {
       expect(command).toBe("get 'item' '; rm -rf /; echo '\\''hacked'\\'''");
 
       // Verify it's still a valid bitwarden command
-      expect(isValidBitwardenCommand(command.split(' ')[0])).toBe(true);
+      const firstPart = command.split(' ')[0];
+      if (firstPart) {
+        expect(isValidBitwardenCommand(firstPart)).toBe(true);
+      }
     });
 
     it('should prevent complex injection attempts', () => {

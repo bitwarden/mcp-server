@@ -524,7 +524,7 @@ export interface CliResponse {
  */
 interface BitwardenItem {
   // Unique identifier for the item
-  id?: string;
+  readonly id?: string;
   // Display name of the item
   name?: string;
   // Additional notes for the item
@@ -538,8 +538,11 @@ interface BitwardenItem {
     // Password for the login
     password?: string;
     // List of URIs associated with the login
-    uris?: { uri: string; match?: number }[];
-    // Time-based one-time password secret
+    uris?: readonly {
+      readonly uri: string;
+      readonly match?: number | undefined;
+    }[];
+    // Time-based one-time password
     totp?: string;
   };
 }
@@ -552,7 +555,7 @@ interface BitwardenItem {
  */
 interface BitwardenFolder {
   // Unique identifier for the folder
-  id?: string;
+  readonly id?: string;
   // Display name of the folder
   name?: string;
 }
@@ -572,29 +575,40 @@ export function validateInput<T>(
   schema: z.ZodType<T>,
   args: unknown,
 ):
-  | [true, T]
-  | [false, { content: Array<{ type: string; text: string }>; isError: true }] {
+  | readonly [true, T]
+  | readonly [
+      false,
+      {
+        readonly content: readonly [
+          { readonly type: 'text'; readonly text: string },
+        ];
+        readonly isError: true;
+      },
+    ] {
   try {
-    const validatedInput = schema.parse(args || {});
-    return [true, validatedInput];
-  } catch (validationError) {
-    if (validationError instanceof z.ZodError) {
+    const validatedInput = schema.parse(args ?? {});
+    return [true, validatedInput] as const;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errorMessage = error.issues
+        .map((issue) => issue.message)
+        .join(', ');
+
       return [
         false,
         {
           content: [
             {
               type: 'text',
-              text: `Validation error: ${validationError.issues.map((e) => e.message).join(', ')}`,
-            },
+              text: `Validation error: ${errorMessage}`,
+            } as const,
           ],
           isError: true,
-        },
-      ];
+        } as const,
+      ] as const;
     }
 
-    // Re-throw any non-ZodError
-    throw validationError;
+    throw error;
   }
 }
 
@@ -609,7 +623,7 @@ const execPromise = promisify(exec);
  */
 export function sanitizeInput(input: string): string {
   if (typeof input !== 'string') {
-    throw new Error('Input must be a string');
+    throw new TypeError('Input must be a string');
   }
 
   // Remove or escape dangerous characters that could be used for command injection
@@ -641,7 +655,7 @@ export function sanitizeInput(input: string): string {
  */
 export function escapeShellParameter(value: string): string {
   if (typeof value !== 'string') {
-    throw new Error('Parameter must be a string');
+    throw new TypeError('Parameter must be a string');
   }
 
   // Replace single quotes with '\'' (end quote, escaped quote, start quote)
@@ -658,15 +672,11 @@ export function escapeShellParameter(value: string): string {
  */
 export function buildSafeCommand(
   baseCommand: string,
-  parameters: string[] = [],
+  parameters: readonly string[] = [],
 ): string {
-  // Sanitize the base command
   const sanitizedBase = sanitizeInput(baseCommand);
-
-  // Escape all parameters
   const escapedParams = parameters.map((param) => escapeShellParameter(param));
 
-  // Combine base command with escaped parameters
   return [sanitizedBase, ...escapedParams].join(' ');
 }
 
@@ -677,7 +687,6 @@ export function buildSafeCommand(
  * @returns {boolean} True if the command is safe, false otherwise
  */
 export function isValidBitwardenCommand(command: string): boolean {
-  // List of allowed Bitwarden CLI commands
   const allowedCommands = [
     'lock',
     'unlock',
@@ -696,18 +705,18 @@ export function isValidBitwardenCommand(command: string): boolean {
     'config',
     'login',
     'logout',
-  ];
+  ] as const;
 
-  // Split command into parts
   const parts = command.trim().split(/\s+/);
 
   if (parts.length === 0) {
     return false;
   }
 
-  // First part should be a valid Bitwarden command
   const baseCommand = parts[0];
-  return allowedCommands.includes(baseCommand);
+  return allowedCommands.includes(
+    baseCommand as (typeof allowedCommands)[number],
+  );
 }
 
 /**
@@ -719,34 +728,28 @@ export function isValidBitwardenCommand(command: string): boolean {
  */
 async function executeCliCommand(command: string): Promise<CliResponse> {
   try {
-    // Sanitize the command input
     const sanitizedCommand = sanitizeInput(command);
 
-    // Validate that it's a safe Bitwarden command
     if (!isValidBitwardenCommand(sanitizedCommand)) {
       return {
         errorOutput:
           'Invalid or unsafe command. Only Bitwarden CLI commands are allowed.',
-      };
+      } as const;
     }
 
-    // Execute the sanitized command with bw prefix
     const { stdout, stderr } = await execPromise(`bw ${sanitizedCommand}`);
-    return {
-      output: stdout,
-      errorOutput: stderr,
-    };
-  } catch (e: unknown) {
-    if (e instanceof Error) {
-      return {
-        errorOutput: e.message,
-      };
-    }
-  }
+    const result: CliResponse = {};
+    if (stdout) result.output = stdout;
+    if (stderr) result.errorOutput = stderr;
+    return result;
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
 
-  return {
-    errorOutput: 'An error occurred while executing the command',
-  };
+    return {
+      errorOutput: errorMessage,
+    } as const;
+  }
 }
 
 /**
@@ -756,14 +759,12 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
  * @async
  * @returns {Promise<void>}
  */
-async function runServer() {
-  // Require session from environment variable
-  if (!process.env.BW_SESSION) {
+async function runServer(): Promise<void> {
+  if (!process.env['BW_SESSION']) {
     console.error('Please set the BW_SESSION environment variable');
     process.exit(1);
   }
 
-  // Set up server
   console.error('Bitwarden MCP Server starting ...');
   const server = new Server(
     {
@@ -1059,7 +1060,7 @@ async function runServer() {
               // Create item
               const itemObject: BitwardenItem = {
                 name: itemName,
-                type: itemType,
+                ...(itemType !== undefined && { type: itemType }),
               };
 
               if (notes) {
@@ -1360,7 +1361,12 @@ async function runServer() {
   console.error('Bitwarden MCP Server running on stdio');
 }
 
-runServer().catch((error) => {
-  console.error('Fatal error running server:', error);
-  process.exit(1);
-});
+// Only run the server if this file is executed directly
+// Check if this is the main module by comparing file paths
+const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
+if (isMainModule) {
+  runServer().catch((error) => {
+    console.error('Fatal error running server:', error);
+    process.exit(1);
+  });
+}
