@@ -181,6 +181,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Dry Run - Pull Tag and Push latest to GHCR
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: |
+            "FROM ${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env._RELEASE_TAG }}"
+          platforms: linux/amd64
+          push: false
+          tags: "${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:latest"
+
       - name: Pull Tag and Push latest to GHCR
         if: ${{ inputs.publish_type != 'Dry Run' }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
