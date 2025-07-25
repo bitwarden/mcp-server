@@ -88,6 +88,6 @@ When adding new tools, implement the full security pipeline and add tests to `te
 
 ## Critical Files
 
-- `src/index.ts`: Complete server implementation (1300+ lines)
+- `src/index.ts`: Complete server implementation
 - `tests/security.spec.ts`: Security validation suite
 - `.jest/setEnvVars.js`: Test environment setup

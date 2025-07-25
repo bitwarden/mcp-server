@@ -33,7 +33,7 @@ return {
 
 ## External Dependencies
 
-- **Bitwarden CLI** (`bw`): Must be installed and authenticated on host system
+- **Bitwarden CLI** (`bw`): Must be installed and initially configured on host system
 - **MCP SDK**: Provides server framework and type definitions
 - **Zod**: Schema validation library
 
