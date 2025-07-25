@@ -523,17 +523,26 @@ export interface CliResponse {
  * @interface
  */
 interface BitwardenItem {
+  // Unique identifier for the item
   readonly id?: string;
+  // Display name of the item
   name?: string;
+  // Additional notes for the item
   notes?: string;
+  // Item type (1: Login, 2: Secure Note, 3: Card, 4: Identity)
   type?: number;
+  // Login-specific details, only applicable for type=1
   login?: {
+    // Username for the login
     username?: string;
+    // Password for the login
     password?: string;
+    // List of URIs associated with the login
     uris?: readonly {
       readonly uri: string;
       readonly match?: number | undefined;
     }[];
+    // Time-based one-time password
     totp?: string;
   };
 }
@@ -545,7 +554,9 @@ interface BitwardenItem {
  * @interface
  */
 interface BitwardenFolder {
+  // Unique identifier for the folder
   readonly id?: string;
+  // Display name of the folder
   name?: string;
 }
 
@@ -615,14 +626,24 @@ export function sanitizeInput(input: string): string {
     throw new TypeError('Input must be a string');
   }
 
-  return input
-    .replace(/\0/g, '')
-    .replace(/[;&|`$(){}[\]<>'"]/g, '')
-    .replace(/\\./g, '')
-    .replace(/[\r\n]/g, '')
-    .replace(/\t/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Remove or escape dangerous characters that could be used for command injection
+  return (
+    input
+      // Remove null bytes
+      .replace(/\0/g, '')
+      // Remove command separators and operators
+      .replace(/[;&|`$(){}[\]<>'"]/g, '')
+      // Remove escape sequences and control characters
+      .replace(/\\./g, '')
+      // Remove newlines and carriage returns
+      .replace(/[\r\n]/g, '')
+      // Remove tab characters
+      .replace(/\t/g, ' ')
+      // Collapse multiple spaces
+      .replace(/\s+/g, ' ')
+      // Trim whitespace
+      .trim()
+  );
 }
 
 /**
@@ -637,6 +658,8 @@ export function escapeShellParameter(value: string): string {
     throw new TypeError('Parameter must be a string');
   }
 
+  // Replace single quotes with '\'' (end quote, escaped quote, start quote)
+  // This is the safest way to handle single quotes in shell parameters
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
