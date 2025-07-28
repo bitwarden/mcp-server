@@ -129,5 +129,4 @@ jobs:
           tags: "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
 
       - name: Log out of Docker
-        run: |
-          docker logout ghcr.io
+        run: docker logout ghcr.io
