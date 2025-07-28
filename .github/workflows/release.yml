@@ -93,8 +93,8 @@ jobs:
     needs: setup
     env:
       _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
-      _GH_REGISTRY: ghcr.io/bitwarden
-      _PROJECT_NAME: mcp-server
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
+      _IMAGE_TAG: dev
     permissions:
       packages: write
 
@@ -109,28 +109,24 @@ jobs:
       - name: Dry Run - Pull Tag and Push to GHCR
         if: ${{ inputs.release_type == 'Dry Run' }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        env:
-          IMAGE_TAG: dev
         with:
           context: .
           file: |
-            "FROM ${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env.IMAGE_TAG }}"
+            "FROM ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }}"
           platforms: linux/amd64
           push: false
-          tags: "${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env._RELEASE_TAG }}"
+          tags: "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
 
       - name: Pull Tag and Push to GHCR
         if: ${{ inputs.release_type != 'Dry Run' }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        env:
-          IMAGE_TAG: dev
         with:
           context: .
           file: |
-            "FROM ${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env.IMAGE_TAG }}"
+            "FROM ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }}"
           platforms: linux/amd64
           push: false # TODO: set to true when ready to push
-          tags: "${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env._RELEASE_TAG }}"
+          tags: "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
 
       - name: Log out of Docker
         run: |
