@@ -94,7 +94,6 @@ jobs:
     env:
       _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
       _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
-      _IMAGE_TAG: dev
     permissions:
       packages: write
 
@@ -106,27 +105,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Dry Run - Pull Tag and Push to GHCR
+      - name: Dry Run - Pull, tag, and push release
         if: ${{ inputs.release_type == 'Dry Run' }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: .
-          file: |
-            "FROM ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }}"
-          platforms: linux/amd64
-          push: false
-          tags: "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:dev
+          docker tag ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }} ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
 
-      - name: Pull Tag and Push to GHCR
+      - name: Pull, tag, and push release
         if: ${{ inputs.release_type != 'Dry Run' }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: .
-          file: |
-            "FROM ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }}"
-          platforms: linux/amd64
-          push: false # TODO: set to true when ready to push
-          tags: "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:dev
+          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          # Uncomment when ready to push
+          #docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
 
       - name: Log out of Docker
         run: docker logout ghcr.io
