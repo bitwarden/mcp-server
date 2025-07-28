@@ -181,13 +181,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Dry Run - Pull, tag, and push release as latest
-        if: ${{ inputs.release_type == 'Dry Run' }}
+        if: ${{ inputs.publish_type == 'Dry Run' }}
         run: |
           docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
           docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
 
       - name: Pull, tag, and push release as latest
-        if: ${{ inputs.release_type != 'Dry Run' }}
+        if: ${{ inputs.publish_type != 'Dry Run' }}
         run: |
           docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
           docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
