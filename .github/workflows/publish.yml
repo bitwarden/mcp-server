@@ -168,8 +168,7 @@ jobs:
     needs: setup
     env:
       _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
-      _GH_REGISTRY: ghcr.io/bitwarden
-      _PROJECT_NAME: mcp-server
+      _IMAGE_NAME:: ghcr.io/bitwarden/mcp-server
     permissions:
       packages: write
 
@@ -181,27 +180,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Dry Run - Pull Tag and Push latest to GHCR
-        if: ${{ inputs.publish_type != 'Dry Run' }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: .
-          file: |
-            "FROM ${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env._RELEASE_TAG }}"
-          platforms: linux/amd64
-          push: false
-          tags: "${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:latest"
+      - name: Dry Run - Pull, tag, and push release as latest
+        if: ${{ inputs.release_type == 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
 
-      - name: Pull Tag and Push latest to GHCR
-        if: ${{ inputs.publish_type != 'Dry Run' }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: .
-          file: |
-            "FROM ${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:${{ env._RELEASE_TAG }}"
-          platforms: linux/amd64
-          push: false # TODO: set to true when ready to push
-          tags: "${{ env._GH_REGISTRY }}/${{ env._PROJECT_NAME }}:latest"
+      - name: Pull, tag, and push release as latest
+        if: ${{ inputs.release_type != 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
+          # Uncomment when ready to push
+          #docker push ${{ env._IMAGE_NAME }}:latest
 
 
   update-deployment:
