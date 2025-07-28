@@ -19,8 +19,7 @@ jobs:
       security-events: write
       packages: write
     env:
-      _GH_REGISTRY: ghcr.io/bitwarden
-      _PROJECT_NAME: mcp-server
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
 
     steps:
       - name: Check out repo
@@ -92,9 +91,9 @@ jobs:
         run: |
           if [[ "$IMAGE_TAG" == "dev" ]]; then
             echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-            echo "name=${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG},${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }},${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_OUTPUT
           else
-            echo "name=${_GH_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build Docker image
