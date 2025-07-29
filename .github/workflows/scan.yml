@@ -49,3 +49,6 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
+    with:
+      sonar-test-inclusions: "tests/"
+      sonar-exclusions: "tests/"
