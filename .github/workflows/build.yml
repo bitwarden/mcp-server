@@ -102,7 +102,7 @@ jobs:
         with:
           file: Dockerfile
           platforms: linux/amd64
-          push: false # TODO: set to true when ready to push
+          push: ${{ github.ref == 'ref/heads/main' }}
           tags: ${{ steps.image-name.outputs.name }}
 
       - name: Scan Docker image
