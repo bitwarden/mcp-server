@@ -200,7 +200,6 @@ jobs:
 
       - name: Sign image with Cosign
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        env:
         run: |
           cosign sign --yes "${{ env._IMAGE_NAME }}:latest"
 
