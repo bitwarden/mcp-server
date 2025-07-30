@@ -119,22 +119,5 @@ jobs:
           # Uncomment when ready to push
           #docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
 
-      - name: Install Cosign
-        if: ${{ inputs.release_type != 'Dry Run' }}
-        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
-
-      - name: Sign image with Cosign
-        if: ${{ inputs.release_type != 'Dry Run' }}
-        run: |
-          cosign sign --yes "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
-
-      - name: Verify the signed image with Cosign
-        if: ${{ inputs.release_type != 'Dry Run' }}
-        run: |
-          cosign verify \
-            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}"
-
       - name: Log out of Docker
         run: docker logout ghcr.io
