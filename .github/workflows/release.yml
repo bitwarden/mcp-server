@@ -109,7 +109,7 @@ jobs:
         if: ${{ inputs.release_type == 'Dry Run' }}
         run: |
           docker pull ${{ env._IMAGE_NAME }}:dev
-          docker tag ${{ env._IMAGE_NAME }}:${{ env._IMAGE_TAG }} ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
 
       - name: Pull, tag, and push release
         if: ${{ inputs.release_type != 'Dry Run' }}
