@@ -163,7 +163,7 @@ jobs:
 
 
   publish-ghcr:
-    name: Publish Release as Latest
+    name: Publish release as latest
     runs-on: ubuntu-24.04
     needs: setup
     env:

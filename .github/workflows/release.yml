@@ -88,7 +88,7 @@ jobs:
 
 
   release-ghcr:
-    name: Push Release to GHCR
+    name: Push Release to GitHub Container Registry
     runs-on: ubuntu-24.04
     needs: setup
     env:
@@ -98,7 +98,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Login to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
