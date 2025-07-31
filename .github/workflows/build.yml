@@ -93,7 +93,7 @@ jobs:
           TAGS="${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           echo "primary_tag=$TAGS" >> $GITHUB_OUTPUT
           if [[ "$IMAGE_TAG" == "dev" ]]; then
-            SHORT_SHA=$(git rev-parse --short ${SHA})"
+            SHORT_SHA="$(git rev-parse --short ${SHA})"
             TAGS="$TAGS,${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}-${SHORT_SHA}"
           fi
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
