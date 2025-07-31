@@ -17,9 +17,9 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      packages: write
     env:
-      _AZ_REGISTRY: bitwardenprod.azurecr.io
-      _PROJECT_NAME: mcp-server
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
 
     steps:
       - name: Check out repo
@@ -62,6 +62,13 @@ jobs:
           path: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}.zip
           if-no-files-found: error
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate Docker image tag
         id: tag
         env:
@@ -81,7 +88,13 @@ jobs:
         id: image-name
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
-        run: echo "name=${_AZ_REGISTRY}/${_PROJECT_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "$IMAGE_TAG" == "dev" ]]; then
+            echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }},${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Docker image
         id: build-docker
@@ -89,8 +102,35 @@ jobs:
         with:
           file: Dockerfile
           platforms: linux/amd64
-          push: false # TODO: set to true when ready to push
+          push: ${{ github.ref == 'ref/heads/main' }}
           tags: ${{ steps.image-name.outputs.name }}
+
+      - name: Install Cosign
+        if: ${{ github.ref == 'ref/heads/main' }}
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
+
+      - name: Sign image with Cosign
+        if: ${{ github.ref == 'ref/heads/main' }}
+        id: cosign
+        env:
+          DIGEST: ${{ steps.build-docker.outputs.digest }}
+          TAGS: ${{ steps.image-name.outputs.name }}
+        run: |
+          IFS="," read -a tags <<< "${TAGS}"
+          images=""
+          for tag in "${tags[@]}"; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}
+          echo "images=${images}" >> $GITHUB_OUTPUT
+
+      - name: Verify the signed image with Cosign
+        if: ${{ github.ref == 'ref/heads/main' }}
+        run: |
+          cosign verify \
+            --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            ${{ steps.cosign.outputs.images }}
 
       - name: Scan Docker image
         id: container-scan

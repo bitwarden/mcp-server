@@ -161,6 +161,40 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
 
+
+  publish-ghcr:
+    name: Publish release as latest
+    runs-on: ubuntu-24.04
+    needs: setup
+    env:
+      _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
+      _IMAGE_NAME:: ghcr.io/bitwarden/mcp-server
+    permissions:
+      packages: write
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry Run - Pull, tag, and push release as latest
+        if: ${{ inputs.publish_type == 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
+
+      - name: Pull, tag, and push release as latest
+        if: ${{ inputs.publish_type != 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
+          # Uncomment when ready to push
+          #docker push ${{ env._IMAGE_NAME }}:latest
+
+
   update-deployment:
     name: Update deployment status
     runs-on: ubuntu-24.04

@@ -85,3 +85,39 @@ jobs:
           body: "<insert release notes here>"
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true
+
+
+  release-ghcr:
+    name: Push Release to GitHub Container Registry
+    runs-on: ubuntu-24.04
+    needs: setup
+    env:
+      _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
+    permissions:
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry Run - Pull, tag, and push release
+        if: ${{ inputs.release_type == 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:dev
+          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+
+      - name: Pull, tag, and push release
+        if: ${{ inputs.release_type != 'Dry Run' }}
+        run: |
+          docker pull ${{ env._IMAGE_NAME }}:dev
+          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          # Uncomment when ready to push
+          #docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+
+      - name: Log out of Docker
+        run: docker logout ghcr.io
