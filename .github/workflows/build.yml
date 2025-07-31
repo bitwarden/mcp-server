@@ -18,6 +18,7 @@ jobs:
       contents: read
       security-events: write
       packages: write
+      id-token: write
     env:
       _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
 
