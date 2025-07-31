@@ -84,17 +84,19 @@ jobs:
           fi
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Generate full image name
-        id: image-name
+      - name: Generate image tag(s)
+        id: image-tags
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          SHA: ${{ github.sha }}
         run: |
+          TAGS="${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          echo "primary_tag=$TAGS" >> $GITHUB_OUTPUT
           if [[ "$IMAGE_TAG" == "dev" ]]; then
-            echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }},${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}-${{ env.SHORT_SHA }}" >> $GITHUB_OUTPUT
-          else
-            echo "name=${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+            SHORT_SHA="$(git rev-parse --short ${SHA})"
+            TAGS="$TAGS,${{ env._IMAGE_NAME }}:${{ env.IMAGE_TAG }}-${SHORT_SHA}"
           fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build Docker image
         id: build-docker
@@ -102,19 +104,19 @@ jobs:
         with:
           file: Dockerfile
           platforms: linux/amd64
-          push: ${{ github.ref == 'ref/heads/main' }}
-          tags: ${{ steps.image-name.outputs.name }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.image-tags.outputs.tags }}
 
       - name: Install Cosign
-        if: ${{ github.ref == 'ref/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
       - name: Sign image with Cosign
-        if: ${{ github.ref == 'ref/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         id: cosign
         env:
           DIGEST: ${{ steps.build-docker.outputs.digest }}
-          TAGS: ${{ steps.image-name.outputs.name }}
+          TAGS: ${{ steps.image-tags.outputs.tags }}
         run: |
           IFS="," read -a tags <<< "${TAGS}"
           images=""
@@ -125,7 +127,7 @@ jobs:
           echo "images=${images}" >> $GITHUB_OUTPUT
 
       - name: Verify the signed image with Cosign
-        if: ${{ github.ref == 'ref/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           cosign verify \
             --certificate-identity "${{ github.server_url }}/${{ github.workflow_ref }}" \
@@ -136,7 +138,7 @@ jobs:
         id: container-scan
         uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
         with:
-          image: ${{ steps.image-name.outputs.name }}
+          image: ${{ steps.image-tags.outputs.primary_tag }}
           fail-build: false
           output-format: sarif
 
