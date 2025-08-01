@@ -168,7 +168,7 @@ jobs:
     needs: setup
     env:
       _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
-      _IMAGE_NAME:: ghcr.io/bitwarden/mcp-server
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
     permissions:
       contents: read
       packages: write
