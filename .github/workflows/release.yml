@@ -116,8 +116,7 @@ jobs:
         run: |
           docker pull ${{ env._IMAGE_NAME }}:dev
           docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
-          # Uncomment when ready to push
-          #docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
 
       - name: Log out of Docker
         run: docker logout ghcr.io
