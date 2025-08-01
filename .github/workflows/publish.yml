@@ -170,6 +170,7 @@ jobs:
       _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
       _IMAGE_NAME:: ghcr.io/bitwarden/mcp-server
     permissions:
+      contents: read
       packages: write
 
     steps:
@@ -191,8 +192,7 @@ jobs:
         run: |
           docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
           docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
-          # Uncomment when ready to push
-          #docker push ${{ env._IMAGE_NAME }}:latest
+          docker push ${{ env._IMAGE_NAME }}:latest
 
 
   update-deployment:
