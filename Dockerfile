@@ -6,6 +6,7 @@ COPY . /app
 COPY tsconfig.json /tsconfig.json
 
 RUN --mount=type=cache,target=/root/.npm npm install
+RUN npm run build
 RUN --mount=type=cache,target=/root/.npm-production npm ci --ignore-scripts --omit-dev
 RUN npm install @bitwarden/cli@2025.6.1
 
