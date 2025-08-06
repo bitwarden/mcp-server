@@ -51,7 +51,7 @@
     "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "test": "jest --silent",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --silent",
     "test:watch": "jest --watch",
     "test:run": "npm run test",
     "check-exports": "node -e \"require('./dist/index.js')\""
