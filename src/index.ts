@@ -737,7 +737,10 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
       } as const;
     }
 
-    const { stdout, stderr } = await execPromise(`bw ${sanitizedCommand}`);
+    // Pass environment variables to child process so BW_SESSION is available
+    const { stdout, stderr } = await execPromise(`bw ${sanitizedCommand}`, {
+      env: { ...process.env }
+    });
     const result: CliResponse = {};
     if (stdout) result.output = stdout;
     if (stderr) result.errorOutput = stderr;
