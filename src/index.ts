@@ -739,7 +739,7 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
 
     // Pass environment variables to child process so BW_SESSION is available
     const { stdout, stderr } = await execPromise(`bw ${sanitizedCommand}`, {
-      env: { ...process.env }
+      env: { ...process.env },
     });
     const result: CliResponse = {};
     if (stdout) result.output = stdout;
@@ -772,7 +772,7 @@ async function runServer(): Promise<void> {
   const server = new Server(
     {
       name: 'Bitwarden MCP Server',
-      version: '2025.8.1',
+      version: '2025.8.2',
     },
     {
       capabilities: {
