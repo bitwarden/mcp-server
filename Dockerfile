@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json tsconfig.json ./
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY . .
 
@@ -17,7 +17,7 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
 
 RUN npm ci --ignore-scripts --omit-dev
-RUN npm install @bitwarden/cli@2025.7.0
+RUN npm install --ignore-scripts @bitwarden/cli@2025.7.0
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS release
 
