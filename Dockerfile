@@ -1,22 +1,28 @@
-FROM node:22-slim AS builder
-
-COPY . /app
-COPY tsconfig.json /tsconfig.json
+FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 
-RUN --mount=type=cache,target=/root/.npm npm install
-RUN --mount=type=cache,target=/root/.npm-production npm ci --ignore-scripts --omit-dev
-RUN npm install @bitwarden/cli@2025.6.1
+COPY package.json package-lock.json tsconfig.json ./
+
+RUN npm ci --ignore-scripts --omit-dev
+RUN npm install @bitwarden/cli@2025.7.0
+
+FROM dependencies AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN npm run build
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS release
-
-COPY --from=builder /app /app
 
 WORKDIR /app
 USER nonroot
 
-ENV NODE_ENV=production
+COPY --from=builder /app/dist ./dist
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY package.json ./
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD export BW_SESSION="dummy" && echo '{ "jsonrpc": "2.0", "id": "123", "method": "ping" }' | \
