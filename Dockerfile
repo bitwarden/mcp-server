@@ -1,15 +1,3 @@
-FROM node:22-alpine AS builder
-
-WORKDIR /app
-
-COPY package.json package-lock.json tsconfig.json ./
-
-RUN npm ci --ignore-scripts
-
-COPY . .
-
-RUN npm run build
-
 FROM node:22-alpine AS dependencies
 
 WORKDIR /app
@@ -17,7 +5,15 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
 
 RUN npm ci --ignore-scripts --omit-dev
-RUN npm install --ignore-scripts @bitwarden/cli@2025.7.0
+RUN npm install @bitwarden/cli@2025.7.0
+
+FROM dependencies AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN npm run build
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS release
 
