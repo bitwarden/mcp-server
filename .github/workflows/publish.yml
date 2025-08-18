@@ -89,13 +89,13 @@ jobs:
           node-version: "24.6.0" # npm 11.5.1 or later is required to publish w/ OIDC
           registry-url: "https://registry.npmjs.org/"
 
+      - name: Install Husky
+        run: npm install -g husky
+
       - name: Download and set up artifact
         run: |
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
           unzip mcp-server-${{ env._PKG_VERSION }}.zip
-
-      - name: Install Husky
-        run: npm install -g husky
 
       - name: Publish to NPM (Dry Run)
         if: ${{ inputs.publish_type == 'Dry Run' }}
