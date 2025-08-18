@@ -69,6 +69,7 @@ jobs:
 
   publish-npm:
     name: Publish to NPM
+    environment: NPM
     runs-on: ubuntu-24.04
     needs: setup
     permissions:
