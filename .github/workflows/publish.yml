@@ -84,14 +84,24 @@ jobs:
         with:
           ref: refs/tags/v${{ env._PKG_VERSION }}
 
+      - name: Get Node version
+        id: retrieve-node-version
+        run: |
+          NODE_NVMRC=$(cat .nvmrc)
+          NODE_VERSION=${NODE_NVMRC/v/''}
+          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "24.6.0" # npm 11.5.1 or later is required to publish w/ OIDC
+          node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
           registry-url: "https://registry.npmjs.org/"
 
       - name: Install Husky
         run: npm install -g husky
+
+      - name: Install NPM
+        run: npm install npm@11.5.2 # npm 11.5.1 or later is required to publish w/ OIDC
 
       - name: Download and set up artifact
         run: |
