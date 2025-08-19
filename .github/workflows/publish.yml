@@ -101,7 +101,9 @@ jobs:
         run: npm install -g husky
 
       - name: Install NPM
-        run: npm install -g npm@11.5.2 # npm 11.5.1 or later is required to publish w/ OIDC
+        run: |
+          npm install -g npm@latest # npm 11.5.1 or later is required to publish w/ OIDC
+          npm --version
 
       - name: Download and set up artifact
         run: |
