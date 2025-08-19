@@ -69,6 +69,7 @@ jobs:
 
   publish-npm:
     name: Publish to NPM
+    environment: NPM
     runs-on: ubuntu-24.04
     needs: setup
     permissions:
@@ -83,45 +84,39 @@ jobs:
         with:
           ref: refs/tags/v${{ env._PKG_VERSION }}
 
-      - name: Log in to Azure
-        uses: bitwarden/gh-actions/azure-login@main
-        with:
-          subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-          client_id: ${{ secrets.AZURE_CLIENT_ID }}
+      - name: Get Node version
+        id: retrieve-node-version
+        run: |
+          NODE_NVMRC=$(cat .nvmrc)
+          NODE_VERSION=${NODE_NVMRC/v/''}
+          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Retrieve secrets
-        id: retrieve-secrets
-        uses: bitwarden/gh-actions/get-keyvault-secrets@main
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          keyvault: "bitwarden-ci"
-          secrets: "npm-api-key"
+          node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
+          registry-url: "https://registry.npmjs.org/"
 
-      - name: Log out from Azure
-        uses: bitwarden/gh-actions/azure-logout@main
+      - name: Install Husky
+        run: npm install -g husky
+
+      - name: Install NPM
+        run: |
+          npm install -g npm@latest # npm 11.5.1 or later is required to publish w/ OIDC
+          npm --version
 
       - name: Download and set up artifact
         run: |
           wget https://github.com/${{ github.repository }}/releases/download/v${{ env._PKG_VERSION }}/mcp-server-${{ env._PKG_VERSION }}.zip
           unzip mcp-server-${{ env._PKG_VERSION }}.zip
 
-      - name: Set up NPM
-        run: |
-          echo 'registry="https://registry.npmjs.org/"' > ./.npmrc
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ./.npmrc
-        env:
-          NPM_TOKEN: ${{ steps.retrieve-secrets.outputs.npm-api-key }}
-
-      - name: Install Husky
-        run: npm install -g husky
-
       - name: Publish to NPM (Dry Run)
         if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc --dry-run
+        run: npm publish --access public --dry-run
 
       - name: Publish to NPM
         if: ${{ inputs.publish_type != 'Dry Run' }}
-        run: npm publish --access public --registry=https://registry.npmjs.org/  --userconfig=./.npmrc
+        run: npm publish --access public
 
   publish-ghpr:
     name: Publish to GitHub Package Registry
@@ -161,7 +156,6 @@ jobs:
         if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
 
-
   publish-ghcr:
     name: Publish release as latest
     runs-on: ubuntu-24.04
@@ -193,7 +187,6 @@ jobs:
           docker pull ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
           docker tag ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }} ${{ env._IMAGE_NAME }}:latest
           docker push ${{ env._IMAGE_NAME }}:latest
-
 
   update-deployment:
     name: Update deployment status
