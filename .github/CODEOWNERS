@@ -6,3 +6,8 @@
 
 # Default file owners
 * @bitwarden/dept-architecture
+
+# Default shared ownership of Dockerfile
+**/Dockerfile @bitwarden/team-appsec @bitwarden/dept-bre
+**/*.dockerignore @bitwarden/team-appsec @bitwarden/dept-bre
+**/entrypoint.sh @bitwarden/team-appsec @bitwarden/dept-bre
