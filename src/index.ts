@@ -12,6 +12,75 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { z } from 'zod';
 
+// API Configuration
+const API_BASE_URL =
+  process.env['BW_API_BASE_URL'] || 'https://api.bitwarden.com';
+const IDENTITY_URL =
+  process.env['BW_IDENTITY_URL'] || 'https://identity.bitwarden.com';
+const CLIENT_ID = process.env['BW_CLIENT_ID'];
+const CLIENT_SECRET = process.env['BW_CLIENT_SECRET'];
+
+// OAuth2 Token Management
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+let cachedToken: string | null = null;
+let tokenExpiry: number = 0;
+
+/**
+ * Obtains an OAuth2 access token using client credentials flow
+ * Caches tokens and automatically refreshes when expired
+ */
+async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+
+  // Return cached token if still valid (with 5 minute buffer)
+  if (cachedToken && now < tokenExpiry - 300000) {
+    return cachedToken;
+  }
+
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error(
+      'BW_CLIENT_ID and BW_CLIENT_SECRET environment variables are required for API operations',
+    );
+  }
+
+  try {
+    const response = await fetch(`${IDENTITY_URL}/connect/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'api.organization',
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `OAuth2 token request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const tokenData: TokenResponse = (await response.json()) as TokenResponse;
+
+    cachedToken = tokenData.access_token;
+    tokenExpiry = now + tokenData.expires_in * 1000; // Convert seconds to milliseconds
+
+    return cachedToken;
+  } catch (error) {
+    throw new Error(
+      `Failed to obtain access token: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 // Zod schemas for validating Bitwarden CLI tool inputs
 
 // Schema for validating 'lock' command parameters (no parameters required)
@@ -221,6 +290,356 @@ const deleteSchema = z.object({
   id: z.string().min(1, 'Object ID is required'),
   // Whether to permanently delete the item (skip trash)
   permanent: z.boolean().optional(),
+});
+
+// Zod schemas for validating Bitwarden Public API tool inputs
+
+// Schema for validating 'list-collections' command parameters
+const listCollectionsSchema = z.object({});
+
+// Schema for validating 'get-collection' command parameters
+const getCollectionSchema = z.object({
+  // Collection ID to retrieve
+  id: z.string().min(1, 'Collection ID is required'),
+});
+
+// Schema for validating 'create-collection' command parameters
+const createCollectionSchema = z.object({
+  // Name of the collection
+  name: z.string().min(1, 'Collection name is required'),
+  // External identifier for the collection
+  externalId: z.string().optional(),
+  // Groups with access to this collection
+  groups: z
+    .array(
+      z.object({
+        // Group ID
+        id: z.string().min(1, 'Group ID is required'),
+        // Whether the group has read-only access
+        readOnly: z.boolean().default(false),
+        // Whether the group should hide passwords
+        hidePasswords: z.boolean().optional(),
+        // Whether the group can manage the collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Schema for validating 'update-collection' command parameters
+const updateCollectionSchema = z.object({
+  // Collection ID to update
+  id: z.string().min(1, 'Collection ID is required'),
+  // External identifier for the collection
+  externalId: z.string().optional(),
+  // Groups with access to this collection
+  groups: z
+    .array(
+      z.object({
+        // Group ID
+        id: z.string().min(1, 'Group ID is required'),
+        // Whether the group has read-only access
+        readOnly: z.boolean().default(false),
+        // Whether the group should hide passwords
+        hidePasswords: z.boolean().optional(),
+        // Whether the group can manage the collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Schema for validating 'delete-collection' command parameters
+const deleteCollectionSchema = z.object({
+  // Collection ID to delete
+  id: z.string().min(1, 'Collection ID is required'),
+});
+
+// Schema for validating 'list-members' command parameters
+const listMembersSchema = z.object({});
+
+// Schema for validating 'get-member' command parameters
+const getMemberSchema = z.object({
+  // Member ID to retrieve
+  id: z.string().min(1, 'Member ID is required'),
+});
+
+// Schema for validating 'invite-member' command parameters
+const inviteMemberSchema = z.object({
+  // Email address of the user to invite
+  email: z.string().email('Valid email address is required'),
+  // Type of user (0: Owner, 1: Admin, 2: User, 4: Custom)
+  type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]),
+  // External identifier for the member
+  externalId: z.string().optional(),
+  // Collections the member should have access to
+  collections: z
+    .array(
+      z.object({
+        // Collection ID
+        id: z.string().min(1, 'Collection ID is required'),
+        // Whether the member has read-only access to this collection
+        readOnly: z.boolean().default(false),
+        // Whether the member should hide passwords in this collection
+        hidePasswords: z.boolean().optional(),
+        // Whether the member can manage this collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  // Groups the member should be assigned to
+  groups: z.array(z.string().uuid('Group ID must be a valid UUID')).optional(),
+  // Custom permissions for Custom type users only
+  permissions: z
+    .object({
+      // Access event logs
+      accessEventLogs: z.boolean().optional(),
+      // Access import/export functionality
+      accessImportExport: z.boolean().optional(),
+      // Access to reports
+      accessReports: z.boolean().optional(),
+      // Create new collections
+      createNewCollections: z.boolean().optional(),
+      // Edit any collection
+      editAnyCollection: z.boolean().optional(),
+      // Delete any collection
+      deleteAnyCollection: z.boolean().optional(),
+      // Manage groups
+      manageGroups: z.boolean().optional(),
+      // Manage policies
+      managePolicies: z.boolean().optional(),
+      // Manage SSO
+      manageSso: z.boolean().optional(),
+      // Manage users
+      manageUsers: z.boolean().optional(),
+      // Manage reset password
+      manageResetPassword: z.boolean().optional(),
+      // Manage SCIM
+      manageScim: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// Schema for validating 'update-member' command parameters
+const updateMemberSchema = z.object({
+  // Member ID to update
+  id: z.string().min(1, 'Member ID is required'),
+  // Type of user (0: Owner, 1: Admin, 2: User, 4: Custom)
+  type: z
+    .union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)])
+    .optional(),
+  // External identifier for the member
+  externalId: z.string().optional(),
+  // Collections the member should have access to
+  collections: z
+    .array(
+      z.object({
+        // Collection ID
+        id: z.string().min(1, 'Collection ID is required'),
+        // Whether the member has read-only access to this collection
+        readOnly: z.boolean().default(false),
+        // Whether the member should hide passwords in this collection
+        hidePasswords: z.boolean().optional(),
+        // Whether the member can manage this collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Schema for validating 'remove-member' command parameters
+const removeMemberSchema = z.object({
+  // Member ID to remove
+  id: z.string().min(1, 'Member ID is required'),
+});
+
+// Schema for validating 'list-events' command parameters
+const listEventsSchema = z.object({
+  // Start date for event filtering (ISO 8601 format)
+  start: z.string().optional(),
+  // End date for event filtering (ISO 8601 format)
+  end: z.string().optional(),
+  // Continuation token for pagination
+  continuationToken: z.string().optional(),
+});
+
+// Groups API Schemas
+// Schema for validating 'list-groups' command parameters
+const listGroupsSchema = z.object({});
+
+// Schema for validating 'get-group' command parameters
+const getGroupSchema = z.object({
+  // Group ID to retrieve
+  id: z.string().min(1, 'Group ID is required'),
+});
+
+// Schema for validating 'create-group' command parameters
+const createGroupSchema = z.object({
+  // Name of the group
+  name: z.string().min(1, 'Group name is required'),
+  // External identifier for the group
+  externalId: z.string().optional(),
+  // Collections the group should have access to
+  collections: z
+    .array(
+      z.object({
+        // Collection ID
+        id: z.string().min(1, 'Collection ID is required'),
+        // Whether the group has read-only access to this collection
+        readOnly: z.boolean().default(false),
+        // Whether the group should hide passwords in this collection
+        hidePasswords: z.boolean().optional(),
+        // Whether the group can manage this collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Schema for validating 'update-group' command parameters
+const updateGroupSchema = z.object({
+  // Group ID to update
+  id: z.string().min(1, 'Group ID is required'),
+  // Name of the group
+  name: z.string().min(1, 'Group name is required'),
+  // External identifier for the group
+  externalId: z.string().optional(),
+  // Collections the group should have access to
+  collections: z
+    .array(
+      z.object({
+        // Collection ID
+        id: z.string().min(1, 'Collection ID is required'),
+        // Whether the group has read-only access to this collection
+        readOnly: z.boolean().default(false),
+        // Whether the group should hide passwords in this collection
+        hidePasswords: z.boolean().optional(),
+        // Whether the group can manage this collection
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Schema for validating 'delete-group' command parameters
+const deleteGroupSchema = z.object({
+  // Group ID to delete
+  id: z.string().min(1, 'Group ID is required'),
+});
+
+// Schema for validating 'get-group-member-ids' command parameters
+const getGroupMemberIdsSchema = z.object({
+  // Group ID to retrieve member IDs for
+  id: z.string().min(1, 'Group ID is required'),
+});
+
+// Schema for validating 'update-group-member-ids' command parameters
+const updateGroupMemberIdsSchema = z.object({
+  // Group ID to update
+  id: z.string().min(1, 'Group ID is required'),
+  // Member IDs to assign to the group
+  memberIds: z.array(z.string().uuid('Member ID must be a valid UUID')),
+});
+
+// Policies API Schemas
+// Schema for validating 'list-policies' command parameters
+const listPoliciesSchema = z.object({});
+
+// Schema for validating 'get-policy' command parameters
+const getPolicySchema = z.object({
+  // Policy type to retrieve (0: TwoFactorAuthentication, 1: MasterPassword, etc.)
+  type: z.number().int().min(0, 'Policy type is required'),
+});
+
+// Schema for validating 'update-policy' command parameters
+const updatePolicySchema = z.object({
+  // Policy type to update
+  type: z.number().int().min(0, 'Policy type is required'),
+  // Whether the policy is enabled
+  enabled: z.boolean(),
+  // Policy data (JSON object specific to each policy type)
+  data: z.record(z.string(), z.any()).optional(),
+});
+
+// Organization API Schemas
+// Schema for validating 'get-organization-subscription' command parameters
+const getOrganizationSubscriptionSchema = z.object({});
+
+// Schema for validating 'update-organization-subscription' command parameters
+const updateOrganizationSubscriptionSchema = z.object({
+  // Password Manager subscription details
+  passwordManager: z
+    .object({
+      // Number of seats for Password Manager
+      seats: z.number().int().min(0).optional(),
+      // Maximum number of autoscale seats
+      maxAutoscaleSeats: z.number().int().min(0).optional(),
+    })
+    .optional(),
+  // Secrets Manager subscription details
+  secretsManager: z
+    .object({
+      // Number of seats for Secrets Manager
+      seats: z.number().int().min(0).optional(),
+      // Number of service accounts
+      serviceAccounts: z.number().int().min(0).optional(),
+      // Maximum number of autoscale seats for Secrets Manager
+      maxAutoscaleSeats: z.number().int().min(0).optional(),
+      // Maximum number of autoscale service accounts
+      maxAutoscaleServiceAccounts: z.number().int().min(0).optional(),
+    })
+    .optional(),
+});
+
+// Schema for validating 'import-organization' command parameters
+const importOrganizationSchema = z.object({
+  // Groups to import
+  groups: z
+    .array(
+      z.object({
+        // External ID for the group
+        externalId: z.string(),
+        // Name of the group
+        name: z.string().min(1, 'Group name is required'),
+      }),
+    )
+    .optional(),
+  // Members to import
+  members: z
+    .array(
+      z.object({
+        // External ID for the member
+        externalId: z.string().optional(),
+        // Email address of the member
+        email: z.string().email('Valid email address is required'),
+        // Whether this member should be deleted
+        deleted: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  // Whether to overwrite existing members and groups
+  overwriteExisting: z.boolean().optional(),
+});
+
+// Additional Member API Schemas
+// Schema for validating 'get-member-group-ids' command parameters
+const getMemberGroupIdsSchema = z.object({
+  // Member ID to retrieve group IDs for
+  id: z.string().min(1, 'Member ID is required'),
+});
+
+// Schema for validating 'update-member-group-ids' command parameters
+const updateMemberGroupIdsSchema = z.object({
+  // Member ID to update
+  id: z.string().min(1, 'Member ID is required'),
+  // Group IDs to assign the member to
+  groupIds: z.array(z.string().uuid('Group ID must be a valid UUID')),
+});
+
+// Schema for validating 'reinvite-member' command parameters
+const reinviteMemberSchema = z.object({
+  // Member ID to reinvite
+  id: z.string().min(1, 'Member ID is required'),
 });
 
 // Define tools
@@ -502,6 +921,757 @@ const deleteTool: Tool = {
   },
 };
 
+// Organization API Tools
+
+const listCollectionsTool: Tool = {
+  name: 'list-collections',
+  description: 'List all collections in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+const getCollectionTool: Tool = {
+  name: 'get-collection',
+  description: 'Retrieve details of a specific collection',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Collection ID to retrieve',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const createCollectionTool: Tool = {
+  name: 'create-collection',
+  description: 'Create a new collection in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the collection',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the collection',
+      },
+      groups: {
+        type: 'array',
+        description: 'Groups with access to this collection',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Group ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether the group should hide passwords',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the group can manage the collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+    },
+    required: ['name'],
+  },
+};
+
+const updateCollectionTool: Tool = {
+  name: 'update-collection',
+  description: 'Update an existing collection in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Collection ID to update',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the collection',
+      },
+      groups: {
+        type: 'array',
+        description: 'Groups with access to this collection',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Group ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether the group should hide passwords',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the group can manage the collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const deleteCollectionTool: Tool = {
+  name: 'delete-collection',
+  description: 'Delete a collection from your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Collection ID to delete',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const listMembersTool: Tool = {
+  name: 'list-members',
+  description: 'List all members in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+const getMemberTool: Tool = {
+  name: 'get-member',
+  description: 'Retrieve details of a specific organization member',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to retrieve',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const inviteMemberTool: Tool = {
+  name: 'invite-member',
+  description: 'Invite a new user to join your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      email: {
+        type: 'string',
+        description: 'Email address of the user to invite',
+      },
+      type: {
+        type: 'number',
+        description: 'Type of user (0: Owner, 1: Admin, 2: User, 4: Custom)',
+        enum: [0, 1, 2, 4],
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the member',
+      },
+      collections: {
+        type: 'array',
+        description: 'Collections the member should have access to',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description:
+                'Whether the member has read-only access to this collection',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description:
+                'Whether the member should hide passwords in this collection',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the member can manage this collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+      groups: {
+        type: 'array',
+        description:
+          'Groups the member should be assigned to (array of group IDs)',
+        items: {
+          type: 'string',
+          description: 'Group ID (UUID)',
+        },
+      },
+      permissions: {
+        type: 'object',
+        description: 'Custom permissions for Custom type users only',
+        properties: {
+          accessEventLogs: {
+            type: 'boolean',
+            description: 'Access event logs',
+          },
+          accessImportExport: {
+            type: 'boolean',
+            description: 'Access to import/export',
+          },
+          accessReports: {
+            type: 'boolean',
+            description: 'Access to reports',
+          },
+          createNewCollections: {
+            type: 'boolean',
+            description: 'Create new collections',
+          },
+          editAnyCollection: {
+            type: 'boolean',
+            description: 'Edit any collection',
+          },
+          deleteAnyCollection: {
+            type: 'boolean',
+            description: 'Delete any collection',
+          },
+          manageGroups: {
+            type: 'boolean',
+            description: 'Manage groups',
+          },
+          managePolicies: {
+            type: 'boolean',
+            description: 'Manage policies',
+          },
+          manageSso: {
+            type: 'boolean',
+            description: 'Manage SSO',
+          },
+          manageUsers: {
+            type: 'boolean',
+            description: 'Manage users',
+          },
+          manageResetPassword: {
+            type: 'boolean',
+            description: 'Manage reset password',
+          },
+          manageScim: {
+            type: 'boolean',
+            description: 'Manage SCIM',
+          },
+        },
+      },
+    },
+    required: ['email', 'type'],
+  },
+};
+
+const updateMemberTool: Tool = {
+  name: 'update-member',
+  description: 'Update an existing organization member',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to update',
+      },
+      type: {
+        type: 'number',
+        description: 'Type of user (0: Owner, 1: Admin, 2: User, 4: Custom)',
+        enum: [0, 1, 2, 4],
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the member',
+      },
+      collections: {
+        type: 'array',
+        description: 'Collections the member should have access to',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description:
+                'Whether the member has read-only access to this collection',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description:
+                'Whether the member should hide passwords in this collection',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the member can manage this collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const removeMemberTool: Tool = {
+  name: 'remove-member',
+  description: 'Remove a member from your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to remove',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const listEventsTool: Tool = {
+  name: 'list-events',
+  description: 'Retrieve organization audit logs and events',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      start: {
+        type: 'string',
+        description: 'Start date for event filtering (ISO 8601 format)',
+      },
+      end: {
+        type: 'string',
+        description: 'End date for event filtering (ISO 8601 format)',
+      },
+      continuationToken: {
+        type: 'string',
+        description: 'Continuation token for pagination',
+      },
+    },
+  },
+};
+
+// Groups API Tools
+const listGroupsTool: Tool = {
+  name: 'list-groups',
+  description: 'List all groups in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+const getGroupTool: Tool = {
+  name: 'get-group',
+  description: 'Retrieve details of a specific group',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Group ID to retrieve',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const createGroupTool: Tool = {
+  name: 'create-group',
+  description: 'Create a new group in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the group',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the group',
+      },
+      collections: {
+        type: 'array',
+        description: 'Collections the group should have access to',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether the group should hide passwords',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the group can manage the collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+    },
+    required: ['name'],
+  },
+};
+
+const updateGroupTool: Tool = {
+  name: 'update-group',
+  description: 'Update an existing group in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Group ID to update',
+      },
+      name: {
+        type: 'string',
+        description: 'Name of the group',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External identifier for the group',
+      },
+      collections: {
+        type: 'array',
+        description: 'Collections the group should have access to',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Collection ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+              default: false,
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether the group should hide passwords',
+            },
+            manage: {
+              type: 'boolean',
+              description: 'Whether the group can manage the collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
+      },
+    },
+    required: ['id', 'name'],
+  },
+};
+
+const deleteGroupTool: Tool = {
+  name: 'delete-group',
+  description: 'Delete a group from your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Group ID to delete',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const getGroupMemberIdsTool: Tool = {
+  name: 'get-group-member-ids',
+  description: 'Retrieve member IDs associated with a group',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Group ID to retrieve member IDs for',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const updateGroupMemberIdsTool: Tool = {
+  name: 'update-group-member-ids',
+  description: 'Update the members assigned to a group',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Group ID to update',
+      },
+      memberIds: {
+        type: 'array',
+        description: 'Array of member IDs to assign to the group',
+        items: {
+          type: 'string',
+          description: 'Member ID (UUID)',
+        },
+      },
+    },
+    required: ['id', 'memberIds'],
+  },
+};
+
+// Policies API Tools
+const listPoliciesTool: Tool = {
+  name: 'list-policies',
+  description: 'List all policies in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+const getPolicyTool: Tool = {
+  name: 'get-policy',
+  description: 'Retrieve details of a specific policy',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      type: {
+        type: 'number',
+        description:
+          'Policy type (0: TwoFactorAuthentication, 1: MasterPassword, etc.)',
+      },
+    },
+    required: ['type'],
+  },
+};
+
+const updatePolicyTool: Tool = {
+  name: 'update-policy',
+  description: 'Update a policy in your organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      type: {
+        type: 'number',
+        description: 'Policy type to update',
+      },
+      enabled: {
+        type: 'boolean',
+        description: 'Whether the policy is enabled',
+      },
+      data: {
+        type: 'object',
+        description: 'Policy data (JSON object specific to each policy type)',
+      },
+    },
+    required: ['type', 'enabled'],
+  },
+};
+
+// Organization API Tools
+const getOrganizationSubscriptionTool: Tool = {
+  name: 'get-organization-subscription',
+  description: 'Retrieve organization subscription details',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+const updateOrganizationSubscriptionTool: Tool = {
+  name: 'update-organization-subscription',
+  description: 'Update organization subscription details',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      passwordManager: {
+        type: 'object',
+        description: 'Password Manager subscription details',
+        properties: {
+          seats: {
+            type: 'number',
+            description: 'Number of seats for Password Manager',
+          },
+          maxAutoscaleSeats: {
+            type: 'number',
+            description: 'Maximum number of autoscale seats',
+          },
+        },
+      },
+      secretsManager: {
+        type: 'object',
+        description: 'Secrets Manager subscription details',
+        properties: {
+          seats: {
+            type: 'number',
+            description: 'Number of seats for Secrets Manager',
+          },
+          serviceAccounts: {
+            type: 'number',
+            description: 'Number of service accounts',
+          },
+          maxAutoscaleSeats: {
+            type: 'number',
+            description:
+              'Maximum number of autoscale seats for Secrets Manager',
+          },
+          maxAutoscaleServiceAccounts: {
+            type: 'number',
+            description: 'Maximum number of autoscale service accounts',
+          },
+        },
+      },
+    },
+  },
+};
+
+const importOrganizationTool: Tool = {
+  name: 'import-organization',
+  description: 'Import members and groups from an external system',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      groups: {
+        type: 'array',
+        description: 'Groups to import',
+        items: {
+          type: 'object',
+          properties: {
+            externalId: {
+              type: 'string',
+              description: 'External ID for the group',
+            },
+            name: {
+              type: 'string',
+              description: 'Name of the group',
+            },
+          },
+          required: ['externalId', 'name'],
+        },
+      },
+      members: {
+        type: 'array',
+        description: 'Members to import',
+        items: {
+          type: 'object',
+          properties: {
+            externalId: {
+              type: 'string',
+              description: 'External ID for the member',
+            },
+            email: {
+              type: 'string',
+              description: 'Email address of the member',
+            },
+            deleted: {
+              type: 'boolean',
+              description: 'Whether this member should be deleted',
+            },
+          },
+          required: ['email'],
+        },
+      },
+      overwriteExisting: {
+        type: 'boolean',
+        description: 'Whether to overwrite existing members and groups',
+      },
+    },
+  },
+};
+
+// Additional Member API Tools
+const getMemberGroupIdsTool: Tool = {
+  name: 'get-member-group-ids',
+  description: 'Retrieve group IDs associated with a member',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to retrieve group IDs for',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+const updateMemberGroupIdsTool: Tool = {
+  name: 'update-member-group-ids',
+  description: 'Update the groups a member is assigned to',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to update',
+      },
+      groupIds: {
+        type: 'array',
+        description: 'Array of group IDs to assign the member to',
+        items: {
+          type: 'string',
+          description: 'Group ID (UUID)',
+        },
+      },
+    },
+    required: ['id', 'groupIds'],
+  },
+};
+
+const reinviteMemberTool: Tool = {
+  name: 'reinvite-member',
+  description: 'Re-invite a member to the organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Member ID to reinvite',
+      },
+    },
+    required: ['id'],
+  },
+};
+
 // Implement logic to support tools
 
 /**
@@ -755,17 +1925,211 @@ async function executeCliCommand(command: string): Promise<CliResponse> {
   }
 }
 
+// API Security Functions
+
 /**
- * Initializes and starts the MCP server for handling Bitwarden CLI commands.
- * Requires the BW_SESSION environment variable to be set.
+ * Validates that an API endpoint path is safe and matches allowed patterns.
+ *
+ * @param {string} endpoint - The API endpoint path to validate
+ * @returns {boolean} True if the endpoint is safe, false otherwise
+ */
+export function validateApiEndpoint(endpoint: string): boolean {
+  if (typeof endpoint !== 'string') {
+    return false;
+  }
+
+  // Allowed API endpoint patterns for Bitwarden Public API
+  const allowedPatterns = [
+    /^\/public\/collections$/,
+    /^\/public\/collections\/[a-f0-9-]{36}$/,
+    /^\/public\/members$/,
+    /^\/public\/members\/[a-f0-9-]{36}$/,
+    /^\/public\/members\/[a-f0-9-]{36}\/group-ids$/,
+    /^\/public\/members\/[a-f0-9-]{36}\/reinvite$/,
+    /^\/public\/groups$/,
+    /^\/public\/groups\/[a-f0-9-]{36}$/,
+    /^\/public\/groups\/[a-f0-9-]{36}\/member-ids$/,
+    /^\/public\/policies$/,
+    /^\/public\/policies\/[0-9]+$/,
+    /^\/public\/events$/,
+    /^\/public\/organization\/subscription$/,
+    /^\/public\/organization\/import$/,
+  ] as const;
+
+  return allowedPatterns.some((pattern) => pattern.test(endpoint));
+}
+
+/**
+ * Sanitizes API parameters to prevent injection attacks.
+ *
+ * @param {unknown} params - The parameters to sanitize
+ * @returns {unknown} The sanitized parameters
+ */
+export function sanitizeApiParameters(params: unknown): unknown {
+  if (params === null || params === undefined) {
+    return params;
+  }
+
+  if (typeof params === 'string') {
+    // Remove potentially dangerous characters from strings
+    return params.replace(/[<>"'&]/g, '');
+  }
+
+  if (Array.isArray(params)) {
+    return params.map(sanitizeApiParameters);
+  }
+
+  if (typeof params === 'object') {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      // Sanitize both keys and values
+      const sanitizedKey = key.replace(/[<>"'&]/g, '');
+      sanitized[sanitizedKey] = sanitizeApiParameters(value);
+    }
+    return sanitized;
+  }
+
+  return params;
+}
+
+/**
+ * Builds a safe API request with proper authentication and validation.
+ *
+ * @param {string} endpoint - The API endpoint path
+ * @param {string} method - The HTTP method
+ * @param {unknown} data - The request data
+ * @returns {Promise<RequestInit>} The safe request configuration
+ */
+export async function buildSafeApiRequest(
+  endpoint: string,
+  method: string,
+  data?: unknown,
+): Promise<RequestInit> {
+  if (!validateApiEndpoint(endpoint)) {
+    throw new Error(`Invalid API endpoint: ${endpoint}`);
+  }
+
+  const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'] as const;
+  const upperMethod = method.toUpperCase();
+
+  if (
+    !allowedMethods.includes(upperMethod as (typeof allowedMethods)[number])
+  ) {
+    throw new Error(`Invalid HTTP method: ${method}`);
+  }
+
+  const token = await getAccessToken();
+  const sanitizedData = data ? sanitizeApiParameters(data) : undefined;
+
+  const requestConfig: RequestInit = {
+    method: upperMethod,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Bitwarden-MCP-Server/2025.8.2',
+    },
+  };
+
+  if (sanitizedData && (upperMethod === 'POST' || upperMethod === 'PUT')) {
+    requestConfig.body = JSON.stringify(sanitizedData);
+  }
+
+  return requestConfig;
+}
+
+/**
+ * Interface representing the response from a Bitwarden API request.
+ */
+export interface ApiResponse {
+  data?: unknown;
+  errorMessage?: string;
+  status: number;
+}
+
+/**
+ * Executes a safe API request to the Bitwarden Public API.
+ *
+ * @async
+ * @param {string} endpoint - The API endpoint path
+ * @param {string} method - The HTTP method
+ * @param {unknown} data - The request data
+ * @returns {Promise<ApiResponse>} A promise that resolves to the API response
+ */
+export async function executeApiRequest(
+  endpoint: string,
+  method: string,
+  data?: unknown,
+): Promise<ApiResponse> {
+  try {
+    const requestConfig = await buildSafeApiRequest(endpoint, method, data);
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await fetch(url, requestConfig);
+
+    let responseData: unknown;
+    const contentType = response.headers.get('content-type');
+
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        responseData = (await response.json()) as unknown;
+      } catch (error) {
+        // If JSON parsing fails, create a simple error message
+        responseData = `Failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    } else {
+      responseData = await response.text();
+    }
+
+    if (!response.ok) {
+      return {
+        status: response.status,
+        errorMessage: `API request failed: ${response.status} ${response.statusText}`,
+        data: responseData,
+      };
+    }
+
+    return {
+      status: response.status,
+      data: responseData,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      errorMessage: `API request error: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Initializes and starts the MCP server for handling Bitwarden CLI commands and API operations.
+ * Requires either BW_SESSION (for CLI) or BW_CLIENT_ID/BW_CLIENT_SECRET (for API) environment variables.
  *
  * @async
  * @returns {Promise<void>}
  */
 async function runServer(): Promise<void> {
-  if (!process.env['BW_SESSION']) {
-    console.error('Please set the BW_SESSION environment variable');
+  const hasCliAuth = !!process.env['BW_SESSION'];
+  const hasApiAuth = !!(CLIENT_ID && CLIENT_SECRET);
+
+  if (!hasCliAuth && !hasApiAuth) {
+    console.error('Please set either:');
+    console.error(
+      '  - BW_SESSION environment variable (for CLI vault operations), or',
+    );
+    console.error(
+      '  - BW_CLIENT_ID and BW_CLIENT_SECRET environment variables (for API operations)',
+    );
     process.exit(1);
+  }
+
+  if (hasCliAuth && hasApiAuth) {
+    console.error(
+      'Bitwarden MCP Server starting with both CLI and API support...',
+    );
+  } else if (hasCliAuth) {
+    console.error('Bitwarden MCP Server starting with CLI support only...');
+  } else {
+    console.error('Bitwarden MCP Server starting with API support only...');
   }
 
   console.error('Bitwarden MCP Server starting ...');
@@ -1315,6 +2679,806 @@ async function runServer(): Promise<void> {
             };
           }
 
+          // Organization API Cases
+
+          case 'list-collections': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listCollectionsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/collections',
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'get-collection': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getCollectionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/collections/${id}`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'create-collection': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              createCollectionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/collections',
+              'POST',
+              validationResult,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-collection': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateCollectionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, ...updateData } = validationResult;
+            const result = await executeApiRequest(
+              `/public/collections/${id}`,
+              'PUT',
+              updateData,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'delete-collection': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              deleteCollectionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/collections/${id}`,
+              'DELETE',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage ||
+                    `Collection ${id} deleted successfully`,
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'list-members': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listMembersSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest('/public/members', 'GET');
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'get-member': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getMemberSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'invite-member': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              inviteMemberSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/members',
+              'POST',
+              validationResult,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-member': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateMemberSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, ...updateData } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}`,
+              'PUT',
+              updateData,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'remove-member': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              removeMemberSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}`,
+              'DELETE',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || `Member ${id} removed successfully`,
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'list-events': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listEventsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            let endpoint = '/public/events';
+            const params = new URLSearchParams();
+
+            if (validationResult.start) {
+              params.append('start', validationResult.start);
+            }
+            if (validationResult.end) {
+              params.append('end', validationResult.end);
+            }
+            if (validationResult.continuationToken) {
+              params.append(
+                'continuationToken',
+                validationResult.continuationToken,
+              );
+            }
+
+            if (params.toString()) {
+              endpoint += `?${params.toString()}`;
+            }
+
+            const result = await executeApiRequest(endpoint, 'GET');
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          // Groups API Handlers
+          case 'list-groups': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listGroupsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest('/public/groups', 'GET');
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'get-group': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getGroupSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/groups/${id}`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'create-group': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              createGroupSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/groups',
+              'POST',
+              validationResult,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-group': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateGroupSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, ...updateData } = validationResult;
+            const result = await executeApiRequest(
+              `/public/groups/${id}`,
+              'PUT',
+              updateData,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'delete-group': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              deleteGroupSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/groups/${id}`,
+              'DELETE',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || `Group ${id} deleted successfully`,
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'get-group-member-ids': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getGroupMemberIdsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/groups/${id}/member-ids`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-group-member-ids': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateGroupMemberIdsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, memberIds } = validationResult;
+            const result = await executeApiRequest(
+              `/public/groups/${id}/member-ids`,
+              'PUT',
+              { MemberIds: memberIds },
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          // Policies API Handlers
+          case 'list-policies': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              listPoliciesSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest('/public/policies', 'GET');
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'get-policy': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getPolicySchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { type } = validationResult;
+            const result = await executeApiRequest(
+              `/public/policies/${type}`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-policy': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updatePolicySchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { type, ...updateData } = validationResult;
+            const result = await executeApiRequest(
+              `/public/policies/${type}`,
+              'PUT',
+              updateData,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          // Organization API Handlers
+          case 'get-organization-subscription': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getOrganizationSubscriptionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/organization/subscription',
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-organization-subscription': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateOrganizationSubscriptionSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/organization/subscription',
+              'PUT',
+              validationResult,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'import-organization': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              importOrganizationSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const result = await executeApiRequest(
+              '/public/organization/import',
+              'POST',
+              validationResult,
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage ||
+                    'Organization data imported successfully',
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          // Additional Member API Handlers
+          case 'get-member-group-ids': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              getMemberGroupIdsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}/group-ids`,
+              'GET',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'update-member-group-ids': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              updateMemberGroupIdsSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id, groupIds } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}/group-ids`,
+              'PUT',
+              { GroupIds: groupIds },
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage || JSON.stringify(result.data, null, 2),
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
+          case 'reinvite-member': {
+            // Validate inputs
+            const [isValid, validationResult] = validateInput(
+              reinviteMemberSchema,
+              request.params.arguments,
+            );
+
+            if (!isValid) {
+              return validationResult;
+            }
+
+            const { id } = validationResult;
+            const result = await executeApiRequest(
+              `/public/members/${id}/reinvite`,
+              'POST',
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    result.errorMessage ||
+                    `Member ${id} reinvited successfully`,
+                },
+              ],
+              isError: !!result.errorMessage,
+            };
+          }
+
           default:
             return {
               content: [
@@ -1355,6 +3519,37 @@ async function runServer(): Promise<void> {
         createTool,
         editTool,
         deleteTool,
+        listCollectionsTool,
+        getCollectionTool,
+        createCollectionTool,
+        updateCollectionTool,
+        deleteCollectionTool,
+        listMembersTool,
+        getMemberTool,
+        inviteMemberTool,
+        updateMemberTool,
+        removeMemberTool,
+        listEventsTool,
+        // Groups API Tools
+        listGroupsTool,
+        getGroupTool,
+        createGroupTool,
+        updateGroupTool,
+        deleteGroupTool,
+        getGroupMemberIdsTool,
+        updateGroupMemberIdsTool,
+        // Policies API Tools
+        listPoliciesTool,
+        getPolicyTool,
+        updatePolicyTool,
+        // Organization API Tools
+        getOrganizationSubscriptionTool,
+        updateOrganizationSubscriptionTool,
+        importOrganizationTool,
+        // Additional Member API Tools
+        getMemberGroupIdsTool,
+        updateMemberGroupIdsTool,
+        reinviteMemberTool,
       ],
     };
   });
