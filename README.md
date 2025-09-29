@@ -5,8 +5,8 @@ Model Context Protocol (MCP) server that enables interaction with the Bitwarden 
 ## Prerequisites
 
 - Node.js 22
-- Bitwarden CLI (`bw`) installed and authenticated
-- Valid Bitwarden session token
+- **For CLI operations**: Bitwarden CLI (`bw`) installed, authenticated, and valid session token
+- **For API operations**: Bitwarden organization with API access and valid client credentials
 
 ## Installation
 
@@ -36,6 +36,10 @@ npm run build
 
 ## Setup
 
+The server supports two authentication methods:
+
+### Option A: CLI Authentication (for personal vault operations)
+
 1. **Install Bitwarden CLI**:
 
    ```bash
@@ -52,6 +56,25 @@ npm run build
    ```bash
    export BW_SESSION=$(bw unlock --raw)
    ```
+
+### Option B: API Authentication (for organization management)
+
+1. **Create API credentials** in your Bitwarden organization settings
+
+2. **Set environment variables**:
+
+   ```bash
+   export BW_CLIENT_ID="your_client_id"
+   export BW_CLIENT_SECRET="your_client_secret"
+   ```
+
+3. **Optional: Set custom API URLs** (if using self-hosted):
+   ```bash
+   export BW_API_BASE_URL="https://api.bitwarden.com"
+   export BW_IDENTITY_URL="https://identity.bitwarden.com"
+   ```
+
+> **Note**: You can use both authentication methods simultaneously for full functionality.
 
 ## Testing
 
@@ -95,7 +118,9 @@ This will:
 
 ### Available tools
 
-The server provides the following Bitwarden CLI tools:
+The server provides comprehensive Bitwarden functionality through two categories of tools:
+
+#### Personal Vault Tools (CLI Authentication)
 
 | Tool       | Description                  | Required Parameters                               |
 | ---------- | ---------------------------- | ------------------------------------------------- |
@@ -109,6 +134,65 @@ The server provides the following Bitwarden CLI tools:
 | `create`   | Create new item or folder    | `objectType`, `name`, additional fields for items |
 | `edit`     | Edit existing item or folder | `objectType`, `id`, optional fields to update     |
 | `delete`   | Delete vault item/folder     | `object`, `id`, optional `permanent`              |
+
+#### Organization Management Tools (API Authentication)
+
+##### Collections Management
+
+| Tool                | Description                   | Required Parameters |
+| ------------------- | ----------------------------- | ------------------- |
+| `list-collections`  | List organization collections | None                |
+| `get-collection`    | Get collection details        | `id`                |
+| `create-collection` | Create new collection         | `name`              |
+| `update-collection` | Update existing collection    | `id`                |
+| `delete-collection` | Delete collection             | `id`                |
+
+##### Members Management
+
+| Tool                      | Description                       | Required Parameters |
+| ------------------------- | --------------------------------- | ------------------- |
+| `list-members`            | List organization members         | None                |
+| `get-member`              | Get member details                | `id`                |
+| `invite-member`           | Invite new member                 | `email`, `type`     |
+| `update-member`           | Update existing member            | `id`                |
+| `remove-member`           | Remove member from organization   | `id`                |
+| `reinvite-member`         | Re-invite member                  | `id`                |
+| `get-member-group-ids`    | Get member's group assignments    | `id`                |
+| `update-member-group-ids` | Update member's group assignments | `id`, `groupIds`    |
+
+##### Groups Management
+
+| Tool                      | Description                       | Required Parameters |
+| ------------------------- | --------------------------------- | ------------------- |
+| `list-groups`             | List organization groups          | None                |
+| `get-group`               | Get group details                 | `id`                |
+| `create-group`            | Create new group                  | `name`              |
+| `update-group`            | Update existing group             | `id`, `name`        |
+| `delete-group`            | Delete group                      | `id`                |
+| `get-group-member-ids`    | Get group's member assignments    | `id`                |
+| `update-group-member-ids` | Update group's member assignments | `id`, `memberIds`   |
+
+##### Policies Management
+
+| Tool            | Description                | Required Parameters |
+| --------------- | -------------------------- | ------------------- |
+| `list-policies` | List organization policies | None                |
+| `get-policy`    | Get policy details         | `type`              |
+| `update-policy` | Update organization policy | `type`, `enabled`   |
+
+##### Organization Management
+
+| Tool                               | Description                  | Required Parameters |
+| ---------------------------------- | ---------------------------- | ------------------- |
+| `get-organization-subscription`    | Get subscription details     | None                |
+| `update-organization-subscription` | Update subscription settings | None                |
+| `import-organization`              | Import members and groups    | None                |
+
+##### Events and Auditing
+
+| Tool          | Description                 | Required Parameters |
+| ------------- | --------------------------- | ------------------- |
+| `list-events` | Get organization audit logs | None                |
 
 ### Manual testing
 
@@ -143,10 +227,13 @@ The server provides the following Bitwarden CLI tools:
 
 ## Security considerations
 
-- **Never commit** the `BW_SESSION` token
-- **Use environment variables** for sensitive configuration
+- **Never commit** sensitive credentials (`BW_SESSION`, `BW_CLIENT_ID`, `BW_CLIENT_SECRET`)
+- **Use environment variables** for all sensitive configuration
 - **Validate all inputs** using Zod schemas (already implemented)
 - **Test with non-production data** when possible
+- **Limit API permissions** to only what's necessary for your use case
+- **Monitor API usage** through your organization's audit logs
+- **Use HTTPS** for all API communications (default)
 - Understand the security and privacy impacts of exposing sensitive vault data to LLM and AI tools. Using a self-hosted or local LLM may be appropriate, for example.
 
 ## Troubleshooting
@@ -156,15 +243,24 @@ The server provides the following Bitwarden CLI tools:
 1. **"Please set the BW_SESSION environment variable"**
    - Run: `export BW_SESSION=$(bw unlock --raw)`
 
-2. **Tests failing with environment errors**
+2. **"BW_CLIENT_ID and BW_CLIENT_SECRET environment variables are required"**
+   - Set your API credentials: `export BW_CLIENT_ID="your_id"` and `export BW_CLIENT_SECRET="your_secret"`
+   - Verify credentials are valid in your Bitwarden organization settings
+
+3. **API authentication failures**
+   - Check that your organization has API access enabled
+   - Verify client credentials have appropriate permissions
+   - Ensure you're using the correct API URLs for your instance
+
+4. **Tests failing with environment errors**
    - Use the environment mocking helpers in tests
    - Ensure test cleanup with `restoreEnvVars()`
 
-3. **Inspector not starting**
+5. **Inspector not starting**
    - Check that the server builds successfully: `npm run build`
    - Verify Node.js version is 22
 
-4. **CLI commands failing**
+6. **CLI commands failing**
    - Verify Bitwarden CLI is installed: `bw --version`
    - Check vault is unlocked: `bw status`
    - Ensure valid session token: `echo $BW_SESSION`
