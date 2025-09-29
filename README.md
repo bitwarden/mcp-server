@@ -231,7 +231,6 @@ The server provides comprehensive Bitwarden functionality through two categories
 - **Use environment variables** for all sensitive configuration
 - **Validate all inputs** using Zod schemas (already implemented)
 - **Test with non-production data** when possible
-- **Limit API permissions** to only what's necessary for your use case
 - **Monitor API usage** through your organization's audit logs
 - **Use HTTPS** for all API communications (default)
 - Understand the security and privacy impacts of exposing sensitive vault data to LLM and AI tools. Using a self-hosted or local LLM may be appropriate, for example.
