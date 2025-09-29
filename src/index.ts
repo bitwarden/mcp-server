@@ -558,7 +558,7 @@ const updatePolicySchema = z.object({
   // Whether the policy is enabled
   enabled: z.boolean(),
   // Policy data (JSON object specific to each policy type)
-  data: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
 });
 
 // Organization API Schemas

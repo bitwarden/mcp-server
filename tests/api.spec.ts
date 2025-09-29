@@ -385,7 +385,7 @@ describe('API Schema Validation', () => {
       const updatePolicySchema = z.object({
         type: z.number().int().min(0, 'Policy type is required'),
         enabled: z.boolean(),
-        data: z.record(z.any()).optional(),
+        data: z.record(z.string(), z.any()).optional(),
       });
 
       const validInput = {
