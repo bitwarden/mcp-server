@@ -22,22 +22,24 @@ export {
   // Collections
   listOrgCollectionsTool,
   getOrgCollectionTool,
-  createOrgCollectionTool,
   updateOrgCollectionTool,
   deleteOrgCollectionTool,
   // Members
   listOrgMembersTool,
   getOrgMemberTool,
+  getOrgMemberGroupsTool,
   inviteOrgMemberTool,
   updateOrgMemberTool,
+  updateOrgMemberGroupsTool,
   removeOrgMemberTool,
+  reinviteOrgMemberTool,
   // Groups
   listOrgGroupsTool,
   getOrgGroupTool,
+  getOrgGroupMembersTool,
   createOrgGroupTool,
   updateOrgGroupTool,
   deleteOrgGroupTool,
-  getOrgGroupMembersTool,
   updateOrgGroupMembersTool,
   // Policies
   listOrgPoliciesTool,
@@ -46,9 +48,9 @@ export {
   // Events
   getOrgEventsTool,
   // Organization
-  getOrgTool,
-  updateOrgTool,
-  getOrgBillingTool,
-  getOrgSubscriptionTool,
+  getPublicOrgTool,
+  updateOrgSecretsManagerSubscriptionTool,
+  // Import
+  importOrgUsersAndGroupsTool,
   organizationApiTools,
 } from './api.js';
