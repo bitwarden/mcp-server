@@ -11,13 +11,19 @@ export interface TokenResponse {
 export interface CliResponse {
   output?: string;
   errorOutput?: string;
+  // Support validation error format
+  content?: readonly [{ readonly type: 'text'; readonly text: string }];
+  isError?: boolean;
 }
 
 export interface ApiResponse {
   data?: unknown;
-  error?: string;
+  errorOutput?: string;
   errorMessage?: string;
   status?: number;
+  // Support validation error format
+  content?: readonly [{ readonly type: 'text'; readonly text: string }];
+  isError?: boolean;
 }
 
 export interface BitwardenItem {

@@ -112,6 +112,9 @@ export function validateApiEndpoint(endpoint: string): boolean {
     /^\/public\/policies$/,
     /^\/public\/policies\/[0-9]+$/,
     /^\/public\/events$/,
+    /^\/public\/events\?.*$/,
+    /^\/public\/organization$/,
+    /^\/public\/organization\/billing$/,
     /^\/public\/organization\/subscription$/,
     /^\/public\/organization\/import$/,
   ] as const;

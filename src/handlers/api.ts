@@ -37,9 +37,12 @@ import type { ApiResponse } from '../utils/types.js';
 export async function handleListOrgCollections(
   args: unknown,
 ): Promise<ApiResponse> {
-  const [success] = validateInput(listCollectionsRequestSchema, args);
+  const [success, validatedArgs] = validateInput(
+    listCollectionsRequestSchema,
+    args,
+  );
   if (!success) {
-    return { error: 'Validation failed for list organization collections' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/collections`, 'GET');
@@ -53,7 +56,7 @@ export async function handleGetOrgCollection(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for get organization collection' };
+    return validatedArgs;
   }
 
   const { collectionId } = validatedArgs;
@@ -68,7 +71,7 @@ export async function handleCreateOrgCollection(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for create organization collection' };
+    return validatedArgs;
   }
 
   const { name, externalId } = validatedArgs;
@@ -84,7 +87,7 @@ export async function handleUpdateOrgCollection(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization collection' };
+    return validatedArgs;
   }
 
   const { collectionId, name, externalId } = validatedArgs;
@@ -100,7 +103,7 @@ export async function handleDeleteOrgCollection(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for delete organization collection' };
+    return validatedArgs;
   }
 
   const { collectionId } = validatedArgs;
@@ -111,9 +114,12 @@ export async function handleDeleteOrgCollection(
 export async function handleListOrgMembers(
   args: unknown,
 ): Promise<ApiResponse> {
-  const [success] = validateInput(listMembersRequestSchema, args);
+  const [success, validatedArgs] = validateInput(
+    listMembersRequestSchema,
+    args,
+  );
   if (!success) {
-    return { error: 'Validation failed for list organization members' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/members`, 'GET');
@@ -122,7 +128,7 @@ export async function handleListOrgMembers(
 export async function handleGetOrgMember(args: unknown): Promise<ApiResponse> {
   const [success, validatedArgs] = validateInput(getMemberRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for get organization member' };
+    return validatedArgs;
   }
 
   const { memberId } = validatedArgs;
@@ -137,7 +143,7 @@ export async function handleInviteOrgMember(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for invite organization member' };
+    return validatedArgs;
   }
 
   const { emails, type, accessAll, externalId, collections } = validatedArgs;
@@ -153,7 +159,7 @@ export async function handleUpdateOrgMember(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization member' };
+    return validatedArgs;
   }
 
   const { memberId, type, accessAll, externalId, collections } = validatedArgs;
@@ -169,7 +175,7 @@ export async function handleRemoveOrgMember(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for remove organization member' };
+    return validatedArgs;
   }
 
   const { memberId } = validatedArgs;
@@ -178,9 +184,9 @@ export async function handleRemoveOrgMember(
 
 // Groups handlers
 export async function handleListOrgGroups(args: unknown): Promise<ApiResponse> {
-  const [success] = validateInput(listGroupsRequestSchema, args);
+  const [success, validatedArgs] = validateInput(listGroupsRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for list organization groups' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/groups`, 'GET');
@@ -189,7 +195,7 @@ export async function handleListOrgGroups(args: unknown): Promise<ApiResponse> {
 export async function handleGetOrgGroup(args: unknown): Promise<ApiResponse> {
   const [success, validatedArgs] = validateInput(getGroupRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for get organization group' };
+    return validatedArgs;
   }
 
   const { groupId } = validatedArgs;
@@ -204,7 +210,7 @@ export async function handleCreateOrgGroup(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for create organization group' };
+    return validatedArgs;
   }
 
   const { name, accessAll, externalId, collections } = validatedArgs;
@@ -220,7 +226,7 @@ export async function handleUpdateOrgGroup(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization group' };
+    return validatedArgs;
   }
 
   const { groupId, name, accessAll, externalId, collections } = validatedArgs;
@@ -236,7 +242,7 @@ export async function handleDeleteOrgGroup(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for delete organization group' };
+    return validatedArgs;
   }
 
   const { groupId } = validatedArgs;
@@ -251,7 +257,7 @@ export async function handleGetOrgGroupMembers(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for get organization group members' };
+    return validatedArgs;
   }
 
   const { groupId } = validatedArgs;
@@ -266,7 +272,7 @@ export async function handleUpdateOrgGroupMembers(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization group members' };
+    return validatedArgs;
   }
 
   const { groupId, memberIds } = validatedArgs;
@@ -278,9 +284,12 @@ export async function handleUpdateOrgGroupMembers(
 export async function handleListOrgPolicies(
   args: unknown,
 ): Promise<ApiResponse> {
-  const [success] = validateInput(listPoliciesRequestSchema, args);
+  const [success, validatedArgs] = validateInput(
+    listPoliciesRequestSchema,
+    args,
+  );
   if (!success) {
-    return { error: 'Validation failed for list organization policies' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/policies`, 'GET');
@@ -289,7 +298,7 @@ export async function handleListOrgPolicies(
 export async function handleGetOrgPolicy(args: unknown): Promise<ApiResponse> {
   const [success, validatedArgs] = validateInput(getPolicyRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for get organization policy' };
+    return validatedArgs;
   }
 
   const { policyId } = validatedArgs;
@@ -304,7 +313,7 @@ export async function handleUpdateOrgPolicy(
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization policy' };
+    return validatedArgs;
   }
 
   const { policyId, enabled, data } = validatedArgs;
@@ -316,7 +325,7 @@ export async function handleUpdateOrgPolicy(
 export async function handleGetOrgEvents(args: unknown): Promise<ApiResponse> {
   const [success, validatedArgs] = validateInput(getEventsRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for get organization events' };
+    return validatedArgs;
   }
 
   const {
@@ -345,9 +354,12 @@ export async function handleGetOrgEvents(args: unknown): Promise<ApiResponse> {
 
 // Organization handlers
 export async function handleGetOrg(args: unknown): Promise<ApiResponse> {
-  const [success] = validateInput(getOrganizationRequestSchema, args);
+  const [success, validatedArgs] = validateInput(
+    getOrganizationRequestSchema,
+    args,
+  );
   if (!success) {
-    return { error: 'Validation failed for get organization' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/organization`, 'GET');
@@ -359,7 +371,7 @@ export async function handleUpdateOrg(args: unknown): Promise<ApiResponse> {
     args,
   );
   if (!success) {
-    return { error: 'Validation failed for update organization' };
+    return validatedArgs;
   }
 
   const { name, businessName, billingEmail } = validatedArgs;
@@ -368,9 +380,9 @@ export async function handleUpdateOrg(args: unknown): Promise<ApiResponse> {
 }
 
 export async function handleGetOrgBilling(args: unknown): Promise<ApiResponse> {
-  const [success] = validateInput(getBillingRequestSchema, args);
+  const [success, validatedArgs] = validateInput(getBillingRequestSchema, args);
   if (!success) {
-    return { error: 'Validation failed for get organization billing' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/organization/billing`, 'GET');
@@ -379,9 +391,12 @@ export async function handleGetOrgBilling(args: unknown): Promise<ApiResponse> {
 export async function handleGetOrgSubscription(
   args: unknown,
 ): Promise<ApiResponse> {
-  const [success] = validateInput(getSubscriptionRequestSchema, args);
+  const [success, validatedArgs] = validateInput(
+    getSubscriptionRequestSchema,
+    args,
+  );
   if (!success) {
-    return { error: 'Validation failed for get organization subscription' };
+    return validatedArgs;
   }
 
   return executeApiRequest(`/public/organization/subscription`, 'GET');

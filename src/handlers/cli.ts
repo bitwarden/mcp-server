@@ -22,7 +22,7 @@ import type { CliResponse } from '../utils/types.js';
 export async function handleLock(): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(lockSchema, {});
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   return executeCliCommand('lock');
 }
@@ -30,7 +30,7 @@ export async function handleLock(): Promise<CliResponse> {
 export async function handleUnlock(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(unlockSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { password } = validatedArgs;
   const command = buildSafeCommand('unlock', [password, '--raw']);
@@ -40,7 +40,7 @@ export async function handleUnlock(args: unknown): Promise<CliResponse> {
 export async function handleSync(): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(syncSchema, {});
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   return executeCliCommand('sync');
 }
@@ -48,7 +48,7 @@ export async function handleSync(): Promise<CliResponse> {
 export async function handleStatus(): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(statusSchema, {});
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   return executeCliCommand('status');
 }
@@ -56,7 +56,7 @@ export async function handleStatus(): Promise<CliResponse> {
 export async function handleList(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(listSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { type, search } = validatedArgs;
   const params: string[] = [type];
@@ -70,7 +70,7 @@ export async function handleList(args: unknown): Promise<CliResponse> {
 export async function handleGet(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(getSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { object, id } = validatedArgs;
   const command = buildSafeCommand('get', [object, id]);
@@ -80,7 +80,7 @@ export async function handleGet(args: unknown): Promise<CliResponse> {
 export async function handleGenerate(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(generateSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
 
   const params: string[] = [];
@@ -121,7 +121,7 @@ export async function handleGenerate(args: unknown): Promise<CliResponse> {
 export async function handleCreate(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(createSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { objectType, name, type, notes, login } = validatedArgs;
 
@@ -150,7 +150,7 @@ export async function handleCreate(args: unknown): Promise<CliResponse> {
 export async function handleEdit(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(editSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { objectType, id, name, notes, login } = validatedArgs;
 
@@ -174,7 +174,7 @@ export async function handleEdit(args: unknown): Promise<CliResponse> {
 export async function handleDelete(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(deleteSchema, args);
   if (!success) {
-    return { errorOutput: validatedArgs.content[0].text };
+    return validatedArgs;
   }
   const { object, id, permanent } = validatedArgs;
   const params: string[] = [object, id];

@@ -58,9 +58,15 @@ describe('API Security Functions', () => {
 
     it('should allow valid event endpoints', () => {
       expect(validateApiEndpoint('/public/events')).toBe(true);
+      expect(
+        validateApiEndpoint('/public/events?start=2023-01-01&end=2023-12-31'),
+      ).toBe(true);
+      expect(validateApiEndpoint('/public/events?actingUserId=123')).toBe(true);
     });
 
     it('should allow valid organization endpoints', () => {
+      expect(validateApiEndpoint('/public/organization')).toBe(true);
+      expect(validateApiEndpoint('/public/organization/billing')).toBe(true);
       expect(validateApiEndpoint('/public/organization/subscription')).toBe(
         true,
       );
