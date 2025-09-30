@@ -47,12 +47,15 @@ import {
   handleInviteOrgMember,
   handleUpdateOrgMember,
   handleRemoveOrgMember,
+  handleGetOrgMemberGroups,
+  handleUpdateOrgMemberGroups,
+  handleReinviteOrgMember,
   handleListOrgGroups,
   handleGetOrgGroup,
+  handleGetOrgGroupMembers,
   handleCreateOrgGroup,
   handleUpdateOrgGroup,
   handleDeleteOrgGroup,
-  handleGetOrgMemberGroups,
   handleUpdateOrgGroupMembers,
   handleListOrgPolicies,
   handleGetOrgPolicy,
@@ -130,20 +133,26 @@ async function runServer(): Promise<void> {
             return { content: [await handleUpdateOrgMember(args)] };
           case 'remove_org_member':
             return { content: [await handleRemoveOrgMember(args)] };
+          case 'get_org_member_groups':
+            return { content: [await handleGetOrgMemberGroups(args)] };
+          case 'update_org_member_groups':
+            return { content: [await handleUpdateOrgMemberGroups(args)] };
+          case 'reinvite_org_member':
+            return { content: [await handleReinviteOrgMember(args)] };
 
           // Organization API Tools - Groups
           case 'list_org_groups':
             return { content: [await handleListOrgGroups(args)] };
           case 'get_org_group':
             return { content: [await handleGetOrgGroup(args)] };
+          case 'get_org_group_members':
+            return { content: [await handleGetOrgGroupMembers(args)] };
           case 'create_org_group':
             return { content: [await handleCreateOrgGroup(args)] };
           case 'update_org_group':
             return { content: [await handleUpdateOrgGroup(args)] };
           case 'delete_org_group':
             return { content: [await handleDeleteOrgGroup(args)] };
-          case 'get_org_member_groups':
-            return { content: [await handleGetOrgMemberGroups(args)] };
           case 'update_org_group_members':
             return { content: [await handleUpdateOrgGroupMembers(args)] };
 

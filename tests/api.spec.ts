@@ -66,8 +66,7 @@ describe('API Security Functions', () => {
     });
 
     it('should allow valid organization endpoints', () => {
-      expect(validateApiEndpoint('/public/organization')).toBe(true);
-      expect(validateApiEndpoint('/public/organization/sm-subscription')).toBe(
+      expect(validateApiEndpoint('/public/organization/subscription')).toBe(
         true,
       );
       expect(validateApiEndpoint('/public/organization/import')).toBe(true);

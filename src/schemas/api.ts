@@ -162,9 +162,22 @@ export const getMemberGroupsRequestSchema = z.object({
   memberId: z.string().uuid('Member ID must be a valid UUID'),
 });
 
+export const getGroupMembersRequestSchema = z.object({
+  groupId: z.string().uuid('Group ID must be a valid UUID'),
+});
+
+export const updateMemberGroupsRequestSchema = z.object({
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
+  groupIds: z.array(z.string().uuid('Group ID must be a valid UUID')),
+});
+
 export const updateGroupMembersRequestSchema = z.object({
   groupId: z.string().min(1, 'Group ID is required'),
   memberIds: z.array(z.string().min(1, 'Member ID is required')),
+});
+
+export const reinviteMemberRequestSchema = z.object({
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
 });
 
 // Policies Schemas
@@ -202,13 +215,20 @@ export const getEventsRequestSchema = z.object({
 export const getPublicOrganizationRequestSchema = z.object({});
 
 export const updateSecretsManagerSubscriptionRequestSchema = z.object({
-  smSeats: z
-    .number()
-    .min(0, 'Secrets Manager seats must be 0 or greater')
+  passwordManager: z
+    .object({
+      seats: z.number().int().optional(),
+      storage: z.number().int().optional(),
+      maxAutoScaleSeats: z.number().int().optional(),
+    })
     .optional(),
-  smServiceAccounts: z
-    .number()
-    .min(0, 'Secrets Manager service accounts must be 0 or greater')
+  secretsManager: z
+    .object({
+      seats: z.number().int().optional(),
+      maxAutoScaleSeats: z.number().int().optional(),
+      serviceAccounts: z.number().int().optional(),
+      maxAutoScaleServiceAccounts: z.number().int().optional(),
+    })
     .optional(),
 });
 

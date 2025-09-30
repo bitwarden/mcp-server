@@ -20,7 +20,10 @@ import {
   updateGroupRequestSchema,
   deleteGroupRequestSchema,
   getMemberGroupsRequestSchema,
+  getGroupMembersRequestSchema,
+  updateMemberGroupsRequestSchema,
   updateGroupMembersRequestSchema,
+  reinviteMemberRequestSchema,
   listPoliciesRequestSchema,
   getPolicyRequestSchema,
   updatePolicyRequestSchema,
@@ -161,6 +164,35 @@ export const handleGetOrgMemberGroups = withValidation(
   },
 );
 
+export const handleGetOrgGroupMembers = withValidation(
+  getGroupMembersRequestSchema,
+  async (validatedArgs) => {
+    const { groupId } = validatedArgs;
+    return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'GET');
+  },
+);
+
+export const handleUpdateOrgMemberGroups = withValidation(
+  updateMemberGroupsRequestSchema,
+  async (validatedArgs) => {
+    const { memberId, groupIds } = validatedArgs;
+    const body = { groupIds };
+    return executeApiRequest(
+      `/public/members/${memberId}/group-ids`,
+      'PUT',
+      body,
+    );
+  },
+);
+
+export const handleReinviteOrgMember = withValidation(
+  reinviteMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId } = validatedArgs;
+    return executeApiRequest(`/public/members/${memberId}/reinvite`, 'POST');
+  },
+);
+
 export const handleUpdateOrgGroupMembers = withValidation(
   updateGroupMembersRequestSchema,
   async (validatedArgs) => {
@@ -232,20 +264,16 @@ export const handleGetOrgEvents = withValidation(
 export const handleGetPublicOrg = withValidation(
   getPublicOrganizationRequestSchema,
   async () => {
-    return executeApiRequest(`/public/organization`, 'GET');
+    return executeApiRequest(`/public/organization/subscription`, 'GET');
   },
 );
 
 export const handleUpdateOrgSecretsManagerSubscription = withValidation(
   updateSecretsManagerSubscriptionRequestSchema,
   async (validatedArgs) => {
-    const { smSeats, smServiceAccounts } = validatedArgs;
-    const body = { smSeats, smServiceAccounts };
-    return executeApiRequest(
-      `/public/organization/sm-subscription`,
-      'PUT',
-      body,
-    );
+    const { passwordManager, secretsManager } = validatedArgs;
+    const body = { passwordManager, secretsManager };
+    return executeApiRequest(`/public/organization/subscription`, 'PUT', body);
   },
 );
 

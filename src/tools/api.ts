@@ -418,6 +418,62 @@ export const getOrgMemberGroupsTool: Tool = {
   },
 };
 
+export const getOrgGroupMembersTool: Tool = {
+  name: 'get_org_group_members',
+  description: 'Get member IDs that belong to a specific group',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      groupId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'ID of the group',
+      },
+    },
+    required: ['groupId'],
+  },
+};
+
+export const updateOrgMemberGroupsTool: Tool = {
+  name: 'update_org_member_groups',
+  description: 'Update the groups that a member belongs to',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      memberId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'ID of the member',
+      },
+      groupIds: {
+        type: 'array',
+        description: 'Array of group IDs that the member should belong to',
+        items: {
+          type: 'string',
+          format: 'uuid',
+        },
+      },
+    },
+    required: ['memberId', 'groupIds'],
+  },
+};
+
+export const reinviteOrgMemberTool: Tool = {
+  name: 'reinvite_org_member',
+  description: 'Re-send invitation email to an organization member',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      memberId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'ID of the member to re-invite',
+      },
+    },
+    required: ['memberId'],
+  },
+};
+
 export const updateOrgGroupMembersTool: Tool = {
   name: 'update_org_group_members',
   description: 'Update members of an organization group',
@@ -552,19 +608,50 @@ export const getPublicOrgTool: Tool = {
 
 export const updateOrgSecretsManagerSubscriptionTool: Tool = {
   name: 'update_org_sm_subscription',
-  description: 'Update organization Secrets Manager subscription',
+  description:
+    'Update organization subscription for Password Manager and/or Secrets Manager',
   inputSchema: {
     type: 'object',
     properties: {
-      smSeats: {
-        type: 'number',
-        description: 'Number of Secrets Manager seats',
-        minimum: 0,
+      passwordManager: {
+        type: 'object',
+        description: 'Password Manager subscription details',
+        properties: {
+          seats: {
+            type: 'integer',
+            description: 'Number of Password Manager seats',
+          },
+          storage: {
+            type: 'integer',
+            description: 'Storage in GB',
+          },
+          maxAutoScaleSeats: {
+            type: 'integer',
+            description: 'Maximum auto-scale seats for Password Manager',
+          },
+        },
       },
-      smServiceAccounts: {
-        type: 'number',
-        description: 'Number of Secrets Manager service accounts',
-        minimum: 0,
+      secretsManager: {
+        type: 'object',
+        description: 'Secrets Manager subscription details',
+        properties: {
+          seats: {
+            type: 'integer',
+            description: 'Number of Secrets Manager seats',
+          },
+          maxAutoScaleSeats: {
+            type: 'integer',
+            description: 'Maximum auto-scale seats for Secrets Manager',
+          },
+          serviceAccounts: {
+            type: 'integer',
+            description: 'Number of Secrets Manager service accounts',
+          },
+          maxAutoScaleServiceAccounts: {
+            type: 'integer',
+            description: 'Maximum auto-scale service accounts',
+          },
+        },
       },
     },
     required: [],
@@ -660,10 +747,13 @@ export const organizationApiTools = [
   getOrgMemberGroupsTool,
   inviteOrgMemberTool,
   updateOrgMemberTool,
+  updateOrgMemberGroupsTool,
   removeOrgMemberTool,
+  reinviteOrgMemberTool,
   // Groups
   listOrgGroupsTool,
   getOrgGroupTool,
+  getOrgGroupMembersTool,
   createOrgGroupTool,
   updateOrgGroupTool,
   deleteOrgGroupTool,
