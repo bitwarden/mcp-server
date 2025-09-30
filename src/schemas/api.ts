@@ -1,28 +1,23 @@
 /**
  * Zod validation schemas for Organization API operations
- * These combine path parameters with request body schemas
+ * Based on official Bitwarden Public API specification
  */
 
 import { z } from 'zod';
 
-// Base schema with organizationId for path parameter
-const organizationPathSchema = z.object({
-  organizationId: z.string().min(1, 'Organization ID is required'),
-});
-
 // Collections Schemas
-export const listCollectionsRequestSchema = organizationPathSchema;
+export const listCollectionsRequestSchema = z.object({});
 
-export const getCollectionRequestSchema = organizationPathSchema.extend({
+export const getCollectionRequestSchema = z.object({
   collectionId: z.string().min(1, 'Collection ID is required'),
 });
 
-export const createCollectionRequestSchema = organizationPathSchema.extend({
+export const createCollectionRequestSchema = z.object({
   name: z.string().min(1, 'Collection name is required'),
   externalId: z.string().optional(),
 });
 
-export const updateCollectionRequestSchema = organizationPathSchema.extend({
+export const updateCollectionRequestSchema = z.object({
   collectionId: z.string().min(1, 'Collection ID is required'),
   name: z.string().min(1, 'Collection name is required'),
   externalId: z.string().optional(),
@@ -31,63 +26,109 @@ export const updateCollectionRequestSchema = organizationPathSchema.extend({
 export const deleteCollectionRequestSchema = getCollectionRequestSchema;
 
 // Members Schemas
-export const listMembersRequestSchema = organizationPathSchema;
+export const listMembersRequestSchema = z.object({});
 
-export const getMemberRequestSchema = organizationPathSchema.extend({
+export const getMemberRequestSchema = z.object({
   memberId: z.string().min(1, 'Member ID is required'),
 });
 
-export const inviteMemberRequestSchema = organizationPathSchema.extend({
-  emails: z.array(z.string().email('Valid email address is required')),
-  type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
-  accessAll: z.boolean().optional(),
-  externalId: z.string().optional(),
+export const inviteMemberRequestSchema = z.object({
+  email: z
+    .string()
+    .email('Valid email address is required')
+    .max(256, 'Email must be 256 characters or less'),
+  type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]), // 0=Owner, 1=Admin, 2=User, 4=Custom (3=Manager was deleted)
+  externalId: z
+    .string()
+    .max(300, 'External ID must be 300 characters or less')
+    .optional(),
+  permissions: z
+    .object({
+      accessEventLogs: z.boolean().optional(),
+      accessImportExport: z.boolean().optional(),
+      accessReports: z.boolean().optional(),
+      createNewCollections: z.boolean().optional(),
+      editAnyCollection: z.boolean().optional(),
+      deleteAnyCollection: z.boolean().optional(),
+      manageGroups: z.boolean().optional(),
+      managePolicies: z.boolean().optional(),
+      manageSso: z.boolean().optional(),
+      manageUsers: z.boolean().optional(),
+      manageResetPassword: z.boolean().optional(),
+      manageScim: z.boolean().optional(),
+    })
+    .optional(),
   collections: z
     .array(
       z.object({
-        id: z.string().min(1, 'Collection ID is required'),
+        id: z.string().uuid('Collection ID must be a valid UUID'),
         readOnly: z.boolean().optional(),
         hidePasswords: z.boolean().optional(),
         manage: z.boolean().optional(),
       }),
     )
     .optional(),
+  groups: z.array(z.string().uuid('Group ID must be a valid UUID')).optional(),
 });
 
-export const updateMemberRequestSchema = organizationPathSchema.extend({
-  memberId: z.string().min(1, 'Member ID is required'),
-  type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
-  accessAll: z.boolean().optional(),
-  externalId: z.string().optional(),
+export const updateMemberRequestSchema = z.object({
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
+  type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]), // 0=Owner, 1=Admin, 2=User, 4=Custom
+  externalId: z
+    .string()
+    .max(300, 'External ID must be 300 characters or less')
+    .optional(),
+  permissions: z
+    .object({
+      accessEventLogs: z.boolean().optional(),
+      accessImportExport: z.boolean().optional(),
+      accessReports: z.boolean().optional(),
+      createNewCollections: z.boolean().optional(),
+      editAnyCollection: z.boolean().optional(),
+      deleteAnyCollection: z.boolean().optional(),
+      manageGroups: z.boolean().optional(),
+      managePolicies: z.boolean().optional(),
+      manageSso: z.boolean().optional(),
+      manageUsers: z.boolean().optional(),
+      manageResetPassword: z.boolean().optional(),
+      manageScim: z.boolean().optional(),
+    })
+    .optional(),
   collections: z
     .array(
       z.object({
-        id: z.string().min(1, 'Collection ID is required'),
+        id: z.string().uuid('Collection ID must be a valid UUID'),
         readOnly: z.boolean().optional(),
         hidePasswords: z.boolean().optional(),
         manage: z.boolean().optional(),
       }),
     )
     .optional(),
+  groups: z.array(z.string().uuid('Group ID must be a valid UUID')).optional(),
 });
 
 export const removeMemberRequestSchema = getMemberRequestSchema;
 
 // Groups Schemas
-export const listGroupsRequestSchema = organizationPathSchema;
+export const listGroupsRequestSchema = z.object({});
 
-export const getGroupRequestSchema = organizationPathSchema.extend({
-  groupId: z.string().min(1, 'Group ID is required'),
+export const getGroupRequestSchema = z.object({
+  groupId: z.string().uuid('Group ID must be a valid UUID'),
 });
 
-export const createGroupRequestSchema = organizationPathSchema.extend({
-  name: z.string().min(1, 'Group name is required'),
-  accessAll: z.boolean().optional(),
-  externalId: z.string().optional(),
+export const createGroupRequestSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Group name is required')
+    .max(100, 'Group name must be 100 characters or less'),
+  externalId: z
+    .string()
+    .max(300, 'External ID must be 300 characters or less')
+    .optional(),
   collections: z
     .array(
       z.object({
-        id: z.string().min(1, 'Collection ID is required'),
+        id: z.string().uuid('Collection ID must be a valid UUID'),
         readOnly: z.boolean().optional(),
         hidePasswords: z.boolean().optional(),
         manage: z.boolean().optional(),
@@ -96,15 +137,20 @@ export const createGroupRequestSchema = organizationPathSchema.extend({
     .optional(),
 });
 
-export const updateGroupRequestSchema = organizationPathSchema.extend({
-  groupId: z.string().min(1, 'Group ID is required'),
-  name: z.string().min(1, 'Group name is required'),
-  accessAll: z.boolean().optional(),
-  externalId: z.string().optional(),
+export const updateGroupRequestSchema = z.object({
+  groupId: z.string().uuid('Group ID must be a valid UUID'),
+  name: z
+    .string()
+    .min(1, 'Group name is required')
+    .max(100, 'Group name must be 100 characters or less'),
+  externalId: z
+    .string()
+    .max(300, 'External ID must be 300 characters or less')
+    .optional(),
   collections: z
     .array(
       z.object({
-        id: z.string().min(1, 'Collection ID is required'),
+        id: z.string().uuid('Collection ID must be a valid UUID'),
         readOnly: z.boolean().optional(),
         hidePasswords: z.boolean().optional(),
         manage: z.boolean().optional(),
@@ -117,26 +163,26 @@ export const deleteGroupRequestSchema = getGroupRequestSchema;
 
 export const getGroupMembersRequestSchema = getGroupRequestSchema;
 
-export const updateGroupMembersRequestSchema = organizationPathSchema.extend({
+export const updateGroupMembersRequestSchema = z.object({
   groupId: z.string().min(1, 'Group ID is required'),
   memberIds: z.array(z.string().min(1, 'Member ID is required')),
 });
 
 // Policies Schemas
-export const listPoliciesRequestSchema = organizationPathSchema;
+export const listPoliciesRequestSchema = z.object({});
 
-export const getPolicyRequestSchema = organizationPathSchema.extend({
-  policyId: z.string().min(1, 'Policy ID is required'),
+export const getPolicyRequestSchema = z.object({
+  policyType: z.string().min(1, 'Policy type is required'),
 });
 
-export const updatePolicyRequestSchema = organizationPathSchema.extend({
-  policyId: z.string().min(1, 'Policy ID is required'),
+export const updatePolicyRequestSchema = z.object({
+  policyType: z.string().min(1, 'Policy type is required'),
   enabled: z.boolean(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Events Schemas
-export const getEventsRequestSchema = organizationPathSchema.extend({
+export const getEventsRequestSchema = z.object({
   start: z.string().min(1, 'Start date is required'),
   end: z.string().min(1, 'End date is required'),
   actingUserId: z.string().optional(),
@@ -148,14 +194,14 @@ export const getEventsRequestSchema = organizationPathSchema.extend({
 });
 
 // Organization Schemas
-export const getOrganizationRequestSchema = organizationPathSchema;
+export const getOrganizationRequestSchema = z.object({});
 
-export const updateOrganizationRequestSchema = organizationPathSchema.extend({
+export const updateOrganizationRequestSchema = z.object({
   name: z.string().optional(),
   businessName: z.string().optional(),
   billingEmail: z.string().email().optional(),
 });
 
-export const getBillingRequestSchema = organizationPathSchema;
+export const getBillingRequestSchema = z.object({});
 
-export const getSubscriptionRequestSchema = organizationPathSchema;
+export const getSubscriptionRequestSchema = z.object({});

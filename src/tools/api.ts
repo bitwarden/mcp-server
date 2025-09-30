@@ -7,16 +7,11 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 // Organization Collections Tools
 export const listOrgCollectionsTool: Tool = {
   name: 'list_org_collections',
-  description: 'List all collections in an organization',
+  description: 'List all collections in the organization',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -26,29 +21,21 @@ export const getOrgCollectionTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       collectionId: {
         type: 'string',
         description: 'ID of the collection',
       },
     },
-    required: ['organizationId', 'collectionId'],
+    required: ['collectionId'],
   },
 };
 
 export const createOrgCollectionTool: Tool = {
   name: 'create_org_collection',
-  description: 'Create a new collection in an organization',
+  description: 'Create a new collection in the organization',
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       name: {
         type: 'string',
         description: 'Name of the collection',
@@ -58,7 +45,7 @@ export const createOrgCollectionTool: Tool = {
         description: 'External ID for the collection (optional)',
       },
     },
-    required: ['organizationId', 'name'],
+    required: ['name'],
   },
 };
 
@@ -68,10 +55,6 @@ export const updateOrgCollectionTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       collectionId: {
         type: 'string',
         description: 'ID of the collection',
@@ -85,7 +68,7 @@ export const updateOrgCollectionTool: Tool = {
         description: 'New external ID for the collection (optional)',
       },
     },
-    required: ['organizationId', 'collectionId', 'name'],
+    required: ['collectionId', 'name'],
   },
 };
 
@@ -95,32 +78,23 @@ export const deleteOrgCollectionTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       collectionId: {
         type: 'string',
         description: 'ID of the collection',
       },
     },
-    required: ['organizationId', 'collectionId'],
+    required: ['collectionId'],
   },
 };
 
 // Organization Members Tools
 export const listOrgMembersTool: Tool = {
   name: 'list_org_members',
-  description: 'List all members in an organization',
+  description: 'List all members in the organization',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -130,49 +104,54 @@ export const getOrgMemberTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       memberId: {
         type: 'string',
         description: 'ID of the member',
       },
     },
-    required: ['organizationId', 'memberId'],
+    required: ['memberId'],
   },
 };
 
 export const inviteOrgMemberTool: Tool = {
   name: 'invite_org_member',
-  description: 'Invite a new member to an organization',
+  description: 'Invite a new member to the organization',
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
+      email: {
         type: 'string',
-        description: 'ID of the organization',
-      },
-      emails: {
-        type: 'array',
-        description: 'Array of email addresses to invite',
-        items: {
-          type: 'string',
-          format: 'email',
-        },
+        format: 'email',
+        description: 'Email address to invite',
+        maxLength: 256,
       },
       type: {
         type: 'number',
-        description: 'User type (0: Owner, 1: Admin, 2: User, 3: Manager)',
-        enum: [0, 1, 2, 3],
-      },
-      accessAll: {
-        type: 'boolean',
-        description: 'Whether the member has access to all collections',
+        description: 'User type (0: Owner, 1: Admin, 2: User, 4: Custom)',
+        enum: [0, 1, 2, 4],
       },
       externalId: {
         type: 'string',
         description: 'External ID for the member (optional)',
+        maxLength: 300,
+      },
+      permissions: {
+        type: 'object',
+        description: 'Custom permissions if the member has a Custom role',
+        properties: {
+          accessEventLogs: { type: 'boolean' },
+          accessImportExport: { type: 'boolean' },
+          accessReports: { type: 'boolean' },
+          createNewCollections: { type: 'boolean' },
+          editAnyCollection: { type: 'boolean' },
+          deleteAnyCollection: { type: 'boolean' },
+          manageGroups: { type: 'boolean' },
+          managePolicies: { type: 'boolean' },
+          manageSso: { type: 'boolean' },
+          manageUsers: { type: 'boolean' },
+          manageResetPassword: { type: 'boolean' },
+          manageScim: { type: 'boolean' },
+        },
       },
       collections: {
         type: 'array',
@@ -200,8 +179,17 @@ export const inviteOrgMemberTool: Tool = {
           required: ['id'],
         },
       },
+      groups: {
+        type: 'array',
+        description: 'Array of group IDs the member belongs to',
+        items: {
+          type: 'string',
+          format: 'uuid',
+          description: 'Group ID',
+        },
+      },
     },
-    required: ['organizationId', 'emails', 'type'],
+    required: ['email', 'type'],
   },
 };
 
@@ -211,26 +199,38 @@ export const updateOrgMemberTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       memberId: {
         type: 'string',
+        format: 'uuid',
         description: 'ID of the member',
       },
       type: {
         type: 'number',
-        description: 'User type (0: Owner, 1: Admin, 2: User, 3: Manager)',
-        enum: [0, 1, 2, 3],
-      },
-      accessAll: {
-        type: 'boolean',
-        description: 'Whether the member has access to all collections',
+        description: 'User type (0: Owner, 1: Admin, 2: User, 4: Custom)',
+        enum: [0, 1, 2, 4],
       },
       externalId: {
         type: 'string',
         description: 'External ID for the member (optional)',
+        maxLength: 300,
+      },
+      permissions: {
+        type: 'object',
+        description: 'Custom permissions if the member has a Custom role',
+        properties: {
+          accessEventLogs: { type: 'boolean' },
+          accessImportExport: { type: 'boolean' },
+          accessReports: { type: 'boolean' },
+          createNewCollections: { type: 'boolean' },
+          editAnyCollection: { type: 'boolean' },
+          deleteAnyCollection: { type: 'boolean' },
+          manageGroups: { type: 'boolean' },
+          managePolicies: { type: 'boolean' },
+          manageSso: { type: 'boolean' },
+          manageUsers: { type: 'boolean' },
+          manageResetPassword: { type: 'boolean' },
+          manageScim: { type: 'boolean' },
+        },
       },
       collections: {
         type: 'array',
@@ -258,43 +258,43 @@ export const updateOrgMemberTool: Tool = {
           required: ['id'],
         },
       },
+      groups: {
+        type: 'array',
+        description: 'Array of group IDs the member belongs to',
+        items: {
+          type: 'string',
+          format: 'uuid',
+          description: 'Group ID',
+        },
+      },
     },
-    required: ['organizationId', 'memberId', 'type'],
+    required: ['memberId', 'type'],
   },
 };
 
 export const removeOrgMemberTool: Tool = {
   name: 'remove_org_member',
-  description: 'Remove a member from an organization',
+  description: 'Remove a member from the organization',
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       memberId: {
         type: 'string',
         description: 'ID of the member',
       },
     },
-    required: ['organizationId', 'memberId'],
+    required: ['memberId'],
   },
 };
 
 // Organization Groups Tools
 export const listOrgGroupsTool: Tool = {
   name: 'list_org_groups',
-  description: 'List all groups in an organization',
+  description: 'List all groups in the organization',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -304,40 +304,31 @@ export const getOrgGroupTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       groupId: {
         type: 'string',
+        format: 'uuid',
         description: 'ID of the group',
       },
     },
-    required: ['organizationId', 'groupId'],
+    required: ['groupId'],
   },
 };
 
 export const createOrgGroupTool: Tool = {
   name: 'create_org_group',
-  description: 'Create a new group in an organization',
+  description: 'Create a new group in the organization',
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       name: {
         type: 'string',
         description: 'Name of the group',
-      },
-      accessAll: {
-        type: 'boolean',
-        description: 'Whether the group has access to all collections',
+        maxLength: 100,
       },
       externalId: {
         type: 'string',
         description: 'External ID for the group (optional)',
+        maxLength: 300,
       },
       collections: {
         type: 'array',
@@ -366,7 +357,7 @@ export const createOrgGroupTool: Tool = {
         },
       },
     },
-    required: ['organizationId', 'name'],
+    required: ['name'],
   },
 };
 
@@ -376,10 +367,6 @@ export const updateOrgGroupTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       groupId: {
         type: 'string',
         description: 'ID of the group',
@@ -387,10 +374,6 @@ export const updateOrgGroupTool: Tool = {
       name: {
         type: 'string',
         description: 'New name for the group',
-      },
-      accessAll: {
-        type: 'boolean',
-        description: 'Whether the group has access to all collections',
       },
       externalId: {
         type: 'string',
@@ -423,7 +406,7 @@ export const updateOrgGroupTool: Tool = {
         },
       },
     },
-    required: ['organizationId', 'groupId', 'name'],
+    required: ['groupId', 'name'],
   },
 };
 
@@ -433,16 +416,12 @@ export const deleteOrgGroupTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       groupId: {
         type: 'string',
         description: 'ID of the group',
       },
     },
-    required: ['organizationId', 'groupId'],
+    required: ['groupId'],
   },
 };
 
@@ -452,16 +431,12 @@ export const getOrgGroupMembersTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       groupId: {
         type: 'string',
         description: 'ID of the group',
       },
     },
-    required: ['organizationId', 'groupId'],
+    required: ['groupId'],
   },
 };
 
@@ -471,10 +446,6 @@ export const updateOrgGroupMembersTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       groupId: {
         type: 'string',
         description: 'ID of the group',
@@ -487,23 +458,18 @@ export const updateOrgGroupMembersTool: Tool = {
         },
       },
     },
-    required: ['organizationId', 'groupId', 'memberIds'],
+    required: ['groupId', 'memberIds'],
   },
 };
 
 // Organization Policies Tools
 export const listOrgPoliciesTool: Tool = {
   name: 'list_org_policies',
-  description: 'List all policies in an organization',
+  description: 'List all policies in the organization',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -513,16 +479,13 @@ export const getOrgPolicyTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
+      policyType: {
         type: 'string',
-        description: 'ID of the organization',
-      },
-      policyId: {
-        type: 'string',
-        description: 'ID of the policy',
+        description:
+          'Type of the policy (e.g., "TwoFactorAuthentication", "MasterPassword", etc.)',
       },
     },
-    required: ['organizationId', 'policyId'],
+    required: ['policyType'],
   },
 };
 
@@ -532,13 +495,10 @@ export const updateOrgPolicyTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
+      policyType: {
         type: 'string',
-        description: 'ID of the organization',
-      },
-      policyId: {
-        type: 'string',
-        description: 'ID of the policy',
+        description:
+          'Type of the policy (e.g., "TwoFactorAuthentication", "MasterPassword", etc.)',
       },
       enabled: {
         type: 'boolean',
@@ -549,21 +509,17 @@ export const updateOrgPolicyTool: Tool = {
         description: 'Policy configuration data',
       },
     },
-    required: ['organizationId', 'policyId', 'enabled'],
+    required: ['policyType', 'enabled'],
   },
 };
 
 // Organization Events Tools
 export const getOrgEventsTool: Tool = {
   name: 'get_org_events',
-  description: 'Get events for an organization',
+  description: 'Get events for the organization',
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       start: {
         type: 'string',
         description: 'Start date for events (ISO 8601 format)',
@@ -597,7 +553,7 @@ export const getOrgEventsTool: Tool = {
         description: 'Filter by member ID (optional)',
       },
     },
-    required: ['organizationId', 'start', 'end'],
+    required: ['start', 'end'],
   },
 };
 
@@ -607,13 +563,8 @@ export const getOrgTool: Tool = {
   description: 'Get organization details',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -623,10 +574,6 @@ export const updateOrgTool: Tool = {
   inputSchema: {
     type: 'object',
     properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
       name: {
         type: 'string',
         description: 'New name for the organization',
@@ -641,7 +588,7 @@ export const updateOrgTool: Tool = {
         format: 'email',
       },
     },
-    required: ['organizationId'],
+    required: [],
   },
 };
 
@@ -650,13 +597,8 @@ export const getOrgBillingTool: Tool = {
   description: 'Get organization billing information',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 
@@ -665,13 +607,8 @@ export const getOrgSubscriptionTool: Tool = {
   description: 'Get organization subscription information',
   inputSchema: {
     type: 'object',
-    properties: {
-      organizationId: {
-        type: 'string',
-        description: 'ID of the organization',
-      },
-    },
-    required: ['organizationId'],
+    properties: {},
+    required: [],
   },
 };
 

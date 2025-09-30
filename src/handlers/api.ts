@@ -97,8 +97,9 @@ export const handleGetOrgMember = withValidation(
 export const handleInviteOrgMember = withValidation(
   inviteMemberRequestSchema,
   async (validatedArgs) => {
-    const { emails, type, accessAll, externalId, collections } = validatedArgs;
-    const body = { emails, type, accessAll, externalId, collections };
+    const { email, type, externalId, collections, groups, permissions } =
+      validatedArgs;
+    const body = { email, type, externalId, collections, groups, permissions };
     return executeApiRequest(`/public/members`, 'POST', body);
   },
 );
@@ -106,9 +107,9 @@ export const handleInviteOrgMember = withValidation(
 export const handleUpdateOrgMember = withValidation(
   updateMemberRequestSchema,
   async (validatedArgs) => {
-    const { memberId, type, accessAll, externalId, collections } =
+    const { memberId, type, externalId, collections, groups, permissions } =
       validatedArgs;
-    const body = { type, accessAll, externalId, collections };
+    const body = { type, externalId, collections, groups, permissions };
     return executeApiRequest(`/public/members/${memberId}`, 'PUT', body);
   },
 );
@@ -140,8 +141,8 @@ export const handleGetOrgGroup = withValidation(
 export const handleCreateOrgGroup = withValidation(
   createGroupRequestSchema,
   async (validatedArgs) => {
-    const { name, accessAll, externalId, collections } = validatedArgs;
-    const body = { name, accessAll, externalId, collections };
+    const { name, externalId, collections } = validatedArgs;
+    const body = { name, externalId, collections };
     return executeApiRequest(`/public/groups`, 'POST', body);
   },
 );
@@ -149,8 +150,8 @@ export const handleCreateOrgGroup = withValidation(
 export const handleUpdateOrgGroup = withValidation(
   updateGroupRequestSchema,
   async (validatedArgs) => {
-    const { groupId, name, accessAll, externalId, collections } = validatedArgs;
-    const body = { name, accessAll, externalId, collections };
+    const { groupId, name, externalId, collections } = validatedArgs;
+    const body = { name, externalId, collections };
     return executeApiRequest(`/public/groups/${groupId}`, 'PUT', body);
   },
 );
@@ -195,17 +196,17 @@ export const handleListOrgPolicies = withValidation(
 export const handleGetOrgPolicy = withValidation(
   getPolicyRequestSchema,
   async (validatedArgs) => {
-    const { policyId } = validatedArgs;
-    return executeApiRequest(`/public/policies/${policyId}`, 'GET');
+    const { policyType } = validatedArgs;
+    return executeApiRequest(`/public/policies/${policyType}`, 'GET');
   },
 );
 
 export const handleUpdateOrgPolicy = withValidation(
   updatePolicyRequestSchema,
   async (validatedArgs) => {
-    const { policyId, enabled, data } = validatedArgs;
+    const { policyType, enabled, data } = validatedArgs;
     const body = { enabled, data };
-    return executeApiRequest(`/public/policies/${policyId}`, 'PUT', body);
+    return executeApiRequest(`/public/policies/${policyType}`, 'PUT', body);
   },
 );
 
