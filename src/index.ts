@@ -3,8 +3,6 @@
 /**
  * Bitwarden MCP Server - Main entry point
  *
- * A Model Context Protocol (MCP) server that provides comprehensive access to Bitwarden
- * password manager functionality through both CLI commands and Public API operations.
  *
  * Features:
  * - Personal vault operations (CLI-based)
@@ -73,8 +71,8 @@ import {
 async function runServer(): Promise<void> {
   const server = new Server(
     {
-      name: 'bitwarden-mcp-server',
-      version: '2025.8.2',
+      name: 'Bitwarden MCP Server',
+      version: '2025.9.0',
     },
     {
       capabilities: {
