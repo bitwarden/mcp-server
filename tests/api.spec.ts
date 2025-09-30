@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
+import { validateInput } from '../src/utils/validation.js';
 import {
-  validateInput,
   validateApiEndpoint,
   sanitizeApiParameters,
-} from '../src/index.js';
+} from '../src/utils/security.js';
 
 describe('API Security Functions', () => {
   describe('validateApiEndpoint', () => {
