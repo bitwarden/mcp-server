@@ -47,3 +47,24 @@ export function validateInput<T>(
     throw error;
   }
 }
+
+/**
+ * Higher-order function that handles validation and executes a handler function with validated arguments.
+ * This eliminates the need for every handler to duplicate validation error handling.
+ *
+ * @param schema - Zod schema for validation
+ * @param handlerFn - Function to execute with validated arguments
+ * @returns A handler function that validates input and executes the provided function
+ */
+export function withValidation<T, R>(
+  schema: z.ZodType<T>,
+  handlerFn: (validatedArgs: T) => Promise<R>,
+) {
+  return async (args: unknown): Promise<R> => {
+    const [success, validatedArgs] = validateInput(schema, args);
+    if (!success) {
+      return validatedArgs as R; // Type assertion needed due to union type
+    }
+    return handlerFn(validatedArgs);
+  };
+}

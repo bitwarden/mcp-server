@@ -91,13 +91,13 @@ async function runServer(): Promise<void> {
         switch (name) {
           // CLI Tools (Personal Vault Operations)
           case 'lock':
-            return { content: [await handleLock()] };
+            return { content: [await handleLock(args)] };
           case 'unlock':
             return { content: [await handleUnlock(args)] };
           case 'sync':
-            return { content: [await handleSync()] };
+            return { content: [await handleSync(args)] };
           case 'status':
-            return { content: [await handleStatus()] };
+            return { content: [await handleStatus(args)] };
           case 'list':
             return { content: [await handleList(args)] };
           case 'get':
@@ -204,6 +204,7 @@ async function runServer(): Promise<void> {
 }
 
 // Only run the server if this file is executed directly
+// Check if this is the main module by comparing file paths
 const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
 if (isMainModule) {
   runServer().catch((error) => {

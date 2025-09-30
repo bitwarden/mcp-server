@@ -1,5 +1,5 @@
 /**
- * Request handler schemas for Organization API operations
+ * Zod validation schemas for Organization API operations
  * These combine path parameters with request body schemas
  */
 

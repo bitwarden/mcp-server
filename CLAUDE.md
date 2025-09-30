@@ -14,17 +14,15 @@ Security-critical TypeScript MCP server providing AI models with access to Bitwa
 For vault management operations, every tool MUST follow this pattern - NO EXCEPTIONS:
 
 ```typescript
-// 1. Validate input with Zod schema
-const [success, validatedArgs] = validateInput(schema, args);
-if (!success) {
-  return validatedArgs; // Return validation error directly
-}
+// Modern pattern using withValidation higher-order function
+export const handleCommand = withValidation(schema, async (validatedArgs) => {
+  // 1. Build safe command (NEVER use string interpolation)
+  const command = buildSafeCommand('baseCommand', [param1, param2]);
 
-// 2. Build safe command (NEVER use string interpolation)
-const command = buildSafeCommand('baseCommand', [param1, param2]);
-
-// 3. Execute through security pipeline
-const result = await executeCliCommand(command);
+  // 2. Execute through security pipeline
+  const result = await executeCliCommand(command);
+  return result;
+});
 ```
 
 ### HTTP API Security Pipeline
@@ -32,14 +30,15 @@ const result = await executeCliCommand(command);
 For organization admin operations, every tool MUST follow this pattern - NO EXCEPTIONS:
 
 ```typescript
-// 1. Validate input with Zod schema
-const [success, validatedArgs] = validateInput(schema, args);
-if (!success) {
-  return validatedArgs; // Return validation error directly
-}
-
-// 2. Execute through authenticated HTTP pipeline with validated endpoint
-const result = await executeApiRequest(endpoint, method, validatedData);
+// Modern pattern using withValidation higher-order function
+export const handleApiCommand = withValidation(
+  schema,
+  async (validatedArgs) => {
+    // Execute through authenticated HTTP pipeline with validated endpoint
+    const result = await executeApiRequest(endpoint, method, validatedData);
+    return result;
+  },
+);
 ```
 
 ### Security Functions
@@ -62,6 +61,62 @@ const result = await executeApiRequest(endpoint, method, validatedData);
 
 Apply [Bitwarden security definitions](https://contributing.bitwarden.com/architecture/security/definitions).
 
+## 🚀 withValidation Pattern
+
+### Overview
+
+The `withValidation` higher-order function pattern eliminates validation code duplication across all handlers while maintaining type safety and security.
+
+### Pattern Benefits
+
+- **Type Safety**: Full TypeScript inference for validated arguments
+- **Consistent Error Handling**: Standardized validation error responses
+- **Clean Separation**: Business logic separated from validation concerns
+- **Maintainability**: Single place to modify validation behavior
+
+### Implementation
+
+**withValidation Function:**
+
+```typescript
+export function withValidation<T, R>(
+  schema: z.ZodSchema<T>,
+  handler: (validatedArgs: T) => Promise<R>,
+) {
+  return async (args: unknown): Promise<R> => {
+    const [success, validatedArgs] = validateInput(schema, args);
+    if (!success) {
+      return validatedArgs as R;
+    }
+    return handler(validatedArgs);
+  };
+}
+```
+
+**Usage Examples:**
+
+```typescript
+// CLI Handler
+export const handleUnlock = withValidation(
+  unlockSchema,
+  async (validatedArgs) => {
+    const { password } = validatedArgs; // Fully typed!
+    const command = buildSafeCommand('unlock', [password, '--raw']);
+    return executeCliCommand(command);
+  },
+);
+
+// API Handler
+export const handleCreateOrgCollection = withValidation(
+  createCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { name, externalId } = validatedArgs; // Fully typed!
+    const body = { name, externalId };
+    return executeApiRequest('/public/collections', 'POST', body);
+  },
+);
+```
+
 ## Architecture
 
 ### Dual Interface Pattern
@@ -82,19 +137,32 @@ The MCP server provides two distinct operational interfaces:
 
 ### Tool Implementation Pattern
 
-**CLI Tools:**
-
 1. **Schema**: `const schema = z.object({...})`
 2. **Declaration**: `const tool: Tool = { name, description, inputSchema }`
-3. **Handler**: Switch case with CLI security pipeline
-4. **Execution**: `executeCliCommand()`
+3. **Handler**: `withValidation(schema, async (validatedArgs) => { ... })`
+4. **Execution**: Direct execution within validated handler
+
+**CLI Tools:**
+
+```typescript
+export const handleCommand = withValidation(
+  commandSchema,
+  async (validatedArgs) => {
+    return executeCliCommand(buildSafeCommand('cmd', [validatedArgs.param]));
+  },
+);
+```
 
 **API Tools:**
 
-1. **Schema**: `const schema = z.object({...})`
-2. **Declaration**: `const tool: Tool = { name, description, inputSchema }`
-3. **Handler**: Switch case with API security pipeline
-4. **Execution**: `executeApiRequest()`
+```typescript
+export const handleApiCommand = withValidation(
+  apiSchema,
+  async (validatedArgs) => {
+    return executeApiRequest('/public/endpoint', 'GET', validatedArgs);
+  },
+);
+```
 
 ### Tool Categories
 
@@ -343,7 +411,7 @@ return {
 - `src/utils/config.ts` - Environment configuration management
 - `src/utils/security.ts` - Security functions including `buildSafeCommand` and endpoint validation
 - `src/utils/types.ts` - TypeScript type definitions for CLI and API responses
-- `src/utils/validation.ts` - Input validation utilities with consistent error formatting
+- `src/utils/validation.ts` - Input validation utilities with `withValidation` higher-order function and consistent error formatting
 
 ### Testing
 

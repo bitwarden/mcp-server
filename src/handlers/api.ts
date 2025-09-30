@@ -3,7 +3,7 @@
  */
 
 import { executeApiRequest } from '../utils/api.js';
-import { validateInput } from '../utils/validation.js';
+import { withValidation } from '../utils/validation.js';
 import {
   listCollectionsRequestSchema,
   getCollectionRequestSchema,
@@ -31,373 +31,240 @@ import {
   getBillingRequestSchema,
   getSubscriptionRequestSchema,
 } from '../schemas/api.js';
-import type { ApiResponse } from '../utils/types.js';
 
 // Collections handlers
-export async function handleListOrgCollections(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    listCollectionsRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleListOrgCollections = withValidation(
+  listCollectionsRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/collections`, 'GET');
+  },
+);
 
-  return executeApiRequest(`/public/collections`, 'GET');
-}
+export const handleGetOrgCollection = withValidation(
+  getCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { collectionId } = validatedArgs;
+    return executeApiRequest(`/public/collections/${collectionId}`, 'GET');
+  },
+);
 
-export async function handleGetOrgCollection(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    getCollectionRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleCreateOrgCollection = withValidation(
+  createCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { name, externalId } = validatedArgs;
+    const body = { name, externalId };
+    return executeApiRequest(`/public/collections`, 'POST', body);
+  },
+);
 
-  const { collectionId } = validatedArgs;
-  return executeApiRequest(`/public/collections/${collectionId}`, 'GET');
-}
+export const handleUpdateOrgCollection = withValidation(
+  updateCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { collectionId, name, externalId } = validatedArgs;
+    const body = { name, externalId };
+    return executeApiRequest(
+      `/public/collections/${collectionId}`,
+      'PUT',
+      body,
+    );
+  },
+);
 
-export async function handleCreateOrgCollection(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    createCollectionRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { name, externalId } = validatedArgs;
-  const body = { name, externalId };
-  return executeApiRequest(`/public/collections`, 'POST', body);
-}
-
-export async function handleUpdateOrgCollection(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updateCollectionRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { collectionId, name, externalId } = validatedArgs;
-  const body = { name, externalId };
-  return executeApiRequest(`/public/collections/${collectionId}`, 'PUT', body);
-}
-
-export async function handleDeleteOrgCollection(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    deleteCollectionRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { collectionId } = validatedArgs;
-  return executeApiRequest(`/public/collections/${collectionId}`, 'DELETE');
-}
+export const handleDeleteOrgCollection = withValidation(
+  deleteCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { collectionId } = validatedArgs;
+    return executeApiRequest(`/public/collections/${collectionId}`, 'DELETE');
+  },
+);
 
 // Members handlers
-export async function handleListOrgMembers(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    listMembersRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleListOrgMembers = withValidation(
+  listMembersRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/members`, 'GET');
+  },
+);
 
-  return executeApiRequest(`/public/members`, 'GET');
-}
+export const handleGetOrgMember = withValidation(
+  getMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId } = validatedArgs;
+    return executeApiRequest(`/public/members/${memberId}`, 'GET');
+  },
+);
 
-export async function handleGetOrgMember(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(getMemberRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleInviteOrgMember = withValidation(
+  inviteMemberRequestSchema,
+  async (validatedArgs) => {
+    const { emails, type, accessAll, externalId, collections } = validatedArgs;
+    const body = { emails, type, accessAll, externalId, collections };
+    return executeApiRequest(`/public/members`, 'POST', body);
+  },
+);
 
-  const { memberId } = validatedArgs;
-  return executeApiRequest(`/public/members/${memberId}`, 'GET');
-}
+export const handleUpdateOrgMember = withValidation(
+  updateMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId, type, accessAll, externalId, collections } =
+      validatedArgs;
+    const body = { type, accessAll, externalId, collections };
+    return executeApiRequest(`/public/members/${memberId}`, 'PUT', body);
+  },
+);
 
-export async function handleInviteOrgMember(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    inviteMemberRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { emails, type, accessAll, externalId, collections } = validatedArgs;
-  const body = { emails, type, accessAll, externalId, collections };
-  return executeApiRequest(`/public/members`, 'POST', body);
-}
-
-export async function handleUpdateOrgMember(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updateMemberRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { memberId, type, accessAll, externalId, collections } = validatedArgs;
-  const body = { type, accessAll, externalId, collections };
-  return executeApiRequest(`/public/members/${memberId}`, 'PUT', body);
-}
-
-export async function handleRemoveOrgMember(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    removeMemberRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { memberId } = validatedArgs;
-  return executeApiRequest(`/public/members/${memberId}`, 'DELETE');
-}
+export const handleRemoveOrgMember = withValidation(
+  removeMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId } = validatedArgs;
+    return executeApiRequest(`/public/members/${memberId}`, 'DELETE');
+  },
+);
 
 // Groups handlers
-export async function handleListOrgGroups(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(listGroupsRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleListOrgGroups = withValidation(
+  listGroupsRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/groups`, 'GET');
+  },
+);
 
-  return executeApiRequest(`/public/groups`, 'GET');
-}
+export const handleGetOrgGroup = withValidation(
+  getGroupRequestSchema,
+  async (validatedArgs) => {
+    const { groupId } = validatedArgs;
+    return executeApiRequest(`/public/groups/${groupId}`, 'GET');
+  },
+);
 
-export async function handleGetOrgGroup(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(getGroupRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleCreateOrgGroup = withValidation(
+  createGroupRequestSchema,
+  async (validatedArgs) => {
+    const { name, accessAll, externalId, collections } = validatedArgs;
+    const body = { name, accessAll, externalId, collections };
+    return executeApiRequest(`/public/groups`, 'POST', body);
+  },
+);
 
-  const { groupId } = validatedArgs;
-  return executeApiRequest(`/public/groups/${groupId}`, 'GET');
-}
+export const handleUpdateOrgGroup = withValidation(
+  updateGroupRequestSchema,
+  async (validatedArgs) => {
+    const { groupId, name, accessAll, externalId, collections } = validatedArgs;
+    const body = { name, accessAll, externalId, collections };
+    return executeApiRequest(`/public/groups/${groupId}`, 'PUT', body);
+  },
+);
 
-export async function handleCreateOrgGroup(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    createGroupRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleDeleteOrgGroup = withValidation(
+  deleteGroupRequestSchema,
+  async (validatedArgs) => {
+    const { groupId } = validatedArgs;
+    return executeApiRequest(`/public/groups/${groupId}`, 'DELETE');
+  },
+);
 
-  const { name, accessAll, externalId, collections } = validatedArgs;
-  const body = { name, accessAll, externalId, collections };
-  return executeApiRequest(`/public/groups`, 'POST', body);
-}
+export const handleGetOrgGroupMembers = withValidation(
+  getGroupMembersRequestSchema,
+  async (validatedArgs) => {
+    const { groupId } = validatedArgs;
+    return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'GET');
+  },
+);
 
-export async function handleUpdateOrgGroup(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updateGroupRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { groupId, name, accessAll, externalId, collections } = validatedArgs;
-  const body = { name, accessAll, externalId, collections };
-  return executeApiRequest(`/public/groups/${groupId}`, 'PUT', body);
-}
-
-export async function handleDeleteOrgGroup(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    deleteGroupRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { groupId } = validatedArgs;
-  return executeApiRequest(`/public/groups/${groupId}`, 'DELETE');
-}
-
-export async function handleGetOrgGroupMembers(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    getGroupMembersRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { groupId } = validatedArgs;
-  return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'GET');
-}
-
-export async function handleUpdateOrgGroupMembers(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updateGroupMembersRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { groupId, memberIds } = validatedArgs;
-  const body = { memberIds };
-  return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'PUT', body);
-}
+export const handleUpdateOrgGroupMembers = withValidation(
+  updateGroupMembersRequestSchema,
+  async (validatedArgs) => {
+    const { groupId, memberIds } = validatedArgs;
+    const body = { memberIds };
+    return executeApiRequest(
+      `/public/groups/${groupId}/member-ids`,
+      'PUT',
+      body,
+    );
+  },
+);
 
 // Policies handlers
-export async function handleListOrgPolicies(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    listPoliciesRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleListOrgPolicies = withValidation(
+  listPoliciesRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/policies`, 'GET');
+  },
+);
 
-  return executeApiRequest(`/public/policies`, 'GET');
-}
+export const handleGetOrgPolicy = withValidation(
+  getPolicyRequestSchema,
+  async (validatedArgs) => {
+    const { policyId } = validatedArgs;
+    return executeApiRequest(`/public/policies/${policyId}`, 'GET');
+  },
+);
 
-export async function handleGetOrgPolicy(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(getPolicyRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { policyId } = validatedArgs;
-  return executeApiRequest(`/public/policies/${policyId}`, 'GET');
-}
-
-export async function handleUpdateOrgPolicy(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updatePolicyRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  const { policyId, enabled, data } = validatedArgs;
-  const body = { enabled, data };
-  return executeApiRequest(`/public/policies/${policyId}`, 'PUT', body);
-}
+export const handleUpdateOrgPolicy = withValidation(
+  updatePolicyRequestSchema,
+  async (validatedArgs) => {
+    const { policyId, enabled, data } = validatedArgs;
+    const body = { enabled, data };
+    return executeApiRequest(`/public/policies/${policyId}`, 'PUT', body);
+  },
+);
 
 // Events handlers
-export async function handleGetOrgEvents(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(getEventsRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleGetOrgEvents = withValidation(
+  getEventsRequestSchema,
+  async (validatedArgs) => {
+    const {
+      start,
+      end,
+      actingUserId,
+      itemId,
+      collectionId,
+      groupId,
+      policyId,
+      memberId,
+    } = validatedArgs;
+    const params = new URLSearchParams({
+      start,
+      end,
+      ...(actingUserId && { actingUserId }),
+      ...(itemId && { itemId }),
+      ...(collectionId && { collectionId }),
+      ...(groupId && { groupId }),
+      ...(policyId && { policyId }),
+      ...(memberId && { memberId }),
+    });
 
-  const {
-    start,
-    end,
-    actingUserId,
-    itemId,
-    collectionId,
-    groupId,
-    policyId,
-    memberId,
-  } = validatedArgs;
-  const params = new URLSearchParams({
-    start,
-    end,
-    ...(actingUserId && { actingUserId }),
-    ...(itemId && { itemId }),
-    ...(collectionId && { collectionId }),
-    ...(groupId && { groupId }),
-    ...(policyId && { policyId }),
-    ...(memberId && { memberId }),
-  });
-
-  return executeApiRequest(`/public/events?${params.toString()}`, 'GET');
-}
+    return executeApiRequest(`/public/events?${params.toString()}`, 'GET');
+  },
+);
 
 // Organization handlers
-export async function handleGetOrg(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    getOrganizationRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleGetOrg = withValidation(
+  getOrganizationRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/organization`, 'GET');
+  },
+);
 
-  return executeApiRequest(`/public/organization`, 'GET');
-}
+export const handleUpdateOrg = withValidation(
+  updateOrganizationRequestSchema,
+  async (validatedArgs) => {
+    const { name, businessName, billingEmail } = validatedArgs;
+    const body = { name, businessName, billingEmail };
+    return executeApiRequest(`/public/organization`, 'PUT', body);
+  },
+);
 
-export async function handleUpdateOrg(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    updateOrganizationRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
+export const handleGetOrgBilling = withValidation(
+  getBillingRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/organization/billing`, 'GET');
+  },
+);
 
-  const { name, businessName, billingEmail } = validatedArgs;
-  const body = { name, businessName, billingEmail };
-  return executeApiRequest(`/public/organization`, 'PUT', body);
-}
-
-export async function handleGetOrgBilling(args: unknown): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(getBillingRequestSchema, args);
-  if (!success) {
-    return validatedArgs;
-  }
-
-  return executeApiRequest(`/public/organization/billing`, 'GET');
-}
-
-export async function handleGetOrgSubscription(
-  args: unknown,
-): Promise<ApiResponse> {
-  const [success, validatedArgs] = validateInput(
-    getSubscriptionRequestSchema,
-    args,
-  );
-  if (!success) {
-    return validatedArgs;
-  }
-
-  return executeApiRequest(`/public/organization/subscription`, 'GET');
-}
+export const handleGetOrgSubscription = withValidation(
+  getSubscriptionRequestSchema,
+  async () => {
+    return executeApiRequest(`/public/organization/subscription`, 'GET');
+  },
+);
