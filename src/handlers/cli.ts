@@ -4,6 +4,7 @@
 
 import { executeCliCommand } from '../utils/cli.js';
 import { validateInput } from '../utils/validation.js';
+import { buildSafeCommand } from '../utils/security.js';
 import {
   lockSchema,
   unlockSchema,
@@ -19,9 +20,9 @@ import {
 import type { CliResponse } from '../utils/types.js';
 
 export async function handleLock(): Promise<CliResponse> {
-  const [success] = validateInput(lockSchema, {});
+  const [success, validatedArgs] = validateInput(lockSchema, {});
   if (!success) {
-    return { errorOutput: 'Validation failed for lock command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   return executeCliCommand('lock');
 }
@@ -29,24 +30,25 @@ export async function handleLock(): Promise<CliResponse> {
 export async function handleUnlock(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(unlockSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for unlock command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { password } = validatedArgs;
-  return executeCliCommand(`unlock ${password} --raw`);
+  const command = buildSafeCommand('unlock', [password, '--raw']);
+  return executeCliCommand(command);
 }
 
 export async function handleSync(): Promise<CliResponse> {
-  const [success] = validateInput(syncSchema, {});
+  const [success, validatedArgs] = validateInput(syncSchema, {});
   if (!success) {
-    return { errorOutput: 'Validation failed for sync command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   return executeCliCommand('sync');
 }
 
 export async function handleStatus(): Promise<CliResponse> {
-  const [success] = validateInput(statusSchema, {});
+  const [success, validatedArgs] = validateInput(statusSchema, {});
   if (!success) {
-    return { errorOutput: 'Validation failed for status command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   return executeCliCommand('status');
 }
@@ -54,75 +56,79 @@ export async function handleStatus(): Promise<CliResponse> {
 export async function handleList(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(listSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for list command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { type, search } = validatedArgs;
-  let command = `list ${type}`;
+  const params: string[] = [type];
   if (search) {
-    command += ` --search "${search}"`;
+    params.push('--search', search);
   }
+  const command = buildSafeCommand('list', params);
   return executeCliCommand(command);
 }
 
 export async function handleGet(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(getSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for get command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { object, id } = validatedArgs;
-  return executeCliCommand(`get ${object} "${id}"`);
+  const command = buildSafeCommand('get', [object, id]);
+  return executeCliCommand(command);
 }
 
 export async function handleGenerate(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(generateSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for generate command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
 
-  let command = 'generate';
+  const params: string[] = [];
 
   if (validatedArgs.passphrase) {
-    command += ' --passphrase';
+    params.push('--passphrase');
     if (validatedArgs.words) {
-      command += ` --words ${validatedArgs.words}`;
+      params.push('--words', validatedArgs.words.toString());
     }
     if (validatedArgs.separator) {
-      command += ` --separator "${validatedArgs.separator}"`;
+      params.push('--separator', validatedArgs.separator);
     }
     if (validatedArgs.capitalize) {
-      command += ' --capitalize';
+      params.push('--capitalize');
     }
   } else {
     if (validatedArgs.length) {
-      command += ` --length ${validatedArgs.length}`;
+      params.push('--length', validatedArgs.length.toString());
     }
     if (validatedArgs.uppercase === false) {
-      command += ' --noUppercase';
+      params.push('--noUppercase');
     }
     if (validatedArgs.lowercase === false) {
-      command += ' --noLowercase';
+      params.push('--noLowercase');
     }
     if (validatedArgs.number === false) {
-      command += ' --noNumbers';
+      params.push('--noNumbers');
     }
     if (validatedArgs.special === false) {
-      command += ' --noSpecial';
+      params.push('--noSpecial');
     }
   }
 
+  const command = buildSafeCommand('generate', params);
   return executeCliCommand(command);
 }
 
 export async function handleCreate(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(createSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for create command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { objectType, name, type, notes, login } = validatedArgs;
 
   if (objectType === 'folder') {
     const encodedItem = JSON.stringify({ name });
-    return executeCliCommand(`create folder '${encodedItem}'`);
+    const command = buildSafeCommand('create', ['folder', encodedItem]);
+    return executeCliCommand(command);
   } else {
     // Creating an item
     const item: Record<string, unknown> = {
@@ -136,20 +142,22 @@ export async function handleCreate(args: unknown): Promise<CliResponse> {
     }
 
     const encodedItem = JSON.stringify(item);
-    return executeCliCommand(`create item '${encodedItem}'`);
+    const command = buildSafeCommand('create', ['item', encodedItem]);
+    return executeCliCommand(command);
   }
 }
 
 export async function handleEdit(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(editSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for edit command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { objectType, id, name, notes, login } = validatedArgs;
 
   if (objectType === 'folder') {
     const encodedItem = JSON.stringify({ name });
-    return executeCliCommand(`edit folder ${id} '${encodedItem}'`);
+    const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
+    return executeCliCommand(command);
   } else {
     // Editing an item
     const updates: Record<string, unknown> = {};
@@ -158,19 +166,21 @@ export async function handleEdit(args: unknown): Promise<CliResponse> {
     if (login) updates['login'] = login;
 
     const encodedUpdates = JSON.stringify(updates);
-    return executeCliCommand(`edit item ${id} '${encodedUpdates}'`);
+    const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
+    return executeCliCommand(command);
   }
 }
 
 export async function handleDelete(args: unknown): Promise<CliResponse> {
   const [success, validatedArgs] = validateInput(deleteSchema, args);
   if (!success) {
-    return { errorOutput: 'Validation failed for delete command' };
+    return { errorOutput: validatedArgs.content[0].text };
   }
   const { object, id, permanent } = validatedArgs;
-  let command = `delete ${object} ${id}`;
+  const params: string[] = [object, id];
   if (permanent) {
-    command += ' --permanent';
+    params.push('--permanent');
   }
+  const command = buildSafeCommand('delete', params);
   return executeCliCommand(command);
 }
