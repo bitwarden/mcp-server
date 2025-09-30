@@ -15,11 +15,10 @@ For vault management operations, every tool MUST follow this pattern - NO EXCEPT
 
 ```typescript
 // 1. Validate input with Zod schema
-const [isValid, validationResult] = validateInput(
-  schema,
-  request.params.arguments,
-);
-if (!isValid) return validationResult;
+const [success, validatedArgs] = validateInput(schema, args);
+if (!success) {
+  return validatedArgs; // Return validation error directly
+}
 
 // 2. Build safe command (NEVER use string interpolation)
 const command = buildSafeCommand('baseCommand', [param1, param2]);
@@ -34,17 +33,13 @@ For organization admin operations, every tool MUST follow this pattern - NO EXCE
 
 ```typescript
 // 1. Validate input with Zod schema
-const [isValid, validationResult] = validateInput(
-  schema,
-  request.params.arguments,
-);
-if (!isValid) return validationResult;
+const [success, validatedArgs] = validateInput(schema, args);
+if (!success) {
+  return validatedArgs; // Return validation error directly
+}
 
-// 2. Build safe HTTP request (validate URL paths and parameters)
-const request = buildSafeApiRequest(endpoint, method, validatedData);
-
-// 3. Execute through authenticated HTTP pipeline
-const result = await executeApiRequest(request);
+// 2. Execute through authenticated HTTP pipeline with validated endpoint
+const result = await executeApiRequest(endpoint, method, validatedData);
 ```
 
 ### Security Functions
@@ -121,6 +116,28 @@ The MCP server provides two distinct operational interfaces:
 ## Organization Administration Tools
 
 The MCP server now supports comprehensive organization administration through the Bitwarden Public API. These tools enable enterprise-level management of users, access controls, and security policies.
+
+### API Specification Compliance
+
+**All API tools, handlers, and schemas are based on the official [Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/).**
+
+Key compliance features:
+
+- **Endpoint Accuracy**: All API endpoints use the correct `/public/` prefix patterns as specified in the official swagger documentation
+- **Schema Validation**: Zod schemas mirror the exact request/response formats defined in the API specification
+- **HTTP Methods**: Proper REST verbs (GET, POST, PUT, DELETE) matching the swagger definitions
+- **Parameter Handling**: Query parameters, path parameters, and request bodies follow specification exactly
+- **Response Formats**: Handler responses conform to expected API data structures
+
+**Examples of Specification Compliance:**
+
+- Collections: `GET/POST/PUT/DELETE /public/collections`
+- Members: `GET/POST/PUT/DELETE /public/members`
+- Groups: `GET/POST/PUT/DELETE /public/groups`
+- Group Members: `GET/PUT /public/groups/{id}/member-ids` (not `/members`)
+- Events: `GET /public/events` with proper query parameter handling
+
+This ensures that all organization management operations work correctly with Bitwarden's production API services and maintain compatibility with future API updates.
 
 ### Collections Management
 
@@ -299,9 +316,43 @@ return {
 
 ## Key Files
 
-- `src/index.ts` - Server implementation
-- `tests/security.spec.ts` - Security tests
-- `.jest/setEnvVars.js` - Test environment
+### Core Architecture
+
+- `src/index.ts` - Main server entry point
+
+### Handlers (Business Logic)
+
+- `src/handlers/cli.ts` - CLI command handlers
+- `src/handlers/api.ts` - API endpoint handlers
+
+### Schemas (Validation)
+
+- `src/schemas/cli.ts` - Zod validation schemas for CLI operations
+- `src/schemas/api.ts` - Zod validation schemas for API operations
+
+### Tools (MCP Interface)
+
+- `src/tools/cli.ts` - CLI tool definitions for MCP protocol
+- `src/tools/api.ts` - API tool definitions for MCP protocol
+- `src/tools/index.ts` - Centralized tool exports
+
+### Utilities (Shared Services)
+
+- `src/utils/api.ts` - HTTP client with OAuth2 authentication and token management
+- `src/utils/cli.ts` - CLI command execution with security wrappers
+- `src/utils/config.ts` - Environment configuration management
+- `src/utils/security.ts` - Security functions including `buildSafeCommand` and endpoint validation
+- `src/utils/types.ts` - TypeScript type definitions for CLI and API responses
+- `src/utils/validation.ts` - Input validation utilities with consistent error formatting
+
+### Testing
+
+- `tests/security.spec.ts` - Security validation tests
+- `tests/api.spec.ts` - API functionality tests
+- `tests/cli-commands.spec.ts` - CLI command tests
+- `tests/core.spec.ts` - Core server functionality tests
+- `tests/validation.spec.ts` - Input validation tests
+- `.jest/setEnvVars.js` - Test environment configuration
 
 ## Code Style
 
