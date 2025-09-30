@@ -100,23 +100,33 @@ export function validateApiEndpoint(endpoint: string): boolean {
 
   // Allowed API endpoint patterns for Bitwarden Public API
   const allowedPatterns = [
-    /^\/public\/collections$/,
-    /^\/public\/collections\/[a-f0-9-]{36}$/,
-    /^\/public\/members$/,
-    /^\/public\/members\/[a-f0-9-]{36}$/,
-    /^\/public\/members\/[a-f0-9-]{36}\/group-ids$/,
-    /^\/public\/members\/[a-f0-9-]{36}\/reinvite$/,
-    /^\/public\/groups$/,
-    /^\/public\/groups\/[a-f0-9-]{36}$/,
-    /^\/public\/groups\/[a-f0-9-]{36}\/member-ids$/,
-    /^\/public\/policies$/,
-    /^\/public\/policies\/[0-9]+$/,
-    /^\/public\/events$/,
-    /^\/public\/events\?.*$/,
-    /^\/public\/organization$/,
-    /^\/public\/organization\/billing$/,
-    /^\/public\/organization\/subscription$/,
-    /^\/public\/organization\/import$/,
+    // Collections API
+    /^\/public\/collections$/, // GET (list), POST (not supported)
+    /^\/public\/collections\/[a-f0-9-]{36}$/, // GET, PUT, DELETE
+
+    // Members API
+    /^\/public\/members$/, // GET (list), POST (invite)
+    /^\/public\/members\/[a-f0-9-]{36}$/, // GET, PUT, DELETE
+    /^\/public\/members\/[a-f0-9-]{36}\/group-ids$/, // GET (member's group IDs)
+    /^\/public\/members\/[a-f0-9-]{36}\/reinvite$/, // POST (reinvite member)
+
+    // Groups API
+    /^\/public\/groups$/, // GET (list), POST (create)
+    /^\/public\/groups\/[a-f0-9-]{36}$/, // GET, PUT, DELETE
+    /^\/public\/groups\/[a-f0-9-]{36}\/member-ids$/, // GET, PUT (group members)
+
+    // Policies API
+    /^\/public\/policies$/, // GET (list)
+    /^\/public\/policies\/\d+$/, // GET, PUT (policy by type integer 0-15)
+
+    // Events API
+    /^\/public\/events$/, // GET (list events)
+    /^\/public\/events\?.*$/, // GET with query parameters
+
+    // Organization Billing API (Public API)
+    /^\/public\/organization$/, // GET (organization billing details)
+    /^\/public\/organization\/sm-subscription$/, // PUT (Secrets Manager subscription)
+    /^\/public\/organization\/import$/, // POST (import members and groups)
   ] as const;
 
   return allowedPatterns.some((pattern) => pattern.test(endpoint));

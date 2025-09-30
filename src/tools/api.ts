@@ -30,25 +30,6 @@ export const getOrgCollectionTool: Tool = {
   },
 };
 
-export const createOrgCollectionTool: Tool = {
-  name: 'create_org_collection',
-  description: 'Create a new collection in the organization',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      name: {
-        type: 'string',
-        description: 'Name of the collection',
-      },
-      externalId: {
-        type: 'string',
-        description: 'External ID for the collection (optional)',
-      },
-    },
-    required: ['name'],
-  },
-};
-
 export const updateOrgCollectionTool: Tool = {
   name: 'update_org_collection',
   description: 'Update an existing organization collection',
@@ -59,16 +40,12 @@ export const updateOrgCollectionTool: Tool = {
         type: 'string',
         description: 'ID of the collection',
       },
-      name: {
-        type: 'string',
-        description: 'New name for the collection',
-      },
       externalId: {
         type: 'string',
         description: 'New external ID for the collection (optional)',
       },
     },
-    required: ['collectionId', 'name'],
+    required: ['collectionId'],
   },
 };
 
@@ -425,18 +402,19 @@ export const deleteOrgGroupTool: Tool = {
   },
 };
 
-export const getOrgGroupMembersTool: Tool = {
-  name: 'get_org_group_members',
-  description: 'Get members of a specific organization group',
+export const getOrgMemberGroupsTool: Tool = {
+  name: 'get_org_member_groups',
+  description: 'Get group IDs that a member belongs to',
   inputSchema: {
     type: 'object',
     properties: {
-      groupId: {
+      memberId: {
         type: 'string',
-        description: 'ID of the group',
+        format: 'uuid',
+        description: 'ID of the member',
       },
     },
-    required: ['groupId'],
+    required: ['memberId'],
   },
 };
 
@@ -480,9 +458,11 @@ export const getOrgPolicyTool: Tool = {
     type: 'object',
     properties: {
       policyType: {
-        type: 'string',
+        type: 'integer',
         description:
-          'Type of the policy (e.g., "TwoFactorAuthentication", "MasterPassword", etc.)',
+          'Type of the policy (0=TwoFactorAuthentication, 1=MasterPassword, 2=PasswordGenerator, 3=SingleOrg, 4=RequireSso, 5=OrganizationDataOwnership, 6=DisableSend, 7=SendOptions, 8=ResetPassword, 9=MaximumVaultTimeout, 10=DisablePersonalVaultExport, 11=ActivateAutofill, 12=AutomaticAppLogIn, 13=FreeFamiliesSponsorshipPolicy, 14=RemoveUnlockWithPin, 15=RestrictedItemTypesPolicy)',
+        minimum: 0,
+        maximum: 15,
       },
     },
     required: ['policyType'],
@@ -496,9 +476,11 @@ export const updateOrgPolicyTool: Tool = {
     type: 'object',
     properties: {
       policyType: {
-        type: 'string',
+        type: 'integer',
         description:
-          'Type of the policy (e.g., "TwoFactorAuthentication", "MasterPassword", etc.)',
+          'Type of the policy (0=TwoFactorAuthentication, 1=MasterPassword, 2=PasswordGenerator, 3=SingleOrg, 4=RequireSso, 5=OrganizationDataOwnership, 6=DisableSend, 7=SendOptions, 8=ResetPassword, 9=MaximumVaultTimeout, 10=DisablePersonalVaultExport, 11=ActivateAutofill, 12=AutomaticAppLogIn, 13=FreeFamiliesSponsorshipPolicy, 14=RemoveUnlockWithPin, 15=RestrictedItemTypesPolicy)',
+        minimum: 0,
+        maximum: 15,
       },
       enabled: {
         type: 'boolean',
@@ -557,10 +539,10 @@ export const getOrgEventsTool: Tool = {
   },
 };
 
-// Organization Info Tools
-export const getOrgTool: Tool = {
-  name: 'get_org',
-  description: 'Get organization details',
+// Organization Billing Tools (Public API)
+export const getPublicOrgTool: Tool = {
+  name: 'get_public_org',
+  description: 'Get organization billing details via Public API',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -568,47 +550,100 @@ export const getOrgTool: Tool = {
   },
 };
 
-export const updateOrgTool: Tool = {
-  name: 'update_org',
-  description: 'Update organization settings',
+export const updateOrgSecretsManagerSubscriptionTool: Tool = {
+  name: 'update_org_sm_subscription',
+  description: 'Update organization Secrets Manager subscription',
   inputSchema: {
     type: 'object',
     properties: {
-      name: {
-        type: 'string',
-        description: 'New name for the organization',
+      smSeats: {
+        type: 'number',
+        description: 'Number of Secrets Manager seats',
+        minimum: 0,
       },
-      businessName: {
-        type: 'string',
-        description: 'Business name for the organization',
-      },
-      billingEmail: {
-        type: 'string',
-        description: 'Billing email for the organization',
-        format: 'email',
+      smServiceAccounts: {
+        type: 'number',
+        description: 'Number of Secrets Manager service accounts',
+        minimum: 0,
       },
     },
     required: [],
   },
 };
 
-export const getOrgBillingTool: Tool = {
-  name: 'get_org_billing',
-  description: 'Get organization billing information',
+export const importOrgUsersAndGroupsTool: Tool = {
+  name: 'import_org_users_and_groups',
+  description: 'Import members and groups from an external system',
   inputSchema: {
     type: 'object',
-    properties: {},
-    required: [],
-  },
-};
-
-export const getOrgSubscriptionTool: Tool = {
-  name: 'get_org_subscription',
-  description: 'Get organization subscription information',
-  inputSchema: {
-    type: 'object',
-    properties: {},
-    required: [],
+    properties: {
+      groups: {
+        type: 'array',
+        description: 'Groups to import',
+        items: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Name of the group',
+              maxLength: 100,
+            },
+            externalId: {
+              type: 'string',
+              description: 'External ID for the group',
+              maxLength: 300,
+            },
+            memberExternalIds: {
+              type: 'array',
+              description: 'External IDs of members in this group',
+              items: {
+                type: 'string',
+              },
+            },
+          },
+          required: ['name', 'externalId'],
+        },
+      },
+      members: {
+        type: 'array',
+        description: 'Members to import',
+        items: {
+          type: 'object',
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Email address (required for non-deleted users)',
+              maxLength: 256,
+            },
+            externalId: {
+              type: 'string',
+              description: 'External ID for the member',
+              maxLength: 300,
+            },
+            deleted: {
+              type: 'boolean',
+              description:
+                'Whether this member should be removed from the organization',
+              default: false,
+            },
+          },
+          required: ['externalId'],
+        },
+      },
+      overwriteExisting: {
+        type: 'boolean',
+        description: 'Whether to overwrite existing data or append to it',
+        default: false,
+      },
+      largeImport: {
+        type: 'boolean',
+        description:
+          'Indicates an import of over 2000 users and/or groups is expected',
+        default: false,
+      },
+    },
+    required: ['overwriteExisting'],
   },
 };
 
@@ -617,12 +652,12 @@ export const organizationApiTools = [
   // Collections
   listOrgCollectionsTool,
   getOrgCollectionTool,
-  createOrgCollectionTool,
   updateOrgCollectionTool,
   deleteOrgCollectionTool,
   // Members
   listOrgMembersTool,
   getOrgMemberTool,
+  getOrgMemberGroupsTool,
   inviteOrgMemberTool,
   updateOrgMemberTool,
   removeOrgMemberTool,
@@ -632,7 +667,6 @@ export const organizationApiTools = [
   createOrgGroupTool,
   updateOrgGroupTool,
   deleteOrgGroupTool,
-  getOrgGroupMembersTool,
   updateOrgGroupMembersTool,
   // Policies
   listOrgPoliciesTool,
@@ -640,9 +674,9 @@ export const organizationApiTools = [
   updateOrgPolicyTool,
   // Events
   getOrgEventsTool,
-  // Organization
-  getOrgTool,
-  updateOrgTool,
-  getOrgBillingTool,
-  getOrgSubscriptionTool,
+  // Organization Billing (Public API)
+  getPublicOrgTool,
+  updateOrgSecretsManagerSubscriptionTool,
+  // Organization Import
+  importOrgUsersAndGroupsTool,
 ];

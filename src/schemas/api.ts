@@ -1,6 +1,9 @@
 /**
  * Zod validation schemas for Organization API operations
  * Based on official Bitwarden Public API specification
+ *
+ * Note: Collection creation is NOT supported by the Public API.
+ * The Public API only supports: list, get, update, and delete operations for collections.
  */
 
 import { z } from 'zod';
@@ -12,14 +15,8 @@ export const getCollectionRequestSchema = z.object({
   collectionId: z.string().min(1, 'Collection ID is required'),
 });
 
-export const createCollectionRequestSchema = z.object({
-  name: z.string().min(1, 'Collection name is required'),
-  externalId: z.string().optional(),
-});
-
 export const updateCollectionRequestSchema = z.object({
   collectionId: z.string().min(1, 'Collection ID is required'),
-  name: z.string().min(1, 'Collection name is required'),
   externalId: z.string().optional(),
 });
 
@@ -161,7 +158,9 @@ export const updateGroupRequestSchema = z.object({
 
 export const deleteGroupRequestSchema = getGroupRequestSchema;
 
-export const getGroupMembersRequestSchema = getGroupRequestSchema;
+export const getMemberGroupsRequestSchema = z.object({
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
+});
 
 export const updateGroupMembersRequestSchema = z.object({
   groupId: z.string().min(1, 'Group ID is required'),
@@ -172,11 +171,17 @@ export const updateGroupMembersRequestSchema = z.object({
 export const listPoliciesRequestSchema = z.object({});
 
 export const getPolicyRequestSchema = z.object({
-  policyType: z.string().min(1, 'Policy type is required'),
+  policyType: z
+    .number()
+    .int('Policy type must be an integer')
+    .min(0, 'Policy type must be a valid enum value'),
 });
 
 export const updatePolicyRequestSchema = z.object({
-  policyType: z.string().min(1, 'Policy type is required'),
+  policyType: z
+    .number()
+    .int('Policy type must be an integer')
+    .min(0, 'Policy type must be a valid enum value'),
   enabled: z.boolean(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
@@ -193,15 +198,55 @@ export const getEventsRequestSchema = z.object({
   memberId: z.string().optional(),
 });
 
-// Organization Schemas
-export const getOrganizationRequestSchema = z.object({});
+// Organization Billing Schemas (Public API)
+export const getPublicOrganizationRequestSchema = z.object({});
 
-export const updateOrganizationRequestSchema = z.object({
-  name: z.string().optional(),
-  businessName: z.string().optional(),
-  billingEmail: z.string().email().optional(),
+export const updateSecretsManagerSubscriptionRequestSchema = z.object({
+  smSeats: z
+    .number()
+    .min(0, 'Secrets Manager seats must be 0 or greater')
+    .optional(),
+  smServiceAccounts: z
+    .number()
+    .min(0, 'Secrets Manager service accounts must be 0 or greater')
+    .optional(),
 });
 
-export const getBillingRequestSchema = z.object({});
-
-export const getSubscriptionRequestSchema = z.object({});
+// Organization Import Schemas (Public API)
+export const importOrganizationUsersAndGroupsRequestSchema = z.object({
+  groups: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .min(1, 'Group name is required')
+          .max(100, 'Group name must be 100 characters or less'),
+        externalId: z
+          .string()
+          .min(1, 'External ID is required')
+          .max(300, 'External ID must be 300 characters or less'),
+        memberExternalIds: z.array(z.string()).optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+  members: z
+    .array(
+      z.object({
+        email: z
+          .string()
+          .email('Valid email address is required')
+          .max(256, 'Email must be 256 characters or less')
+          .optional(),
+        externalId: z
+          .string()
+          .min(1, 'External ID is required')
+          .max(300, 'External ID must be 300 characters or less'),
+        deleted: z.boolean().optional().default(false),
+      }),
+    )
+    .optional()
+    .default([]),
+  overwriteExisting: z.boolean(),
+  largeImport: z.boolean().optional().default(false),
+});

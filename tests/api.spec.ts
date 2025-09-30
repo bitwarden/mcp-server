@@ -52,8 +52,9 @@ describe('API Security Functions', () => {
 
     it('should allow valid policy endpoints', () => {
       expect(validateApiEndpoint('/public/policies')).toBe(true);
-      expect(validateApiEndpoint('/public/policies/1')).toBe(true);
-      expect(validateApiEndpoint('/public/policies/999')).toBe(true);
+      expect(validateApiEndpoint('/public/policies/0')).toBe(true); // TwoFactorAuthentication
+      expect(validateApiEndpoint('/public/policies/1')).toBe(true); // MasterPassword
+      expect(validateApiEndpoint('/public/policies/15')).toBe(true); // RestrictedItemTypesPolicy
     });
 
     it('should allow valid event endpoints', () => {
@@ -66,8 +67,7 @@ describe('API Security Functions', () => {
 
     it('should allow valid organization endpoints', () => {
       expect(validateApiEndpoint('/public/organization')).toBe(true);
-      expect(validateApiEndpoint('/public/organization/billing')).toBe(true);
-      expect(validateApiEndpoint('/public/organization/subscription')).toBe(
+      expect(validateApiEndpoint('/public/organization/sm-subscription')).toBe(
         true,
       );
       expect(validateApiEndpoint('/public/organization/import')).toBe(true);

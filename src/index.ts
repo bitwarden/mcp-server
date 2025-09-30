@@ -40,7 +40,6 @@ import {
 import {
   handleListOrgCollections,
   handleGetOrgCollection,
-  handleCreateOrgCollection,
   handleUpdateOrgCollection,
   handleDeleteOrgCollection,
   handleListOrgMembers,
@@ -53,16 +52,15 @@ import {
   handleCreateOrgGroup,
   handleUpdateOrgGroup,
   handleDeleteOrgGroup,
-  handleGetOrgGroupMembers,
+  handleGetOrgMemberGroups,
   handleUpdateOrgGroupMembers,
   handleListOrgPolicies,
   handleGetOrgPolicy,
   handleUpdateOrgPolicy,
   handleGetOrgEvents,
-  handleGetOrg,
-  handleUpdateOrg,
-  handleGetOrgBilling,
-  handleGetOrgSubscription,
+  handleGetPublicOrg,
+  handleUpdateOrgSecretsManagerSubscription,
+  handleImportOrgUsersAndGroups,
 } from './handlers/api.js';
 
 /**
@@ -116,8 +114,6 @@ async function runServer(): Promise<void> {
             return { content: [await handleListOrgCollections(args)] };
           case 'get_org_collection':
             return { content: [await handleGetOrgCollection(args)] };
-          case 'create_org_collection':
-            return { content: [await handleCreateOrgCollection(args)] };
           case 'update_org_collection':
             return { content: [await handleUpdateOrgCollection(args)] };
           case 'delete_org_collection':
@@ -146,8 +142,8 @@ async function runServer(): Promise<void> {
             return { content: [await handleUpdateOrgGroup(args)] };
           case 'delete_org_group':
             return { content: [await handleDeleteOrgGroup(args)] };
-          case 'get_org_group_members':
-            return { content: [await handleGetOrgGroupMembers(args)] };
+          case 'get_org_member_groups':
+            return { content: [await handleGetOrgMemberGroups(args)] };
           case 'update_org_group_members':
             return { content: [await handleUpdateOrgGroupMembers(args)] };
 
@@ -163,15 +159,15 @@ async function runServer(): Promise<void> {
           case 'get_org_events':
             return { content: [await handleGetOrgEvents(args)] };
 
-          // Organization API Tools - Organization
-          case 'get_org':
-            return { content: [await handleGetOrg(args)] };
-          case 'update_org':
-            return { content: [await handleUpdateOrg(args)] };
-          case 'get_org_billing':
-            return { content: [await handleGetOrgBilling(args)] };
-          case 'get_org_subscription':
-            return { content: [await handleGetOrgSubscription(args)] };
+          // Organization API Tools - Billing (Public API)
+          case 'get_public_org':
+            return { content: [await handleGetPublicOrg(args)] };
+          case 'update_org_sm_subscription':
+            return {
+              content: [await handleUpdateOrgSecretsManagerSubscription(args)],
+            };
+          case 'import_org_users_and_groups':
+            return { content: [await handleImportOrgUsersAndGroups(args)] };
 
           default:
             throw new Error(`Unknown tool: ${name}`);

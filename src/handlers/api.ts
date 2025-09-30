@@ -7,7 +7,6 @@ import { withValidation } from '../utils/validation.js';
 import {
   listCollectionsRequestSchema,
   getCollectionRequestSchema,
-  createCollectionRequestSchema,
   updateCollectionRequestSchema,
   deleteCollectionRequestSchema,
   listMembersRequestSchema,
@@ -20,16 +19,15 @@ import {
   createGroupRequestSchema,
   updateGroupRequestSchema,
   deleteGroupRequestSchema,
-  getGroupMembersRequestSchema,
+  getMemberGroupsRequestSchema,
   updateGroupMembersRequestSchema,
   listPoliciesRequestSchema,
   getPolicyRequestSchema,
   updatePolicyRequestSchema,
   getEventsRequestSchema,
-  getOrganizationRequestSchema,
-  updateOrganizationRequestSchema,
-  getBillingRequestSchema,
-  getSubscriptionRequestSchema,
+  getPublicOrganizationRequestSchema,
+  updateSecretsManagerSubscriptionRequestSchema,
+  importOrganizationUsersAndGroupsRequestSchema,
 } from '../schemas/api.js';
 
 // Collections handlers
@@ -48,20 +46,11 @@ export const handleGetOrgCollection = withValidation(
   },
 );
 
-export const handleCreateOrgCollection = withValidation(
-  createCollectionRequestSchema,
-  async (validatedArgs) => {
-    const { name, externalId } = validatedArgs;
-    const body = { name, externalId };
-    return executeApiRequest(`/public/collections`, 'POST', body);
-  },
-);
-
 export const handleUpdateOrgCollection = withValidation(
   updateCollectionRequestSchema,
   async (validatedArgs) => {
-    const { collectionId, name, externalId } = validatedArgs;
-    const body = { name, externalId };
+    const { collectionId, externalId } = validatedArgs;
+    const body = { externalId };
     return executeApiRequest(
       `/public/collections/${collectionId}`,
       'PUT',
@@ -164,11 +153,11 @@ export const handleDeleteOrgGroup = withValidation(
   },
 );
 
-export const handleGetOrgGroupMembers = withValidation(
-  getGroupMembersRequestSchema,
+export const handleGetOrgMemberGroups = withValidation(
+  getMemberGroupsRequestSchema,
   async (validatedArgs) => {
-    const { groupId } = validatedArgs;
-    return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'GET');
+    const { memberId } = validatedArgs;
+    return executeApiRequest(`/public/members/${memberId}/group-ids`, 'GET');
   },
 );
 
@@ -239,33 +228,37 @@ export const handleGetOrgEvents = withValidation(
   },
 );
 
-// Organization handlers
-export const handleGetOrg = withValidation(
-  getOrganizationRequestSchema,
+// Organization Billing handlers (Public API)
+export const handleGetPublicOrg = withValidation(
+  getPublicOrganizationRequestSchema,
   async () => {
     return executeApiRequest(`/public/organization`, 'GET');
   },
 );
 
-export const handleUpdateOrg = withValidation(
-  updateOrganizationRequestSchema,
+export const handleUpdateOrgSecretsManagerSubscription = withValidation(
+  updateSecretsManagerSubscriptionRequestSchema,
   async (validatedArgs) => {
-    const { name, businessName, billingEmail } = validatedArgs;
-    const body = { name, businessName, billingEmail };
-    return executeApiRequest(`/public/organization`, 'PUT', body);
+    const { smSeats, smServiceAccounts } = validatedArgs;
+    const body = { smSeats, smServiceAccounts };
+    return executeApiRequest(
+      `/public/organization/sm-subscription`,
+      'PUT',
+      body,
+    );
   },
 );
 
-export const handleGetOrgBilling = withValidation(
-  getBillingRequestSchema,
-  async () => {
-    return executeApiRequest(`/public/organization/billing`, 'GET');
-  },
-);
-
-export const handleGetOrgSubscription = withValidation(
-  getSubscriptionRequestSchema,
-  async () => {
-    return executeApiRequest(`/public/organization/subscription`, 'GET');
+export const handleImportOrgUsersAndGroups = withValidation(
+  importOrganizationUsersAndGroupsRequestSchema,
+  async (validatedArgs) => {
+    const { groups, members, overwriteExisting, largeImport } = validatedArgs;
+    const body = {
+      Groups: groups || [],
+      Members: members || [],
+      OverwriteExisting: overwriteExisting,
+      LargeImport: largeImport || false,
+    };
+    return executeApiRequest(`/public/organization/import`, 'POST', body);
   },
 );
