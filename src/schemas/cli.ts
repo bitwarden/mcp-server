@@ -4,19 +4,7 @@
  *
  * Features:
  * - Vault locking/unlocking operations
- * - Item listing, retrieva      // Login should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.login) {
-        return false;
-      }
-      // FolderId should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.folderId) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message:
-        'Notes, login information, and folder assignment are only valid for items, not folders',nagement
+ * - Item listing, retrieval, and management
  * - Password generation and secure operations
  * - Folder and item creation/editing/deletion
  */
