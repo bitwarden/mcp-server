@@ -120,7 +120,7 @@ export const handleGenerate = withValidation(
 export const handleCreate = withValidation(
   createSchema,
   async (validatedArgs) => {
-    const { objectType, name, type, notes, login } = validatedArgs;
+    const { objectType, name, type, notes, login, folderId } = validatedArgs;
 
     if (objectType === 'folder') {
       const folder: BitwardenFolder = { name };
@@ -143,6 +143,10 @@ export const handleCreate = withValidation(
         item.notes = notes;
       }
 
+      if (folderId !== undefined) {
+        item.folderId = folderId;
+      }
+
       if (type === 1 && login) {
         // Only set defined login properties
         const loginData: BitwardenItem['login'] = {};
@@ -163,7 +167,7 @@ export const handleCreate = withValidation(
 );
 
 export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
-  const { objectType, id, name, notes, login } = validatedArgs;
+  const { objectType, id, name, notes, login, folderId } = validatedArgs;
 
   if (objectType === 'folder') {
     // For folders, we still just update the name directly
@@ -191,6 +195,7 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
       // Only update properties that were provided
       if (name !== undefined) existingItem.name = name;
       if (notes !== undefined) existingItem.notes = notes;
+      if (folderId !== undefined) existingItem.folderId = folderId;
       if (login !== undefined) {
         // Merge login properties with existing login data, maintaining type safety
         const currentLogin = existingItem.login || {};

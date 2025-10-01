@@ -210,6 +210,11 @@ export const createTool: Tool = {
           },
         },
       },
+      folderId: {
+        type: 'string',
+        description:
+          'Folder ID to assign the item to (only valid for items, not folders)',
+      },
     },
     required: ['objectType', 'name'],
   },
@@ -251,7 +256,36 @@ export const editTool: Tool = {
             type: 'string',
             description: 'New password for the login',
           },
+          uris: {
+            type: 'array',
+            description: 'List of URIs associated with the login',
+            items: {
+              type: 'object',
+              properties: {
+                uri: {
+                  type: 'string',
+                  description: 'URI for the login (e.g., https://example.com)',
+                },
+                match: {
+                  type: 'number',
+                  description:
+                    'URI match type (0: Domain, 1: Host, 2: Starts With, 3: Exact, 4: Regular Expression, 5: Never)',
+                  enum: [0, 1, 2, 3, 4, 5],
+                },
+              },
+              required: ['uri'],
+            },
+          },
+          totp: {
+            type: 'string',
+            description: 'TOTP secret for the login',
+          },
         },
+      },
+      folderId: {
+        type: 'string',
+        description:
+          'New folder ID to assign the item to (only valid for items, not folders)',
       },
     },
     required: ['objectType', 'id'],

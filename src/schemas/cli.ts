@@ -4,7 +4,19 @@
  *
  * Features:
  * - Vault locking/unlocking operations
- * - Item listing, retrieval, and management
+ * - Item listing, retrieva      // Login should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.login) {
+        return false;
+      }
+      // FolderId should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.folderId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'Notes, login information, and folder assignment are only valid for items, not folders',nagement
  * - Password generation and secure operations
  * - Folder and item creation/editing/deletion
  */
@@ -141,6 +153,8 @@ export const createSchema = z
     notes: z.string().optional(),
     // Login details (required when type is 1)
     login: loginSchema.optional(),
+    // Folder ID to assign the item to (only for items)
+    folderId: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -166,7 +180,7 @@ export const createSchema = z
     },
     {
       message:
-        'Item type is required for items, login details are required for login items, and notes/login are only valid for items',
+        'Item type is required for items, login details are required for login items, and notes/login/folderId are only valid for items',
     },
   );
 
@@ -195,6 +209,8 @@ export const editSchema = z
     notes: z.string().optional(),
     // Updated login information (only for items)
     login: editLoginSchema.optional(),
+    // New folder ID to assign the item to (only for items)
+    folderId: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -206,11 +222,15 @@ export const editSchema = z
       if (data.objectType === 'folder' && data.login) {
         return false;
       }
+      // FolderId should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.folderId) {
+        return false;
+      }
       return true;
     },
     {
       message:
-        'Notes and login information are only valid for items, not folders',
+        'Notes, login information, and folder assignment are only valid for items, not folders',
     },
   );
 
