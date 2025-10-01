@@ -123,7 +123,8 @@ export const handleCreate = withValidation(
     const { objectType, name, type, notes, login } = validatedArgs;
 
     if (objectType === 'folder') {
-      const encodedItem = JSON.stringify({ name });
+      const itemJson = JSON.stringify({ name });
+      const encodedItem = Buffer.from(itemJson).toString('base64');
       const command = buildSafeCommand('create', ['folder', encodedItem]);
       const response = await executeCliCommand(command);
       return toMcpFormat(response);
@@ -139,7 +140,8 @@ export const handleCreate = withValidation(
         item['login'] = login;
       }
 
-      const encodedItem = JSON.stringify(item);
+      const itemJson = JSON.stringify(item);
+      const encodedItem = Buffer.from(itemJson).toString('base64');
       const command = buildSafeCommand('create', ['item', encodedItem]);
       const response = await executeCliCommand(command);
       return toMcpFormat(response);
@@ -151,7 +153,8 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
   const { objectType, id, name, notes, login } = validatedArgs;
 
   if (objectType === 'folder') {
-    const encodedItem = JSON.stringify({ name });
+    const itemJson = JSON.stringify({ name });
+    const encodedItem = Buffer.from(itemJson).toString('base64');
     const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
@@ -162,7 +165,8 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
     if (notes) updates['notes'] = notes;
     if (login) updates['login'] = login;
 
-    const encodedUpdates = JSON.stringify(updates);
+    const updatesJson = JSON.stringify(updates);
+    const encodedUpdates = Buffer.from(updatesJson).toString('base64');
     const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
