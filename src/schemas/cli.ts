@@ -1,5 +1,12 @@
 /**
  * Zod validation schemas for CLI operations
+ * Handles validation for personal vault operations using the Bitwarden CLI
+ *
+ * Features:
+ * - Vault locking/unlocking operations
+ * - Item listing, retrieval, and management
+ * - Password generation and secure operations
+ * - Folder and item creation/editing/deletion
  */
 
 import { z } from 'zod';
