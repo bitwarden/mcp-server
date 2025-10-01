@@ -14,18 +14,15 @@ Security-critical TypeScript MCP server providing AI models with access to Bitwa
 For vault management operations, every tool MUST follow this pattern - NO EXCEPTIONS:
 
 ```typescript
-// 1. Validate input with Zod schema
-const [isValid, validationResult] = validateInput(
-  schema,
-  request.params.arguments,
-);
-if (!isValid) return validationResult;
+// Modern pattern using withValidation higher-order function
+export const handleCommand = withValidation(schema, async (validatedArgs) => {
+  // 1. Build safe command (NEVER use string interpolation)
+  const command = buildSafeCommand('baseCommand', [param1, param2]);
 
-// 2. Build safe command (NEVER use string interpolation)
-const command = buildSafeCommand('baseCommand', [param1, param2]);
-
-// 3. Execute through security pipeline
-const result = await executeCliCommand(command);
+  // 2. Execute through security pipeline
+  const result = await executeCliCommand(command);
+  return result;
+});
 ```
 
 ### HTTP API Security Pipeline
@@ -33,18 +30,15 @@ const result = await executeCliCommand(command);
 For organization admin operations, every tool MUST follow this pattern - NO EXCEPTIONS:
 
 ```typescript
-// 1. Validate input with Zod schema
-const [isValid, validationResult] = validateInput(
+// Modern pattern using withValidation higher-order function
+export const handleApiCommand = withValidation(
   schema,
-  request.params.arguments,
+  async (validatedArgs) => {
+    // Execute through authenticated HTTP pipeline with validated endpoint
+    const result = await executeApiRequest(endpoint, method, validatedData);
+    return result;
+  },
 );
-if (!isValid) return validationResult;
-
-// 2. Build safe HTTP request (validate URL paths and parameters)
-const request = buildSafeApiRequest(endpoint, method, validatedData);
-
-// 3. Execute through authenticated HTTP pipeline
-const result = await executeApiRequest(request);
 ```
 
 ### Security Functions
@@ -67,6 +61,62 @@ const result = await executeApiRequest(request);
 
 Apply [Bitwarden security definitions](https://contributing.bitwarden.com/architecture/security/definitions).
 
+## 🚀 withValidation Pattern
+
+### Overview
+
+The `withValidation` higher-order function pattern eliminates validation code duplication across all handlers while maintaining type safety and security.
+
+### Pattern Benefits
+
+- **Type Safety**: Full TypeScript inference for validated arguments
+- **Consistent Error Handling**: Standardized validation error responses
+- **Clean Separation**: Business logic separated from validation concerns
+- **Maintainability**: Single place to modify validation behavior
+
+### Implementation
+
+**withValidation Function:**
+
+```typescript
+export function withValidation<T, R>(
+  schema: z.ZodSchema<T>,
+  handler: (validatedArgs: T) => Promise<R>,
+) {
+  return async (args: unknown): Promise<R> => {
+    const [success, validatedArgs] = validateInput(schema, args);
+    if (!success) {
+      return validatedArgs as R;
+    }
+    return handler(validatedArgs);
+  };
+}
+```
+
+**Usage Examples:**
+
+```typescript
+// CLI Handler
+export const handleUnlock = withValidation(
+  unlockSchema,
+  async (validatedArgs) => {
+    const { password } = validatedArgs; // Fully typed!
+    const command = buildSafeCommand('unlock', [password, '--raw']);
+    return executeCliCommand(command);
+  },
+);
+
+// API Handler
+export const handleCreateOrgCollection = withValidation(
+  createCollectionRequestSchema,
+  async (validatedArgs) => {
+    const { name, externalId } = validatedArgs; // Fully typed!
+    const body = { name, externalId };
+    return executeApiRequest('/public/collections', 'POST', body);
+  },
+);
+```
+
 ## Architecture
 
 ### Dual Interface Pattern
@@ -87,19 +137,32 @@ The MCP server provides two distinct operational interfaces:
 
 ### Tool Implementation Pattern
 
-**CLI Tools:**
-
 1. **Schema**: `const schema = z.object({...})`
 2. **Declaration**: `const tool: Tool = { name, description, inputSchema }`
-3. **Handler**: Switch case with CLI security pipeline
-4. **Execution**: `executeCliCommand()`
+3. **Handler**: `withValidation(schema, async (validatedArgs) => { ... })`
+4. **Execution**: Direct execution within validated handler
+
+**CLI Tools:**
+
+```typescript
+export const handleCommand = withValidation(
+  commandSchema,
+  async (validatedArgs) => {
+    return executeCliCommand(buildSafeCommand('cmd', [validatedArgs.param]));
+  },
+);
+```
 
 **API Tools:**
 
-1. **Schema**: `const schema = z.object({...})`
-2. **Declaration**: `const tool: Tool = { name, description, inputSchema }`
-3. **Handler**: Switch case with API security pipeline
-4. **Execution**: `executeApiRequest()`
+```typescript
+export const handleApiCommand = withValidation(
+  apiSchema,
+  async (validatedArgs) => {
+    return executeApiRequest('/public/endpoint', 'GET', validatedArgs);
+  },
+);
+```
 
 ### Tool Categories
 
@@ -121,6 +184,28 @@ The MCP server provides two distinct operational interfaces:
 ## Organization Administration Tools
 
 The MCP server now supports comprehensive organization administration through the Bitwarden Public API. These tools enable enterprise-level management of users, access controls, and security policies.
+
+### API Specification Compliance
+
+**All API tools, handlers, and schemas are based on the official [Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/).**
+
+Key compliance features:
+
+- **Endpoint Accuracy**: All API endpoints use the correct `/public/` prefix patterns as specified in the official swagger documentation
+- **Schema Validation**: Zod schemas mirror the exact request/response formats defined in the API specification
+- **HTTP Methods**: Proper REST verbs (GET, POST, PUT, DELETE) matching the swagger definitions
+- **Parameter Handling**: Query parameters, path parameters, and request bodies follow specification exactly
+- **Response Formats**: Handler responses conform to expected API data structures
+
+**Examples of Specification Compliance:**
+
+- Collections: `GET/POST/PUT/DELETE /public/collections`
+- Members: `GET/POST/PUT/DELETE /public/members`
+- Groups: `GET/POST/PUT/DELETE /public/groups`
+- Group Members: `GET/PUT /public/groups/{id}/member-ids` (not `/members`)
+- Events: `GET /public/events` with proper query parameter handling
+
+This ensures that all organization management operations work correctly with Bitwarden's production API services and maintain compatibility with future API updates.
 
 ### Collections Management
 
@@ -299,9 +384,43 @@ return {
 
 ## Key Files
 
-- `src/index.ts` - Server implementation
-- `tests/security.spec.ts` - Security tests
-- `.jest/setEnvVars.js` - Test environment
+### Core Architecture
+
+- `src/index.ts` - Main server entry point
+
+### Handlers (Business Logic)
+
+- `src/handlers/cli.ts` - CLI command handlers
+- `src/handlers/api.ts` - API endpoint handlers
+
+### Schemas (Validation)
+
+- `src/schemas/cli.ts` - Zod validation schemas for CLI operations
+- `src/schemas/api.ts` - Zod validation schemas for API operations
+
+### Tools (MCP Interface)
+
+- `src/tools/cli.ts` - CLI tool definitions for MCP protocol
+- `src/tools/api.ts` - API tool definitions for MCP protocol
+- `src/tools/index.ts` - Centralized tool exports
+
+### Utilities (Shared Services)
+
+- `src/utils/api.ts` - HTTP client with OAuth2 authentication and token management
+- `src/utils/cli.ts` - CLI command execution with security wrappers
+- `src/utils/config.ts` - Environment configuration management
+- `src/utils/security.ts` - Security functions including `buildSafeCommand` and endpoint validation
+- `src/utils/types.ts` - TypeScript type definitions for CLI and API responses
+- `src/utils/validation.ts` - Input validation utilities with `withValidation` higher-order function and consistent error formatting
+
+### Testing
+
+- `tests/security.spec.ts` - Security validation tests
+- `tests/api.spec.ts` - API functionality tests
+- `tests/cli-commands.spec.ts` - CLI command tests
+- `tests/core.spec.ts` - Core server functionality tests
+- `tests/validation.spec.ts` - Input validation tests
+- `.jest/setEnvVars.js` - Test environment configuration
 
 ## Code Style
 

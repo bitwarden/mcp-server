@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
-import { validateInput } from '../src/index.js';
+import { validateInput } from '../src/utils/validation.js';
 
 describe('Validation', () => {
   describe('validateInput function', () => {

@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
+import { validateInput } from '../src/utils/validation.js';
 import {
-  validateInput,
   validateApiEndpoint,
   sanitizeApiParameters,
-} from '../src/index.js';
+} from '../src/utils/security.js';
 
 describe('API Security Functions', () => {
   describe('validateApiEndpoint', () => {
@@ -52,12 +52,17 @@ describe('API Security Functions', () => {
 
     it('should allow valid policy endpoints', () => {
       expect(validateApiEndpoint('/public/policies')).toBe(true);
-      expect(validateApiEndpoint('/public/policies/1')).toBe(true);
-      expect(validateApiEndpoint('/public/policies/999')).toBe(true);
+      expect(validateApiEndpoint('/public/policies/0')).toBe(true); // TwoFactorAuthentication
+      expect(validateApiEndpoint('/public/policies/1')).toBe(true); // MasterPassword
+      expect(validateApiEndpoint('/public/policies/15')).toBe(true); // RestrictedItemTypesPolicy
     });
 
     it('should allow valid event endpoints', () => {
       expect(validateApiEndpoint('/public/events')).toBe(true);
+      expect(
+        validateApiEndpoint('/public/events?start=2023-01-01&end=2023-12-31'),
+      ).toBe(true);
+      expect(validateApiEndpoint('/public/events?actingUserId=123')).toBe(true);
     });
 
     it('should allow valid organization endpoints', () => {

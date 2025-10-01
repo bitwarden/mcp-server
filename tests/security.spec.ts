@@ -4,7 +4,7 @@ import {
   escapeShellParameter,
   buildSafeCommand,
   isValidBitwardenCommand,
-} from '../src/index.js';
+} from '../src/utils/security.js';
 
 describe('Security - Command Injection Protection', () => {
   describe('sanitizeInput', () => {
