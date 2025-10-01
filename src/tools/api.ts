@@ -7,7 +7,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 // Organization Collections Tools
 export const listOrgCollectionsTool: Tool = {
   name: 'list_org_collections',
-  description: 'List all collections in the organization',
+  description: 'List all collections',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -17,7 +17,7 @@ export const listOrgCollectionsTool: Tool = {
 
 export const getOrgCollectionTool: Tool = {
   name: 'get_org_collection',
-  description: 'Get details of a specific organization collection',
+  description: 'Retrieve a collection',
   inputSchema: {
     type: 'object',
     properties: {
@@ -32,7 +32,7 @@ export const getOrgCollectionTool: Tool = {
 
 export const updateOrgCollectionTool: Tool = {
   name: 'update_org_collection',
-  description: 'Update an existing organization collection',
+  description: 'Update a collection',
   inputSchema: {
     type: 'object',
     properties: {
@@ -42,7 +42,40 @@ export const updateOrgCollectionTool: Tool = {
       },
       externalId: {
         type: 'string',
-        description: 'New external ID for the collection (optional)',
+        description:
+          'External identifier for reference or linking this collection to another system',
+        maxLength: 300,
+      },
+      groups: {
+        type: 'array',
+        description:
+          'The associated groups that this collection is assigned to',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: "The associated object's unique identifier",
+            },
+            readOnly: {
+              type: 'boolean',
+              description:
+                'When true, the read only permission will not allow the user or group to make changes to items',
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description:
+                'When true, the hide passwords permission will not allow the user or group to view passwords',
+            },
+            manage: {
+              type: 'boolean',
+              description:
+                'When true, the manage permission allows a user to both edit the ciphers within a collection and edit the users/groups that are assigned to the collection',
+            },
+          },
+          required: ['id', 'readOnly'],
+        },
       },
     },
     required: ['collectionId'],
@@ -51,7 +84,7 @@ export const updateOrgCollectionTool: Tool = {
 
 export const deleteOrgCollectionTool: Tool = {
   name: 'delete_org_collection',
-  description: 'Delete an organization collection',
+  description: 'Delete a collection',
   inputSchema: {
     type: 'object',
     properties: {
@@ -67,7 +100,7 @@ export const deleteOrgCollectionTool: Tool = {
 // Organization Members Tools
 export const listOrgMembersTool: Tool = {
   name: 'list_org_members',
-  description: 'List all members in the organization',
+  description: 'List all members',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -77,7 +110,7 @@ export const listOrgMembersTool: Tool = {
 
 export const getOrgMemberTool: Tool = {
   name: 'get_org_member',
-  description: 'Get details of a specific organization member',
+  description: 'Retrieve a member',
   inputSchema: {
     type: 'object',
     properties: {
@@ -92,7 +125,7 @@ export const getOrgMemberTool: Tool = {
 
 export const inviteOrgMemberTool: Tool = {
   name: 'invite_org_member',
-  description: 'Invite a new member to the organization',
+  description: 'Create a member',
   inputSchema: {
     type: 'object',
     properties: {
@@ -172,7 +205,7 @@ export const inviteOrgMemberTool: Tool = {
 
 export const updateOrgMemberTool: Tool = {
   name: 'update_org_member',
-  description: 'Update an existing organization member',
+  description: 'Update a member',
   inputSchema: {
     type: 'object',
     properties: {
@@ -251,7 +284,7 @@ export const updateOrgMemberTool: Tool = {
 
 export const removeOrgMemberTool: Tool = {
   name: 'remove_org_member',
-  description: 'Remove a member from the organization',
+  description: 'Remove a member',
   inputSchema: {
     type: 'object',
     properties: {
@@ -267,7 +300,7 @@ export const removeOrgMemberTool: Tool = {
 // Organization Groups Tools
 export const listOrgGroupsTool: Tool = {
   name: 'list_org_groups',
-  description: 'List all groups in the organization',
+  description: 'List all groups',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -277,7 +310,7 @@ export const listOrgGroupsTool: Tool = {
 
 export const getOrgGroupTool: Tool = {
   name: 'get_org_group',
-  description: 'Get details of a specific organization group',
+  description: 'Retrieve a group',
   inputSchema: {
     type: 'object',
     properties: {
@@ -293,7 +326,7 @@ export const getOrgGroupTool: Tool = {
 
 export const createOrgGroupTool: Tool = {
   name: 'create_org_group',
-  description: 'Create a new group in the organization',
+  description: 'Create a group',
   inputSchema: {
     type: 'object',
     properties: {
@@ -340,7 +373,7 @@ export const createOrgGroupTool: Tool = {
 
 export const updateOrgGroupTool: Tool = {
   name: 'update_org_group',
-  description: 'Update an existing organization group',
+  description: 'Update a group',
   inputSchema: {
     type: 'object',
     properties: {
@@ -389,7 +422,7 @@ export const updateOrgGroupTool: Tool = {
 
 export const deleteOrgGroupTool: Tool = {
   name: 'delete_org_group',
-  description: 'Delete an organization group',
+  description: 'Delete a group',
   inputSchema: {
     type: 'object',
     properties: {
@@ -404,7 +437,7 @@ export const deleteOrgGroupTool: Tool = {
 
 export const getOrgMemberGroupsTool: Tool = {
   name: 'get_org_member_groups',
-  description: 'Get group IDs that a member belongs to',
+  description: "Retrieve a member's group ids",
   inputSchema: {
     type: 'object',
     properties: {
@@ -420,7 +453,7 @@ export const getOrgMemberGroupsTool: Tool = {
 
 export const getOrgGroupMembersTool: Tool = {
   name: 'get_org_group_members',
-  description: 'Get member IDs that belong to a specific group',
+  description: "Retrieve a group's member ids",
   inputSchema: {
     type: 'object',
     properties: {
@@ -436,7 +469,7 @@ export const getOrgGroupMembersTool: Tool = {
 
 export const updateOrgMemberGroupsTool: Tool = {
   name: 'update_org_member_groups',
-  description: 'Update the groups that a member belongs to',
+  description: "Update a member's groups",
   inputSchema: {
     type: 'object',
     properties: {
@@ -460,7 +493,7 @@ export const updateOrgMemberGroupsTool: Tool = {
 
 export const reinviteOrgMemberTool: Tool = {
   name: 'reinvite_org_member',
-  description: 'Re-send invitation email to an organization member',
+  description: 'Re-invite a member',
   inputSchema: {
     type: 'object',
     properties: {
@@ -476,7 +509,7 @@ export const reinviteOrgMemberTool: Tool = {
 
 export const updateOrgGroupMembersTool: Tool = {
   name: 'update_org_group_members',
-  description: 'Update members of an organization group',
+  description: "Update a group's members",
   inputSchema: {
     type: 'object',
     properties: {
@@ -499,7 +532,7 @@ export const updateOrgGroupMembersTool: Tool = {
 // Organization Policies Tools
 export const listOrgPoliciesTool: Tool = {
   name: 'list_org_policies',
-  description: 'List all policies in the organization',
+  description: 'List all policies',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -509,7 +542,7 @@ export const listOrgPoliciesTool: Tool = {
 
 export const getOrgPolicyTool: Tool = {
   name: 'get_org_policy',
-  description: 'Get details of a specific organization policy',
+  description: 'Retrieve a policy',
   inputSchema: {
     type: 'object',
     properties: {
@@ -527,7 +560,7 @@ export const getOrgPolicyTool: Tool = {
 
 export const updateOrgPolicyTool: Tool = {
   name: 'update_org_policy',
-  description: 'Update an organization policy',
+  description: 'Update a policy',
   inputSchema: {
     type: 'object',
     properties: {
@@ -554,7 +587,7 @@ export const updateOrgPolicyTool: Tool = {
 // Organization Events Tools
 export const getOrgEventsTool: Tool = {
   name: 'get_org_events',
-  description: 'Get events for the organization',
+  description: 'List all events',
   inputSchema: {
     type: 'object',
     properties: {
@@ -595,10 +628,10 @@ export const getOrgEventsTool: Tool = {
   },
 };
 
-// Organization Billing Tools (Public API)
-export const getPublicOrgTool: Tool = {
-  name: 'get_public_org',
-  description: 'Get organization billing details via Public API',
+// Organization Billing Tools
+export const getOrgSubscriptionTool: Tool = {
+  name: 'get_org_subscription',
+  description: 'Retrieve the subscription details for the current organization',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -606,10 +639,10 @@ export const getPublicOrgTool: Tool = {
   },
 };
 
-export const updateOrgSecretsManagerSubscriptionTool: Tool = {
-  name: 'update_org_sm_subscription',
+export const updateOrgSubscriptionTool: Tool = {
+  name: 'update_org_subscription',
   description:
-    'Update organization subscription for Password Manager and/or Secrets Manager',
+    "Update the organization's current subscription for Password Manager and/or Secrets Manager",
   inputSchema: {
     type: 'object',
     properties: {
@@ -764,9 +797,9 @@ export const organizationApiTools = [
   updateOrgPolicyTool,
   // Events
   getOrgEventsTool,
-  // Organization Billing (Public API)
-  getPublicOrgTool,
-  updateOrgSecretsManagerSubscriptionTool,
+  // Organization Billing
+  getOrgSubscriptionTool,
+  updateOrgSubscriptionTool,
   // Organization Import
   importOrgUsersAndGroupsTool,
 ];

@@ -17,7 +17,20 @@ export const getCollectionRequestSchema = z.object({
 
 export const updateCollectionRequestSchema = z.object({
   collectionId: z.string().min(1, 'Collection ID is required'),
-  externalId: z.string().optional(),
+  externalId: z
+    .string()
+    .max(300, 'External ID must be 300 characters or less')
+    .optional(),
+  groups: z
+    .array(
+      z.object({
+        id: z.string().uuid('Group ID must be a valid UUID'),
+        readOnly: z.boolean(),
+        hidePasswords: z.boolean().optional(),
+        manage: z.boolean().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export const deleteCollectionRequestSchema = getCollectionRequestSchema;
@@ -211,10 +224,10 @@ export const getEventsRequestSchema = z.object({
   memberId: z.string().optional(),
 });
 
-// Organization Billing Schemas (Public API)
-export const getPublicOrganizationRequestSchema = z.object({});
+// Organization Billing Schemas
+export const getOrgSubscriptionRequestSchema = z.object({});
 
-export const updateSecretsManagerSubscriptionRequestSchema = z.object({
+export const updateOrgSubscriptionRequestSchema = z.object({
   passwordManager: z
     .object({
       seats: z.number().int().optional(),
@@ -232,7 +245,7 @@ export const updateSecretsManagerSubscriptionRequestSchema = z.object({
     .optional(),
 });
 
-// Organization Import Schemas (Public API)
+// Organization Import Schemas
 export const importOrganizationUsersAndGroupsRequestSchema = z.object({
   groups: z
     .array(
@@ -257,12 +270,19 @@ export const importOrganizationUsersAndGroupsRequestSchema = z.object({
           .string()
           .email('Valid email address is required')
           .max(256, 'Email must be 256 characters or less')
+          .nullable()
           .optional(),
         externalId: z
           .string()
           .min(1, 'External ID is required')
           .max(300, 'External ID must be 300 characters or less'),
-        deleted: z.boolean().optional().default(false),
+        deleted: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe(
+            'Determines if this member should be removed from the organization during import',
+          ),
       }),
     )
     .optional()

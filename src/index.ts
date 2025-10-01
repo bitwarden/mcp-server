@@ -61,8 +61,8 @@ import {
   handleGetOrgPolicy,
   handleUpdateOrgPolicy,
   handleGetOrgEvents,
-  handleGetPublicOrg,
-  handleUpdateOrgSecretsManagerSubscription,
+  handleGetOrgSubscription,
+  handleUpdateOrgSubscription,
   handleImportOrgUsersAndGroups,
 } from './handlers/api.js';
 
@@ -168,12 +168,12 @@ async function runServer(): Promise<void> {
           case 'get_org_events':
             return { content: [await handleGetOrgEvents(args)] };
 
-          // Organization API Tools - Billing (Public API)
-          case 'get_public_org':
-            return { content: [await handleGetPublicOrg(args)] };
-          case 'update_org_sm_subscription':
+          // Organization API Tools - Billing
+          case 'get_org_subscription':
+            return { content: [await handleGetOrgSubscription(args)] };
+          case 'update_org_subscription':
             return {
-              content: [await handleUpdateOrgSecretsManagerSubscription(args)],
+              content: [await handleUpdateOrgSubscription(args)],
             };
           case 'import_org_users_and_groups':
             return { content: [await handleImportOrgUsersAndGroups(args)] };

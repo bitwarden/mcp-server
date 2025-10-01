@@ -123,8 +123,9 @@ export function validateApiEndpoint(endpoint: string): boolean {
     /^\/public\/events$/, // GET (list events)
     /^\/public\/events\?.*$/, // GET with query parameters
 
-    // Organization Billing API (Public API)
+    // Organization Billing API
     /^\/public\/organization\/subscription$/, // GET, PUT (organization subscription)
+    // Organization Import API
     /^\/public\/organization\/import$/, // POST (import members and groups)
   ] as const;
 

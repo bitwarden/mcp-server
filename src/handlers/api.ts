@@ -28,8 +28,8 @@ import {
   getPolicyRequestSchema,
   updatePolicyRequestSchema,
   getEventsRequestSchema,
-  getPublicOrganizationRequestSchema,
-  updateSecretsManagerSubscriptionRequestSchema,
+  getOrgSubscriptionRequestSchema,
+  updateOrgSubscriptionRequestSchema,
   importOrganizationUsersAndGroupsRequestSchema,
 } from '../schemas/api.js';
 
@@ -52,8 +52,8 @@ export const handleGetOrgCollection = withValidation(
 export const handleUpdateOrgCollection = withValidation(
   updateCollectionRequestSchema,
   async (validatedArgs) => {
-    const { collectionId, externalId } = validatedArgs;
-    const body = { externalId };
+    const { collectionId, externalId, groups } = validatedArgs;
+    const body = { externalId, groups };
     return executeApiRequest(
       `/public/collections/${collectionId}`,
       'PUT',
@@ -260,16 +260,16 @@ export const handleGetOrgEvents = withValidation(
   },
 );
 
-// Organization Billing handlers (Public API)
-export const handleGetPublicOrg = withValidation(
-  getPublicOrganizationRequestSchema,
+// Organization Billing handlers
+export const handleGetOrgSubscription = withValidation(
+  getOrgSubscriptionRequestSchema,
   async () => {
     return executeApiRequest(`/public/organization/subscription`, 'GET');
   },
 );
 
-export const handleUpdateOrgSecretsManagerSubscription = withValidation(
-  updateSecretsManagerSubscriptionRequestSchema,
+export const handleUpdateOrgSubscription = withValidation(
+  updateOrgSubscriptionRequestSchema,
   async (validatedArgs) => {
     const { passwordManager, secretsManager } = validatedArgs;
     const body = { passwordManager, secretsManager };
@@ -282,10 +282,10 @@ export const handleImportOrgUsersAndGroups = withValidation(
   async (validatedArgs) => {
     const { groups, members, overwriteExisting, largeImport } = validatedArgs;
     const body = {
-      Groups: groups || [],
-      Members: members || [],
-      OverwriteExisting: overwriteExisting,
-      LargeImport: largeImport || false,
+      groups: groups || [],
+      members: members || [],
+      overwriteExisting: overwriteExisting,
+      largeImport: largeImport || false,
     };
     return executeApiRequest(`/public/organization/import`, 'POST', body);
   },

@@ -47,10 +47,10 @@ export {
   updateOrgPolicyTool,
   // Events
   getOrgEventsTool,
-  // Organization
-  getPublicOrgTool,
-  updateOrgSecretsManagerSubscriptionTool,
-  // Import
+  // Organization Billing
+  getOrgSubscriptionTool,
+  updateOrgSubscriptionTool,
+  // Organization Import
   importOrgUsersAndGroupsTool,
   organizationApiTools,
 } from './api.js';
