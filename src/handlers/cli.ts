@@ -17,9 +17,26 @@ import {
   editSchema,
   deleteSchema,
 } from '../schemas/cli.js';
+import { CliResponse } from '../utils/types.js';
+
+function toMcpFormat(response: CliResponse) {
+  return {
+    isError: response.errorOutput ? true : false,
+    content: [
+      {
+        type: 'text',
+        text:
+          response.output ||
+          response.errorOutput ||
+          'Success: Operation completed',
+      },
+    ],
+  };
+}
 
 export const handleLock = withValidation(lockSchema, async () => {
-  return executeCliCommand('lock');
+  const response = await executeCliCommand('lock');
+  return toMcpFormat(response);
 });
 
 export const handleUnlock = withValidation(
@@ -27,16 +44,19 @@ export const handleUnlock = withValidation(
   async (validatedArgs) => {
     const { password } = validatedArgs;
     const command = buildSafeCommand('unlock', [password, '--raw']);
-    return executeCliCommand(command);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   },
 );
 
 export const handleSync = withValidation(syncSchema, async () => {
-  return executeCliCommand('sync');
+  const response = await executeCliCommand('sync');
+  return toMcpFormat(response);
 });
 
 export const handleStatus = withValidation(statusSchema, async () => {
-  return executeCliCommand('status');
+  const response = await executeCliCommand('status');
+  return toMcpFormat(response);
 });
 
 export const handleList = withValidation(listSchema, async (validatedArgs) => {
@@ -46,13 +66,15 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
     params.push('--search', search);
   }
   const command = buildSafeCommand('list', params);
-  return executeCliCommand(command);
+  const response = await executeCliCommand(command);
+  return toMcpFormat(response);
 });
 
 export const handleGet = withValidation(getSchema, async (validatedArgs) => {
   const { object, id } = validatedArgs;
   const command = buildSafeCommand('get', [object, id]);
-  return executeCliCommand(command);
+  const response = await executeCliCommand(command);
+  return toMcpFormat(response);
 });
 
 export const handleGenerate = withValidation(
@@ -90,7 +112,8 @@ export const handleGenerate = withValidation(
     }
 
     const command = buildSafeCommand('generate', params);
-    return executeCliCommand(command);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   },
 );
 
@@ -102,7 +125,8 @@ export const handleCreate = withValidation(
     if (objectType === 'folder') {
       const encodedItem = JSON.stringify({ name });
       const command = buildSafeCommand('create', ['folder', encodedItem]);
-      return executeCliCommand(command);
+      const response = await executeCliCommand(command);
+      return toMcpFormat(response);
     } else {
       // Creating an item
       const item: Record<string, unknown> = {
@@ -117,7 +141,8 @@ export const handleCreate = withValidation(
 
       const encodedItem = JSON.stringify(item);
       const command = buildSafeCommand('create', ['item', encodedItem]);
-      return executeCliCommand(command);
+      const response = await executeCliCommand(command);
+      return toMcpFormat(response);
     }
   },
 );
@@ -128,7 +153,8 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
   if (objectType === 'folder') {
     const encodedItem = JSON.stringify({ name });
     const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
-    return executeCliCommand(command);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   } else {
     // Editing an item
     const updates: Record<string, unknown> = {};
@@ -138,7 +164,8 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
 
     const encodedUpdates = JSON.stringify(updates);
     const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
-    return executeCliCommand(command);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   }
 });
 
@@ -151,6 +178,7 @@ export const handleDelete = withValidation(
       params.push('--permanent');
     }
     const command = buildSafeCommand('delete', params);
-    return executeCliCommand(command);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   },
 );

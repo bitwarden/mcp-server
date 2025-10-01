@@ -32,12 +32,33 @@ import {
   updateOrgSubscriptionRequestSchema,
   importOrganizationUsersAndGroupsRequestSchema,
 } from '../schemas/api.js';
+import { ApiResponse } from '../utils/types.js';
+
+function toMcpFormat(response: ApiResponse) {
+  let text = 'Success: Operation completed';
+  if (response.errorMessage) {
+    text = `Error: ${response.errorMessage}${response.data ? `\nDetails: ${JSON.stringify(response.data, null, 2)}` : ''}`;
+  } else if (response.data) {
+    text = JSON.stringify(response.data, null, 2);
+  }
+
+  return {
+    isError: response.errorMessage ? true : false,
+    content: [
+      {
+        type: 'text',
+        text: text,
+      },
+    ],
+  };
+}
 
 // Collections handlers
 export const handleListOrgCollections = withValidation(
   listCollectionsRequestSchema,
   async () => {
-    return executeApiRequest(`/public/collections`, 'GET');
+    const response = await executeApiRequest(`/public/collections`, 'GET');
+    return toMcpFormat(response);
   },
 );
 
@@ -45,7 +66,11 @@ export const handleGetOrgCollection = withValidation(
   getCollectionRequestSchema,
   async (validatedArgs) => {
     const { collectionId } = validatedArgs;
-    return executeApiRequest(`/public/collections/${collectionId}`, 'GET');
+    const response = await executeApiRequest(
+      `/public/collections/${collectionId}`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -54,11 +79,12 @@ export const handleUpdateOrgCollection = withValidation(
   async (validatedArgs) => {
     const { collectionId, externalId, groups } = validatedArgs;
     const body = { externalId, groups };
-    return executeApiRequest(
+    const response = await executeApiRequest(
       `/public/collections/${collectionId}`,
       'PUT',
       body,
     );
+    return toMcpFormat(response);
   },
 );
 
@@ -66,7 +92,11 @@ export const handleDeleteOrgCollection = withValidation(
   deleteCollectionRequestSchema,
   async (validatedArgs) => {
     const { collectionId } = validatedArgs;
-    return executeApiRequest(`/public/collections/${collectionId}`, 'DELETE');
+    const response = await executeApiRequest(
+      `/public/collections/${collectionId}`,
+      'DELETE',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -74,7 +104,8 @@ export const handleDeleteOrgCollection = withValidation(
 export const handleListOrgMembers = withValidation(
   listMembersRequestSchema,
   async () => {
-    return executeApiRequest(`/public/members`, 'GET');
+    const response = await executeApiRequest(`/public/members`, 'GET');
+    return toMcpFormat(response);
   },
 );
 
@@ -82,7 +113,11 @@ export const handleGetOrgMember = withValidation(
   getMemberRequestSchema,
   async (validatedArgs) => {
     const { memberId } = validatedArgs;
-    return executeApiRequest(`/public/members/${memberId}`, 'GET');
+    const response = await executeApiRequest(
+      `/public/members/${memberId}`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -92,7 +127,8 @@ export const handleInviteOrgMember = withValidation(
     const { email, type, externalId, collections, groups, permissions } =
       validatedArgs;
     const body = { email, type, externalId, collections, groups, permissions };
-    return executeApiRequest(`/public/members`, 'POST', body);
+    const response = await executeApiRequest(`/public/members`, 'POST', body);
+    return toMcpFormat(response);
   },
 );
 
@@ -102,7 +138,12 @@ export const handleUpdateOrgMember = withValidation(
     const { memberId, type, externalId, collections, groups, permissions } =
       validatedArgs;
     const body = { type, externalId, collections, groups, permissions };
-    return executeApiRequest(`/public/members/${memberId}`, 'PUT', body);
+    const response = await executeApiRequest(
+      `/public/members/${memberId}`,
+      'PUT',
+      body,
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -110,7 +151,11 @@ export const handleRemoveOrgMember = withValidation(
   removeMemberRequestSchema,
   async (validatedArgs) => {
     const { memberId } = validatedArgs;
-    return executeApiRequest(`/public/members/${memberId}`, 'DELETE');
+    const response = await executeApiRequest(
+      `/public/members/${memberId}`,
+      'DELETE',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -118,7 +163,8 @@ export const handleRemoveOrgMember = withValidation(
 export const handleListOrgGroups = withValidation(
   listGroupsRequestSchema,
   async () => {
-    return executeApiRequest(`/public/groups`, 'GET');
+    const response = await executeApiRequest(`/public/groups`, 'GET');
+    return toMcpFormat(response);
   },
 );
 
@@ -126,7 +172,11 @@ export const handleGetOrgGroup = withValidation(
   getGroupRequestSchema,
   async (validatedArgs) => {
     const { groupId } = validatedArgs;
-    return executeApiRequest(`/public/groups/${groupId}`, 'GET');
+    const response = await executeApiRequest(
+      `/public/groups/${groupId}`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -135,7 +185,8 @@ export const handleCreateOrgGroup = withValidation(
   async (validatedArgs) => {
     const { name, externalId, collections } = validatedArgs;
     const body = { name, externalId, collections };
-    return executeApiRequest(`/public/groups`, 'POST', body);
+    const response = await executeApiRequest(`/public/groups`, 'POST', body);
+    return toMcpFormat(response);
   },
 );
 
@@ -144,7 +195,12 @@ export const handleUpdateOrgGroup = withValidation(
   async (validatedArgs) => {
     const { groupId, name, externalId, collections } = validatedArgs;
     const body = { name, externalId, collections };
-    return executeApiRequest(`/public/groups/${groupId}`, 'PUT', body);
+    const response = await executeApiRequest(
+      `/public/groups/${groupId}`,
+      'PUT',
+      body,
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -152,7 +208,11 @@ export const handleDeleteOrgGroup = withValidation(
   deleteGroupRequestSchema,
   async (validatedArgs) => {
     const { groupId } = validatedArgs;
-    return executeApiRequest(`/public/groups/${groupId}`, 'DELETE');
+    const response = await executeApiRequest(
+      `/public/groups/${groupId}`,
+      'DELETE',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -160,7 +220,11 @@ export const handleGetOrgMemberGroups = withValidation(
   getMemberGroupsRequestSchema,
   async (validatedArgs) => {
     const { memberId } = validatedArgs;
-    return executeApiRequest(`/public/members/${memberId}/group-ids`, 'GET');
+    const response = await executeApiRequest(
+      `/public/members/${memberId}/group-ids`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -168,7 +232,11 @@ export const handleGetOrgGroupMembers = withValidation(
   getGroupMembersRequestSchema,
   async (validatedArgs) => {
     const { groupId } = validatedArgs;
-    return executeApiRequest(`/public/groups/${groupId}/member-ids`, 'GET');
+    const response = await executeApiRequest(
+      `/public/groups/${groupId}/member-ids`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -177,11 +245,12 @@ export const handleUpdateOrgMemberGroups = withValidation(
   async (validatedArgs) => {
     const { memberId, groupIds } = validatedArgs;
     const body = { groupIds };
-    return executeApiRequest(
+    const response = await executeApiRequest(
       `/public/members/${memberId}/group-ids`,
       'PUT',
       body,
     );
+    return toMcpFormat(response);
   },
 );
 
@@ -189,7 +258,11 @@ export const handleReinviteOrgMember = withValidation(
   reinviteMemberRequestSchema,
   async (validatedArgs) => {
     const { memberId } = validatedArgs;
-    return executeApiRequest(`/public/members/${memberId}/reinvite`, 'POST');
+    const response = await executeApiRequest(
+      `/public/members/${memberId}/reinvite`,
+      'POST',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -198,11 +271,12 @@ export const handleUpdateOrgGroupMembers = withValidation(
   async (validatedArgs) => {
     const { groupId, memberIds } = validatedArgs;
     const body = { memberIds };
-    return executeApiRequest(
+    const response = await executeApiRequest(
       `/public/groups/${groupId}/member-ids`,
       'PUT',
       body,
     );
+    return toMcpFormat(response);
   },
 );
 
@@ -210,7 +284,8 @@ export const handleUpdateOrgGroupMembers = withValidation(
 export const handleListOrgPolicies = withValidation(
   listPoliciesRequestSchema,
   async () => {
-    return executeApiRequest(`/public/policies`, 'GET');
+    const response = await executeApiRequest(`/public/policies`, 'GET');
+    return toMcpFormat(response);
   },
 );
 
@@ -218,7 +293,11 @@ export const handleGetOrgPolicy = withValidation(
   getPolicyRequestSchema,
   async (validatedArgs) => {
     const { policyType } = validatedArgs;
-    return executeApiRequest(`/public/policies/${policyType}`, 'GET');
+    const response = await executeApiRequest(
+      `/public/policies/${policyType}`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -227,7 +306,12 @@ export const handleUpdateOrgPolicy = withValidation(
   async (validatedArgs) => {
     const { policyType, enabled, data } = validatedArgs;
     const body = { enabled, data };
-    return executeApiRequest(`/public/policies/${policyType}`, 'PUT', body);
+    const response = await executeApiRequest(
+      `/public/policies/${policyType}`,
+      'PUT',
+      body,
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -256,7 +340,11 @@ export const handleGetOrgEvents = withValidation(
       ...(memberId && { memberId }),
     });
 
-    return executeApiRequest(`/public/events?${params.toString()}`, 'GET');
+    const response = await executeApiRequest(
+      `/public/events?${params.toString()}`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -264,7 +352,11 @@ export const handleGetOrgEvents = withValidation(
 export const handleGetOrgSubscription = withValidation(
   getOrgSubscriptionRequestSchema,
   async () => {
-    return executeApiRequest(`/public/organization/subscription`, 'GET');
+    const response = await executeApiRequest(
+      `/public/organization/subscription`,
+      'GET',
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -273,7 +365,12 @@ export const handleUpdateOrgSubscription = withValidation(
   async (validatedArgs) => {
     const { passwordManager, secretsManager } = validatedArgs;
     const body = { passwordManager, secretsManager };
-    return executeApiRequest(`/public/organization/subscription`, 'PUT', body);
+    const response = await executeApiRequest(
+      `/public/organization/subscription`,
+      'PUT',
+      body,
+    );
+    return toMcpFormat(response);
   },
 );
 
@@ -287,6 +384,11 @@ export const handleImportOrgUsersAndGroups = withValidation(
       overwriteExisting: overwriteExisting,
       largeImport: largeImport || false,
     };
-    return executeApiRequest(`/public/organization/import`, 'POST', body);
+    const response = await executeApiRequest(
+      `/public/organization/import`,
+      'POST',
+      body,
+    );
+    return toMcpFormat(response);
   },
 );

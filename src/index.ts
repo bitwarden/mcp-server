@@ -92,91 +92,89 @@ async function runServer(): Promise<void> {
         switch (name) {
           // CLI Tools (Personal Vault Operations)
           case 'lock':
-            return { content: [await handleLock(args)] };
+            return await handleLock(args);
           case 'unlock':
-            return { content: [await handleUnlock(args)] };
+            return await handleUnlock(args);
           case 'sync':
-            return { content: [await handleSync(args)] };
+            return await handleSync(args);
           case 'status':
-            return { content: [await handleStatus(args)] };
+            return await handleStatus(args);
           case 'list':
-            return { content: [await handleList(args)] };
+            return await handleList(args);
           case 'get':
-            return { content: [await handleGet(args)] };
+            return await handleGet(args);
           case 'generate':
-            return { content: [await handleGenerate(args)] };
+            return await handleGenerate(args);
           case 'create':
-            return { content: [await handleCreate(args)] };
+            return await handleCreate(args);
           case 'edit':
-            return { content: [await handleEdit(args)] };
+            return await handleEdit(args);
           case 'delete':
-            return { content: [await handleDelete(args)] };
+            return await handleDelete(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':
-            return { content: [await handleListOrgCollections(args)] };
+            return await handleListOrgCollections(args);
           case 'get_org_collection':
-            return { content: [await handleGetOrgCollection(args)] };
+            return await handleGetOrgCollection(args);
           case 'update_org_collection':
-            return { content: [await handleUpdateOrgCollection(args)] };
+            return await handleUpdateOrgCollection(args);
           case 'delete_org_collection':
-            return { content: [await handleDeleteOrgCollection(args)] };
+            return await handleDeleteOrgCollection(args);
 
           // Organization API Tools - Members
           case 'list_org_members':
-            return { content: [await handleListOrgMembers(args)] };
+            return await handleListOrgMembers(args);
           case 'get_org_member':
-            return { content: [await handleGetOrgMember(args)] };
+            return await handleGetOrgMember(args);
           case 'invite_org_member':
-            return { content: [await handleInviteOrgMember(args)] };
+            return await handleInviteOrgMember(args);
           case 'update_org_member':
-            return { content: [await handleUpdateOrgMember(args)] };
+            return await handleUpdateOrgMember(args);
           case 'remove_org_member':
-            return { content: [await handleRemoveOrgMember(args)] };
+            return await handleRemoveOrgMember(args);
           case 'get_org_member_groups':
-            return { content: [await handleGetOrgMemberGroups(args)] };
+            return await handleGetOrgMemberGroups(args);
           case 'update_org_member_groups':
-            return { content: [await handleUpdateOrgMemberGroups(args)] };
+            return await handleUpdateOrgMemberGroups(args);
           case 'reinvite_org_member':
-            return { content: [await handleReinviteOrgMember(args)] };
+            return await handleReinviteOrgMember(args);
 
           // Organization API Tools - Groups
           case 'list_org_groups':
-            return { content: [await handleListOrgGroups(args)] };
+            return await handleListOrgGroups(args);
           case 'get_org_group':
-            return { content: [await handleGetOrgGroup(args)] };
+            return await handleGetOrgGroup(args);
           case 'get_org_group_members':
-            return { content: [await handleGetOrgGroupMembers(args)] };
+            return await handleGetOrgGroupMembers(args);
           case 'create_org_group':
-            return { content: [await handleCreateOrgGroup(args)] };
+            return await handleCreateOrgGroup(args);
           case 'update_org_group':
-            return { content: [await handleUpdateOrgGroup(args)] };
+            return await handleUpdateOrgGroup(args);
           case 'delete_org_group':
-            return { content: [await handleDeleteOrgGroup(args)] };
+            return await handleDeleteOrgGroup(args);
           case 'update_org_group_members':
-            return { content: [await handleUpdateOrgGroupMembers(args)] };
+            return await handleUpdateOrgGroupMembers(args);
 
           // Organization API Tools - Policies
           case 'list_org_policies':
-            return { content: [await handleListOrgPolicies(args)] };
+            return await handleListOrgPolicies(args);
           case 'get_org_policy':
-            return { content: [await handleGetOrgPolicy(args)] };
+            return await handleGetOrgPolicy(args);
           case 'update_org_policy':
-            return { content: [await handleUpdateOrgPolicy(args)] };
+            return await handleUpdateOrgPolicy(args);
 
           // Organization API Tools - Events
           case 'get_org_events':
-            return { content: [await handleGetOrgEvents(args)] };
+            return await handleGetOrgEvents(args);
 
           // Organization API Tools - Billing
           case 'get_org_subscription':
-            return { content: [await handleGetOrgSubscription(args)] };
+            return await handleGetOrgSubscription(args);
           case 'update_org_subscription':
-            return {
-              content: [await handleUpdateOrgSubscription(args)],
-            };
+            return await handleUpdateOrgSubscription(args);
           case 'import_org_users_and_groups':
-            return { content: [await handleImportOrgUsersAndGroups(args)] };
+            return await handleImportOrgUsersAndGroups(args);
 
           default:
             throw new Error(`Unknown tool: ${name}`);
