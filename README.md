@@ -139,60 +139,59 @@ The server provides comprehensive Bitwarden functionality through two categories
 
 ##### Collections Management
 
-| Tool                | Description                   | Required Parameters |
-| ------------------- | ----------------------------- | ------------------- |
-| `list-collections`  | List organization collections | None                |
-| `get-collection`    | Get collection details        | `id`                |
-| `create-collection` | Create new collection         | `name`              |
-| `update-collection` | Update existing collection    | `id`                |
-| `delete-collection` | Delete collection             | `id`                |
+| Tool                    | Description                   | Required Parameters |
+| ----------------------- | ----------------------------- | ------------------- |
+| `list_org_collections`  | List organization collections | None                |
+| `get_org_collection`    | Get collection details        | `id`                |
+| `update_org_collection` | Update existing collection    | `id`                |
+| `delete_org_collection` | Delete collection             | `id`                |
 
 ##### Members Management
 
-| Tool                      | Description                       | Required Parameters |
-| ------------------------- | --------------------------------- | ------------------- |
-| `list-members`            | List organization members         | None                |
-| `get-member`              | Get member details                | `id`                |
-| `invite-member`           | Invite new member                 | `email`, `type`     |
-| `update-member`           | Update existing member            | `id`                |
-| `remove-member`           | Remove member from organization   | `id`                |
-| `reinvite-member`         | Re-invite member                  | `id`                |
-| `get-member-group-ids`    | Get member's group assignments    | `id`                |
-| `update-member-group-ids` | Update member's group assignments | `id`, `groupIds`    |
+| Tool                       | Description                       | Required Parameters |
+| -------------------------- | --------------------------------- | ------------------- |
+| `list_org_members`         | List organization members         | None                |
+| `get_org_member`           | Get member details                | `id`                |
+| `invite_org_member`        | Invite new member                 | `email`, `type`     |
+| `update_org_member`        | Update existing member            | `id`                |
+| `remove_org_member`        | Remove member from organization   | `id`                |
+| `reinvite_org_member`      | Re-invite member                  | `id`                |
+| `get_org_member_groups`    | Get member's group assignments    | `id`                |
+| `update_org_member_groups` | Update member's group assignments | `id`, `groupIds`    |
 
 ##### Groups Management
 
-| Tool                      | Description                       | Required Parameters |
-| ------------------------- | --------------------------------- | ------------------- |
-| `list-groups`             | List organization groups          | None                |
-| `get-group`               | Get group details                 | `id`                |
-| `create-group`            | Create new group                  | `name`              |
-| `update-group`            | Update existing group             | `id`, `name`        |
-| `delete-group`            | Delete group                      | `id`                |
-| `get-group-member-ids`    | Get group's member assignments    | `id`                |
-| `update-group-member-ids` | Update group's member assignments | `id`, `memberIds`   |
+| Tool                       | Description                       | Required Parameters |
+| -------------------------- | --------------------------------- | ------------------- |
+| `list_org_groups`          | List organization groups          | None                |
+| `get_org_group`            | Get group details                 | `id`                |
+| `create_org_group`         | Create new group                  | `name`              |
+| `update_org_group`         | Update existing group             | `id`, `name`        |
+| `delete_org_group`         | Delete group                      | `id`                |
+| `get_org_group_members`    | Get group's member assignments    | `id`                |
+| `update_org_group_members` | Update group's member assignments | `id`, `memberIds`   |
 
 ##### Policies Management
 
-| Tool            | Description                | Required Parameters |
-| --------------- | -------------------------- | ------------------- |
-| `list-policies` | List organization policies | None                |
-| `get-policy`    | Get policy details         | `type`              |
-| `update-policy` | Update organization policy | `type`, `enabled`   |
+| Tool                | Description                | Required Parameters |
+| ------------------- | -------------------------- | ------------------- |
+| `list_org_policies` | List organization policies | None                |
+| `get_org_policy`    | Get policy details         | `type`              |
+| `update_org_policy` | Update organization policy | `type`, `enabled`   |
 
 ##### Organization Management
 
-| Tool                               | Description                  | Required Parameters |
-| ---------------------------------- | ---------------------------- | ------------------- |
-| `get-organization-subscription`    | Get subscription details     | None                |
-| `update-organization-subscription` | Update subscription settings | None                |
-| `import-organization`              | Import members and groups    | None                |
+| Tool                          | Description                  | Required Parameters |
+| ----------------------------- | ---------------------------- | ------------------- |
+| `get_org_subscription`        | Get subscription details     | None                |
+| `update_org_subscription`     | Update subscription settings | None                |
+| `import_org_users_and_groups` | Import members and groups    | None                |
 
 ##### Events and Auditing
 
-| Tool          | Description                 | Required Parameters |
-| ------------- | --------------------------- | ------------------- |
-| `list-events` | Get organization audit logs | None                |
+| Tool             | Description                 | Required Parameters |
+| ---------------- | --------------------------- | ------------------- |
+| `get_org_events` | Get organization audit logs | None                |
 
 ### Manual testing
 
