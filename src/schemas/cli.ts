@@ -141,6 +141,8 @@ export const createSchema = z
     notes: z.string().optional(),
     // Login details (required when type is 1)
     login: loginSchema.optional(),
+    // Folder ID to assign the item to (only for items)
+    folderId: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -166,7 +168,7 @@ export const createSchema = z
     },
     {
       message:
-        'Item type is required for items, login details are required for login items, and notes/login are only valid for items',
+        'Item type is required for items, login details are required for login items, and notes/login/folderId are only valid for items',
     },
   );
 
@@ -176,6 +178,10 @@ export const editLoginSchema = z.object({
   username: z.string().optional(),
   // New password for the login
   password: z.string().optional(),
+  // List of URIs associated with the login
+  uris: z.array(uriSchema).optional(),
+  // Time-based one-time password (TOTP) secret
+  totp: z.string().optional(),
 });
 
 // Schema for validating 'edit' command parameters
@@ -191,6 +197,8 @@ export const editSchema = z
     notes: z.string().optional(),
     // Updated login information (only for items)
     login: editLoginSchema.optional(),
+    // New folder ID to assign the item to (only for items)
+    folderId: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -202,11 +210,15 @@ export const editSchema = z
       if (data.objectType === 'folder' && data.login) {
         return false;
       }
+      // FolderId should only be provided for items, not folders
+      if (data.objectType === 'folder' && data.folderId) {
+        return false;
+      }
       return true;
     },
     {
       message:
-        'Notes and login information are only valid for items, not folders',
+        'Notes, login information, and folder assignment are only valid for items, not folders',
     },
   );
 
