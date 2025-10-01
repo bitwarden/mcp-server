@@ -176,6 +176,10 @@ export const editLoginSchema = z.object({
   username: z.string().optional(),
   // New password for the login
   password: z.string().optional(),
+  // List of URIs associated with the login
+  uris: z.array(uriSchema).optional(),
+  // Time-based one-time password (TOTP) secret
+  totp: z.string().optional(),
 });
 
 // Schema for validating 'edit' command parameters

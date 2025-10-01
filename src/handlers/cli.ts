@@ -17,7 +17,7 @@ import {
   editSchema,
   deleteSchema,
 } from '../schemas/cli.js';
-import { CliResponse } from '../utils/types.js';
+import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
 
 function toMcpFormat(response: CliResponse) {
   return {
@@ -123,21 +123,34 @@ export const handleCreate = withValidation(
     const { objectType, name, type, notes, login } = validatedArgs;
 
     if (objectType === 'folder') {
-      const itemJson = JSON.stringify({ name });
+      const folder: BitwardenFolder = { name };
+      const itemJson = JSON.stringify(folder);
       const encodedItem = Buffer.from(itemJson).toString('base64');
       const command = buildSafeCommand('create', ['folder', encodedItem]);
       const response = await executeCliCommand(command);
       return toMcpFormat(response);
     } else {
       // Creating an item
-      const item: Record<string, unknown> = {
+      const item: BitwardenItem = {
         name,
-        type,
-        notes,
       };
 
+      if (type !== undefined) {
+        item.type = type;
+      }
+
+      if (notes !== undefined) {
+        item.notes = notes;
+      }
+
       if (type === 1 && login) {
-        item['login'] = login;
+        // Only set defined login properties
+        const loginData: BitwardenItem['login'] = {};
+        if (login.username !== undefined) loginData.username = login.username;
+        if (login.password !== undefined) loginData.password = login.password;
+        if (login.totp !== undefined) loginData.totp = login.totp;
+        if (login.uris !== undefined) loginData.uris = login.uris;
+        item.login = loginData;
       }
 
       const itemJson = JSON.stringify(item);
@@ -153,23 +166,55 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
   const { objectType, id, name, notes, login } = validatedArgs;
 
   if (objectType === 'folder') {
-    const itemJson = JSON.stringify({ name });
+    // For folders, we still just update the name directly
+    const folder: BitwardenFolder = { name: name! }; // name is required for folder operations
+    const itemJson = JSON.stringify(folder);
     const encodedItem = Buffer.from(itemJson).toString('base64');
     const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   } else {
-    // Editing an item
-    const updates: Record<string, unknown> = {};
-    if (name) updates['name'] = name;
-    if (notes) updates['notes'] = notes;
-    if (login) updates['login'] = login;
+    // First, get the existing item
+    const getCommand = buildSafeCommand('get', ['item', id]);
+    const getResponse = await executeCliCommand(getCommand);
 
-    const updatesJson = JSON.stringify(updates);
-    const encodedUpdates = Buffer.from(updatesJson).toString('base64');
-    const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
-    const response = await executeCliCommand(command);
-    return toMcpFormat(response);
+    if (getResponse.errorOutput) {
+      return toMcpFormat(getResponse);
+    }
+
+    try {
+      // Parse the existing item with proper typing
+      const existingItem: BitwardenItem = JSON.parse(
+        getResponse.output || '{}',
+      );
+
+      // Only update properties that were provided
+      if (name !== undefined) existingItem.name = name;
+      if (notes !== undefined) existingItem.notes = notes;
+      if (login !== undefined) {
+        // Merge login properties with existing login data, maintaining type safety
+        const currentLogin = existingItem.login || {};
+        const updatedLogin: BitwardenItem['login'] = {
+          ...currentLogin,
+          ...(login.username !== undefined && { username: login.username }),
+          ...(login.password !== undefined && { password: login.password }),
+          ...(login.totp !== undefined && { totp: login.totp }),
+          ...(login.uris !== undefined && { uris: login.uris }),
+        };
+        existingItem.login = updatedLogin;
+      }
+
+      const updatesJson = JSON.stringify(existingItem);
+      const encodedUpdates = Buffer.from(updatesJson).toString('base64');
+      const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
+      const response = await executeCliCommand(command);
+      return toMcpFormat(response);
+    } catch (error) {
+      const errorResponse: CliResponse = {
+        errorOutput: `Failed to parse existing item: ${error instanceof Error ? error.message : String(error)}`,
+      };
+      return toMcpFormat(errorResponse);
+    }
   }
 });
 
