@@ -1,6 +1,11 @@
 # Bitwarden MCP Server
 
-Model Context Protocol (MCP) server that enables interaction with the Bitwarden password manager vault via the MCP protocol. The server allows AI models to securely communicate with a user's Bitwarden vault through defined tool interfaces.
+Model Context Protocol (MCP) server that enables interaction with the Bitwarden password manager vault via the MCP protocol. The server provides two complementary interfaces:
+
+- **CLI-based tools**: Personal vault management and organization operations using the Bitwarden CLI
+- **API-based tools**: Enterprise organization administration using the Bitwarden Public API
+
+This dual approach allows AI models to securely manage both personal vault items and organization-level resources through defined tool interfaces.
 
 ## Prerequisites
 
@@ -118,22 +123,56 @@ This will:
 
 ### Available tools
 
-The server provides comprehensive Bitwarden functionality through two categories of tools:
+The server provides comprehensive Bitwarden functionality through two authentication methods:
+
+**CLI Authentication** is used for:
+
+- Personal vault operations (items, folders, passwords)
+- Quick organization queries (list members, collections)
+- Organization member confirmation workflows
+- Collection creation and editing
+- Item collection assignments
+
+**API Authentication** is used for:
+
+- Full organization administration (members, groups, policies)
+- Bulk operations and automation
+- Advanced permission management
+- Audit log retrieval
+- Subscription management
+
+> **Note**: You can use both authentication methods simultaneously. The CLI tools are lighter-weight for simple operations, while API tools provide comprehensive organization management.
 
 #### Personal Vault Tools (CLI Authentication)
 
-| Tool       | Description                  | Required Parameters                               |
-| ---------- | ---------------------------- | ------------------------------------------------- |
-| `lock`     | Lock the vault               | None                                              |
-| `unlock`   | Unlock with master password  | `password`                                        |
-| `sync`     | Sync vault data              | None                                              |
-| `status`   | Check CLI status             | None                                              |
-| `list`     | List vault items/folders     | `type` (items/folders/collections/organizations)  |
-| `get`      | Get specific item/folder     | `object`, `id`                                    |
-| `generate` | Generate password/passphrase | Various optional parameters                       |
-| `create`   | Create new item or folder    | `objectType`, `name`, additional fields for items |
-| `edit`     | Edit existing item or folder | `objectType`, `id`, optional fields to update     |
-| `delete`   | Delete vault item/folder     | `object`, `id`, optional `permanent`              |
+##### Session Management
+
+| Tool     | Description                 | Required Parameters |
+| -------- | --------------------------- | ------------------- |
+| `lock`   | Lock the vault              | None                |
+| `unlock` | Unlock with master password | `password`          |
+| `sync`   | Sync vault data             | None                |
+| `status` | Check CLI status            | None                |
+
+##### Vault Items and Folders
+
+| Tool                    | Description                               | Required Parameters                                                          |
+| ----------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| `list`                  | List vault items/folders                  | `type` (items/folders/collections/organizations/org-members/org-collections) |
+| `get`                   | Get specific item/folder                  | `object`, `id`, optional `organizationid` for org-collection                 |
+| `generate`              | Generate password/passphrase              | Various optional parameters                                                  |
+| `create`                | Create new item or folder                 | `objectType`, `name`, additional fields for items                            |
+| `edit`                  | Edit existing item or folder              | `objectType`, `id`, optional fields to update                                |
+| `edit_item_collections` | Edit which collections an item belongs to | `itemId`, `organizationId`, `collectionIds` (array)                          |
+| `delete`                | Delete vault item/folder                  | `object`, `id`, optional `permanent`                                         |
+
+##### Organization Operations (CLI)
+
+| Tool                    | Description                           | Required Parameters                                         |
+| ----------------------- | ------------------------------------- | ----------------------------------------------------------- |
+| `confirm`               | Confirm invited organization member   | `organizationId`, `memberId`                                |
+| `create_org_collection` | Create new organization collection    | `organizationId`, `name`, optional `externalId`, `groups`   |
+| `edit_org_collection`   | Edit existing organization collection | `organizationId`, `collectionId`, optional `name`, `groups` |
 
 #### Organization Management Tools (API Authentication)
 

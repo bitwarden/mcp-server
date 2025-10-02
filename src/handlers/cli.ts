@@ -16,6 +16,10 @@ import {
   createSchema,
   editSchema,
   deleteSchema,
+  confirmSchema,
+  createOrgCollectionSchema,
+  editOrgCollectionSchema,
+  editItemCollectionsSchema,
 } from '../schemas/cli.js';
 import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
 
@@ -60,10 +64,13 @@ export const handleStatus = withValidation(statusSchema, async () => {
 });
 
 export const handleList = withValidation(listSchema, async (validatedArgs) => {
-  const { type, search } = validatedArgs;
+  const { type, search, organizationid } = validatedArgs;
   const params: string[] = [type];
   if (search) {
     params.push('--search', search);
+  }
+  if (organizationid) {
+    params.push('--organizationid', organizationid);
   }
   const command = buildSafeCommand('list', params);
   const response = await executeCliCommand(command);
@@ -71,8 +78,12 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
 });
 
 export const handleGet = withValidation(getSchema, async (validatedArgs) => {
-  const { object, id } = validatedArgs;
-  const command = buildSafeCommand('get', [object, id]);
+  const { object, id, organizationid } = validatedArgs;
+  const params: string[] = [object, id];
+  if (organizationid) {
+    params.push('--organizationid', organizationid);
+  }
+  const command = buildSafeCommand('get', params);
   const response = await executeCliCommand(command);
   return toMcpFormat(response);
 });
@@ -232,6 +243,145 @@ export const handleDelete = withValidation(
       params.push('--permanent');
     }
     const command = buildSafeCommand('delete', params);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleConfirm = withValidation(
+  confirmSchema,
+  async (validatedArgs) => {
+    const { organizationId, memberId } = validatedArgs;
+    const command = buildSafeCommand('confirm', [
+      'org-member',
+      memberId,
+      '--organizationid',
+      organizationId,
+    ]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleCreateOrgCollection = withValidation(
+  createOrgCollectionSchema,
+  async (validatedArgs) => {
+    const { organizationId, name, externalId, groups } = validatedArgs;
+
+    // Build the collection object
+    const collection: Record<string, unknown> = {
+      organizationId,
+      name,
+    };
+
+    if (externalId) {
+      collection['externalId'] = externalId;
+    }
+
+    if (groups && groups.length > 0) {
+      collection['groups'] = groups;
+    }
+
+    // Encode the JSON as base64
+    const collectionJson = JSON.stringify(collection);
+    const encodedJson = Buffer.from(collectionJson, 'utf8').toString('base64');
+
+    // Build the command
+    const command = buildSafeCommand('create', [
+      'org-collection',
+      encodedJson,
+      '--organizationid',
+      organizationId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleEditOrgCollection = withValidation(
+  editOrgCollectionSchema,
+  async (validatedArgs) => {
+    const { organizationId, collectionId, name, externalId, groups } =
+      validatedArgs;
+
+    // First, get the existing collection
+    const getCommand = buildSafeCommand('get', [
+      'org-collection',
+      collectionId,
+      '--organizationid',
+      organizationId,
+    ]);
+    const getResponse = await executeCliCommand(getCommand);
+
+    if (getResponse.errorOutput) {
+      return toMcpFormat(getResponse);
+    }
+
+    // Parse the existing collection
+    let collection: Record<string, unknown>;
+    try {
+      collection = JSON.parse(getResponse.output || '{}');
+    } catch {
+      const errorResponse: CliResponse = {
+        output: '',
+        errorOutput: 'Failed to parse existing collection data',
+      };
+      return toMcpFormat(errorResponse);
+    }
+
+    // Update with new values
+    if (name !== undefined) {
+      collection['name'] = name;
+    }
+    if (externalId !== undefined) {
+      collection['externalId'] = externalId;
+    }
+    if (groups !== undefined) {
+      collection['groups'] = groups;
+    }
+
+    // Ensure organizationId is set
+    collection['organizationId'] = organizationId;
+
+    // Encode the JSON as base64
+    const collectionJson = JSON.stringify(collection);
+    const encodedJson = Buffer.from(collectionJson, 'utf8').toString('base64');
+
+    // Build the command
+    const command = buildSafeCommand('edit', [
+      'org-collection',
+      collectionId,
+      encodedJson,
+      '--organizationid',
+      organizationId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleEditItemCollections = withValidation(
+  editItemCollectionsSchema,
+  async (validatedArgs) => {
+    const { itemId, organizationId, collectionIds } = validatedArgs;
+
+    // Encode the collection IDs array as JSON
+    const collectionIdsJson = JSON.stringify(collectionIds);
+    const encodedJson = Buffer.from(collectionIdsJson, 'utf8').toString(
+      'base64',
+    );
+
+    // Build the command
+    const command = buildSafeCommand('edit', [
+      'item-collections',
+      itemId,
+      encodedJson,
+      '--organizationid',
+      organizationId,
+    ]);
+
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },

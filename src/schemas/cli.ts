@@ -27,32 +27,74 @@ export const syncSchema = z.object({});
 export const statusSchema = z.object({});
 
 // Schema for validating 'list' command parameters
-export const listSchema = z.object({
-  // Type of items to list from the vault
-  type: z.enum(['items', 'folders', 'collections', 'organizations']),
-  // Optional search term to filter results
-  search: z.string().optional(),
-});
+export const listSchema = z
+  .object({
+    // Type of items to list from the vault or organization
+    type: z.enum([
+      'items',
+      'folders',
+      'collections',
+      'organizations',
+      'org-collections',
+      'org-members',
+    ]),
+    // Optional search term to filter results
+    search: z.string().optional(),
+    // Organization ID (required for org-collections and org-members)
+    organizationid: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // org-collections and org-members require organizationid
+      if (
+        (data.type === 'org-collections' || data.type === 'org-members') &&
+        !data.organizationid
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'organizationid is required when listing org-collections or org-members',
+    },
+  );
 
 // Schema for validating 'get' command parameters
-export const getSchema = z.object({
-  // Type of object to retrieve from the vault
-  object: z.enum([
-    'item',
-    'username',
-    'password',
-    'uri',
-    'totp',
-    'notes',
-    'exposed',
-    'attachment',
-    'folder',
-    'collection',
-    'organization',
-  ]),
-  // ID or search term to identify the object
-  id: z.string().min(1, 'ID or search term is required'),
-});
+export const getSchema = z
+  .object({
+    // Type of object to retrieve from the vault or organization
+    object: z.enum([
+      'item',
+      'username',
+      'password',
+      'uri',
+      'totp',
+      'notes',
+      'exposed',
+      'attachment',
+      'folder',
+      'collection',
+      'organization',
+      'org-collection',
+    ]),
+    // ID or search term to identify the object
+    id: z.string().min(1, 'ID or search term is required'),
+    // Organization ID (required for org-collection)
+    organizationid: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // org-collection requires organizationid
+      if (data.object === 'org-collection' && !data.organizationid) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'organizationid is required when getting org-collection',
+    },
+  );
 
 // Schema for validating 'generate' command parameters
 export const generateSchema = z
@@ -230,4 +272,58 @@ export const deleteSchema = z.object({
   id: z.string().min(1, 'Object ID is required'),
   // Whether to permanently delete the item (skip trash)
   permanent: z.boolean().optional(),
+});
+
+// Schema for validating 'confirm' command parameters
+export const confirmSchema = z.object({
+  // Organization ID where the member is being confirmed
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Member ID (user identifier) to confirm
+  memberId: z.string().min(1, 'Member ID is required'),
+});
+
+// Schema for group access in collections
+const collectionGroupSchema = z.object({
+  // Group ID
+  id: z.string().min(1, 'Group ID is required'),
+  // Whether the group has read-only access
+  readOnly: z.boolean().optional(),
+  // Whether passwords are hidden from the group
+  hidePasswords: z.boolean().optional(),
+});
+
+// Schema for validating 'create org-collection' command parameters
+export const createOrgCollectionSchema = z.object({
+  // Organization ID where the collection will be created
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Name of the collection
+  name: z.string().min(1, 'Collection name is required'),
+  // Optional external ID for the collection
+  externalId: z.string().optional(),
+  // Optional array of groups with access to this collection
+  groups: z.array(collectionGroupSchema).optional(),
+});
+
+// Schema for validating 'edit org-collection' command parameters
+export const editOrgCollectionSchema = z.object({
+  // Organization ID where the collection exists
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Collection ID to edit
+  collectionId: z.string().min(1, 'Collection ID is required'),
+  // New name for the collection
+  name: z.string().optional(),
+  // Optional external ID for the collection
+  externalId: z.string().optional(),
+  // Optional array of groups with access to this collection
+  groups: z.array(collectionGroupSchema).optional(),
+});
+
+// Schema for validating 'edit item-collections' command parameters
+export const editItemCollectionsSchema = z.object({
+  // Item ID to edit collections for
+  itemId: z.string().min(1, 'Item ID is required'),
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Array of collection IDs the item should belong to
+  collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
