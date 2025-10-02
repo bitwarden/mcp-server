@@ -473,6 +473,34 @@ export const editItemCollectionsTool: Tool = {
   },
 };
 
+export const moveTool: Tool = {
+  name: 'move',
+  description:
+    'Move (share) a vault item to an organization (formerly the share command)',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      itemId: {
+        type: 'string',
+        description: 'Item ID to move to organization',
+      },
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID to move the item to',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'Array of collection IDs the item should be added to in the organization',
+        items: {
+          type: 'string',
+        },
+      },
+    },
+    required: ['itemId', 'organizationId', 'collectionIds'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
@@ -489,4 +517,5 @@ export const cliTools = [
   createOrgCollectionTool,
   editOrgCollectionTool,
   editItemCollectionsTool,
+  moveTool,
 ];

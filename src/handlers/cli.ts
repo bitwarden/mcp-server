@@ -20,6 +20,7 @@ import {
   createOrgCollectionSchema,
   editOrgCollectionSchema,
   editItemCollectionsSchema,
+  moveSchema,
 } from '../schemas/cli.js';
 import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
 
@@ -380,6 +381,33 @@ export const handleEditItemCollections = withValidation(
       encodedJson,
       '--organizationid',
       organizationId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles moving (sharing) a vault item to an organization.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleMove = withValidation(
+  moveSchema,
+  async ({ itemId, organizationId, collectionIds }) => {
+    // Encode the collection IDs array as JSON
+    const collectionIdsJson = JSON.stringify(collectionIds);
+    const encodedJson = Buffer.from(collectionIdsJson, 'utf8').toString(
+      'base64',
+    );
+
+    // Build the command
+    const command = buildSafeCommand('move', [
+      itemId,
+      organizationId,
+      encodedJson,
     ]);
 
     const response = await executeCliCommand(command);

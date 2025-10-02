@@ -593,4 +593,101 @@ describe('CLI Commands', () => {
       }
     });
   });
+
+  describe('move command validation', () => {
+    const moveSchema = z.object({
+      itemId: z.string().min(1, 'Item ID is required'),
+      organizationId: z.string().min(1, 'Organization ID is required'),
+      collectionIds: z.array(
+        z.string().min(1, 'Collection ID cannot be empty'),
+      ),
+    });
+
+    it('should pass validation with valid parameters', () => {
+      const validInput = {
+        itemId: 'item-123',
+        organizationId: 'org-456',
+        collectionIds: ['col-789', 'col-012'],
+      };
+
+      const [isValid, result] = validateInput(moveSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should fail validation without itemId', () => {
+      const invalidInput = {
+        organizationId: 'org-456',
+        collectionIds: ['col-789'],
+      };
+
+      const [isValid, result] = validateInput(moveSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should fail validation without organizationId', () => {
+      const invalidInput = {
+        itemId: 'item-123',
+        collectionIds: ['col-789'],
+      };
+
+      const [isValid, result] = validateInput(moveSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should fail validation without collectionIds', () => {
+      const invalidInput = {
+        itemId: 'item-123',
+        organizationId: 'org-456',
+      };
+
+      const [isValid, result] = validateInput(moveSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should pass validation with empty collectionIds array', () => {
+      const validInput = {
+        itemId: 'item-123',
+        organizationId: 'org-456',
+        collectionIds: [],
+      };
+
+      const [isValid] = validateInput(moveSchema, validInput);
+
+      // Empty array is valid - item moved to org but not assigned to any collections
+      expect(isValid).toBe(true);
+    });
+
+    it('should fail validation with empty string in collectionIds', () => {
+      const invalidInput = {
+        itemId: 'item-123',
+        organizationId: 'org-456',
+        collectionIds: ['col-789', ''],
+      };
+
+      const [isValid, result] = validateInput(moveSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Collection ID cannot be empty',
+        );
+      }
+    });
+  });
 });

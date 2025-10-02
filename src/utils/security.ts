@@ -70,6 +70,7 @@ export function isValidBitwardenCommand(command: string): boolean {
     'edit',
     'delete',
     'confirm',
+    'move',
     'import',
     'export',
     'serve',

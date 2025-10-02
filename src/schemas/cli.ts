@@ -327,3 +327,13 @@ export const editItemCollectionsSchema = z.object({
   // Array of collection IDs the item should belong to
   collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
+
+// Schema for validating 'move' command parameters
+export const moveSchema = z.object({
+  // Item ID to move to organization
+  itemId: z.string().min(1, 'Item ID is required'),
+  // Organization ID to move the item to
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Array of collection IDs the item should be added to
+  collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
+});

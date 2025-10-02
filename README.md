@@ -156,15 +156,16 @@ The server provides comprehensive Bitwarden functionality through two authentica
 
 ##### Vault Items and Folders
 
-| Tool                    | Description                               | Required Parameters                                                          |
-| ----------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
-| `list`                  | List vault items/folders                  | `type` (items/folders/collections/organizations/org-members/org-collections) |
-| `get`                   | Get specific item/folder                  | `object`, `id`, optional `organizationid` for org-collection                 |
-| `generate`              | Generate password/passphrase              | Various optional parameters                                                  |
-| `create`                | Create new item or folder                 | `objectType`, `name`, additional fields for items                            |
-| `edit`                  | Edit existing item or folder              | `objectType`, `id`, optional fields to update                                |
-| `edit_item_collections` | Edit which collections an item belongs to | `itemId`, `organizationId`, `collectionIds` (array)                          |
-| `delete`                | Delete vault item/folder                  | `object`, `id`, optional `permanent`                                         |
+| Tool                    | Description                                                   | Required Parameters                                                          |
+| ----------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `list`                  | List vault items/folders                                      | `type` (items/folders/collections/organizations/org-members/org-collections) |
+| `get`                   | Get specific item/folder                                      | `object`, `id`, optional `organizationid` for org-collection                 |
+| `generate`              | Generate password/passphrase                                  | Various optional parameters                                                  |
+| `create`                | Create new item or folder                                     | `objectType`, `name`, additional fields for items                            |
+| `edit`                  | Edit existing item or folder                                  | `objectType`, `id`, optional fields to update                                |
+| `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                          |
+| `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                          |
+| `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                         |
 
 ##### Organization Operations (CLI)
 

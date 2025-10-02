@@ -172,7 +172,7 @@ export const handleApiCommand = withValidation(
 - **Retrieval**: list, get
 - **Modification**: create, edit, delete
 - **Utility**: generate
-- **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, create org-collection, edit org-collection
+- **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, move (transfer items to organization)
 
 **Organization Administration (API-based):**
 
