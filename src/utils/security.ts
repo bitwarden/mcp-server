@@ -71,6 +71,7 @@ export function isValidBitwardenCommand(command: string): boolean {
     'delete',
     'confirm',
     'move',
+    'device-approval',
     'import',
     'export',
     'serve',
