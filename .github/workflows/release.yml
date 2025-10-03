@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Check branch
         if: ${{ inputs.release_type != 'Dry Run' }}
@@ -107,15 +109,15 @@ jobs:
       - name: Dry Run - Pull, tag, and push release
         if: ${{ inputs.release_type == 'Dry Run' }}
         run: |
-          docker pull ${{ env._IMAGE_NAME }}:dev
-          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker pull "${_IMAGE_NAME}:dev"
+          docker tag "${_IMAGE_NAME}:dev" "${_IMAGE_NAME}:${_RELEASE_TAG}"
 
       - name: Pull, tag, and push release
         if: ${{ inputs.release_type != 'Dry Run' }}
         run: |
-          docker pull ${{ env._IMAGE_NAME }}:dev
-          docker tag ${{ env._IMAGE_NAME }}:dev ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
-          docker push ${{ env._IMAGE_NAME }}:${{ env._RELEASE_TAG }}
+          docker pull "${_IMAGE_NAME}:dev"
+          docker tag "${_IMAGE_NAME}:dev" "${_IMAGE_NAME}:${_RELEASE_TAG}"
+          docker push "${_IMAGE_NAME}:${_RELEASE_TAG}"
 
       - name: Log out of Docker
         run: docker logout ghcr.io
