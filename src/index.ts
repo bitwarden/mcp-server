@@ -35,6 +35,11 @@ import {
   handleCreate,
   handleEdit,
   handleDelete,
+  handleConfirm,
+  handleCreateOrgCollection,
+  handleEditOrgCollection,
+  handleEditItemCollections,
+  handleMove,
 } from './handlers/cli.js';
 
 import {
@@ -111,6 +116,16 @@ async function runServer(): Promise<void> {
             return await handleEdit(args);
           case 'delete':
             return await handleDelete(args);
+          case 'confirm':
+            return await handleConfirm(args);
+          case 'create_org_collection':
+            return await handleCreateOrgCollection(args);
+          case 'edit_org_collection':
+            return await handleEditOrgCollection(args);
+          case 'edit_item_collections':
+            return await handleEditItemCollections(args);
+          case 'move':
+            return await handleMove(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':

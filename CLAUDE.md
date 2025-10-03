@@ -172,6 +172,7 @@ export const handleApiCommand = withValidation(
 - **Retrieval**: list, get
 - **Modification**: create, edit, delete
 - **Utility**: generate
+- **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, move (transfer items to organization)
 
 **Organization Administration (API-based):**
 
@@ -469,3 +470,13 @@ export BW_CLIENT_SECRET="your-client-secret"
 export BW_API_BASE_URL="https://api.bitwarden.com"
 export BW_IDENTITY_URL="https://identity.bitwarden.com"
 ```
+
+## References
+
+### CLI Documentation
+
+- **[Bitwarden CLI Command Reference](https://bitwarden.com/help/cli/)** - Complete documentation for all Bitwarden CLI commands and usage patterns
+
+### API Documentation
+
+- **[Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/)** - Official API specification for organization administration

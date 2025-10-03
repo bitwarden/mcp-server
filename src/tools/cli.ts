@@ -48,19 +48,31 @@ export const statusTool: Tool = {
 
 export const listTool: Tool = {
   name: 'list',
-  description: 'List items from your vault',
+  description: 'List items from your vault or organization',
   inputSchema: {
     type: 'object',
     properties: {
       type: {
         type: 'string',
         description:
-          'Type of items to list (items, folders, collections, organizations)',
-        enum: ['items', 'folders', 'collections', 'organizations'],
+          'Type of items to list (items, folders, collections, organizations, org-collections, org-members)',
+        enum: [
+          'items',
+          'folders',
+          'collections',
+          'organizations',
+          'org-collections',
+          'org-members',
+        ],
       },
       search: {
         type: 'string',
         description: 'Optional search term to filter results',
+      },
+      organizationid: {
+        type: 'string',
+        description:
+          'Organization ID (required for org-collections and org-members)',
       },
     },
     required: ['type'],
@@ -69,7 +81,7 @@ export const listTool: Tool = {
 
 export const getTool: Tool = {
   name: 'get',
-  description: 'Get a specific item from your vault',
+  description: 'Get a specific item from your vault or organization',
   inputSchema: {
     type: 'object',
     properties: {
@@ -88,11 +100,16 @@ export const getTool: Tool = {
           'folder',
           'collection',
           'organization',
+          'org-collection',
         ],
       },
       id: {
         type: 'string',
         description: 'ID or search term for the object',
+      },
+      organizationid: {
+        type: 'string',
+        description: 'Organization ID (required for org-collection)',
       },
     },
     required: ['object', 'id'],
@@ -316,6 +333,174 @@ export const deleteTool: Tool = {
   },
 };
 
+export const confirmTool: Tool = {
+  name: 'confirm',
+  description:
+    'Confirm an invited organization member who has accepted their invitation',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      memberId: {
+        type: 'string',
+        description: 'Member ID (user identifier) to confirm',
+      },
+    },
+    required: ['organizationId', 'memberId'],
+  },
+};
+
+export const createOrgCollectionTool: Tool = {
+  name: 'create_org_collection',
+  description: 'Create a new organization collection',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      name: {
+        type: 'string',
+        description: 'Name of the collection',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External ID for the collection (optional)',
+      },
+      groups: {
+        type: 'array',
+        description: 'Array of group IDs with access to this collection',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Group ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether passwords are hidden from the group',
+            },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    required: ['organizationId', 'name'],
+  },
+};
+
+export const editOrgCollectionTool: Tool = {
+  name: 'edit_org_collection',
+  description: 'Edit an existing organization collection',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      collectionId: {
+        type: 'string',
+        description: 'Collection ID to edit',
+      },
+      name: {
+        type: 'string',
+        description: 'New name for the collection',
+      },
+      externalId: {
+        type: 'string',
+        description: 'External ID for the collection (optional)',
+      },
+      groups: {
+        type: 'array',
+        description: 'Array of group IDs with access to this collection',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Group ID',
+            },
+            readOnly: {
+              type: 'boolean',
+              description: 'Whether the group has read-only access',
+            },
+            hidePasswords: {
+              type: 'boolean',
+              description: 'Whether passwords are hidden from the group',
+            },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    required: ['organizationId', 'collectionId'],
+  },
+};
+
+export const editItemCollectionsTool: Tool = {
+  name: 'edit_item_collections',
+  description: 'Edit which collections an item belongs to',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      itemId: {
+        type: 'string',
+        description: 'Item ID to edit collections for',
+      },
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      collectionIds: {
+        type: 'array',
+        description: 'Array of collection IDs the item should belong to',
+        items: {
+          type: 'string',
+        },
+      },
+    },
+    required: ['itemId', 'organizationId', 'collectionIds'],
+  },
+};
+
+export const moveTool: Tool = {
+  name: 'move',
+  description:
+    'Move (share) a vault item to an organization (formerly the share command)',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      itemId: {
+        type: 'string',
+        description: 'Item ID to move to organization',
+      },
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID to move the item to',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'Array of collection IDs the item should be added to in the organization',
+        items: {
+          type: 'string',
+        },
+      },
+    },
+    required: ['itemId', 'organizationId', 'collectionIds'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
@@ -328,4 +513,9 @@ export const cliTools = [
   createTool,
   editTool,
   deleteTool,
+  confirmTool,
+  createOrgCollectionTool,
+  editOrgCollectionTool,
+  editItemCollectionsTool,
+  moveTool,
 ];
