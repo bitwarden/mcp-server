@@ -40,6 +40,11 @@ import {
   handleEditOrgCollection,
   handleEditItemCollections,
   handleMove,
+  handleDeviceApprovalList,
+  handleDeviceApprovalApprove,
+  handleDeviceApprovalApproveAll,
+  handleDeviceApprovalDeny,
+  handleDeviceApprovalDenyAll,
 } from './handlers/cli.js';
 
 import {
@@ -126,6 +131,16 @@ async function runServer(): Promise<void> {
             return await handleEditItemCollections(args);
           case 'move':
             return await handleMove(args);
+          case 'device_approval_list':
+            return await handleDeviceApprovalList(args);
+          case 'device_approval_approve':
+            return await handleDeviceApprovalApprove(args);
+          case 'device_approval_approve_all':
+            return await handleDeviceApprovalApproveAll(args);
+          case 'device_approval_deny':
+            return await handleDeviceApprovalDeny(args);
+          case 'device_approval_deny_all':
+            return await handleDeviceApprovalDenyAll(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':

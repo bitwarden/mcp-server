@@ -337,3 +337,37 @@ export const moveSchema = z.object({
   // Array of collection IDs the item should be added to
   collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
+
+// Schema for validating 'device-approval list' command parameters
+export const deviceApprovalListSchema = z.object({
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+});
+
+// Schema for validating 'device-approval approve' command parameters
+export const deviceApprovalApproveSchema = z.object({
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Device approval request ID
+  requestId: z.string().min(1, 'Request ID is required'),
+});
+
+// Schema for validating 'device-approval approve-all' command parameters
+export const deviceApprovalApproveAllSchema = z.object({
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+});
+
+// Schema for validating 'device-approval deny' command parameters
+export const deviceApprovalDenySchema = z.object({
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  // Device approval request ID
+  requestId: z.string().min(1, 'Request ID is required'),
+});
+
+// Schema for validating 'device-approval deny-all' command parameters
+export const deviceApprovalDenyAllSchema = z.object({
+  // Organization ID
+  organizationId: z.string().min(1, 'Organization ID is required'),
+});

@@ -169,11 +169,18 @@ The server provides comprehensive Bitwarden functionality through two authentica
 
 ##### Organization Operations (CLI)
 
-| Tool                    | Description                           | Required Parameters                                         |
-| ----------------------- | ------------------------------------- | ----------------------------------------------------------- |
-| `confirm`               | Confirm invited organization member   | `organizationId`, `memberId`                                |
-| `create_org_collection` | Create new organization collection    | `organizationId`, `name`, optional `externalId`, `groups`   |
-| `edit_org_collection`   | Edit existing organization collection | `organizationId`, `collectionId`, optional `name`, `groups` |
+| Tool                          | Description                                       | Required Parameters                                         |
+| ----------------------------- | ------------------------------------------------- | ----------------------------------------------------------- |
+| `confirm`                     | Confirm invited organization member               | `organizationId`, `memberId`                                |
+| `create_org_collection`       | Create new organization collection                | `organizationId`, `name`, optional `externalId`, `groups`   |
+| `edit_org_collection`         | Edit existing organization collection             | `organizationId`, `collectionId`, optional `name`, `groups` |
+| `device_approval_list`        | List pending device approval requests             | `organizationId`                                            |
+| `device_approval_approve`     | Approve a device authorization request            | `organizationId`, `requestId`                               |
+| `device_approval_approve_all` | Approve all pending device authorization requests | `organizationId`                                            |
+| `device_approval_deny`        | Deny a device authorization request               | `organizationId`, `requestId`                               |
+| `device_approval_deny_all`    | Deny all pending device authorization requests    | `organizationId`                                            |
+
+> **Note**: Device approval commands are only available to organization admins/owners for managing trusted device approval requests.
 
 #### Organization Management Tools (API Authentication)
 
