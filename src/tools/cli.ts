@@ -501,6 +501,89 @@ export const moveTool: Tool = {
   },
 };
 
+export const deviceApprovalListTool: Tool = {
+  name: 'device_approval_list',
+  description: 'List all pending device approval requests for an organization',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+    },
+    required: ['organizationId'],
+  },
+};
+
+export const deviceApprovalApproveTool: Tool = {
+  name: 'device_approval_approve',
+  description: 'Approve a pending device authorization request',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      requestId: {
+        type: 'string',
+        description: 'Device approval request ID',
+      },
+    },
+    required: ['organizationId', 'requestId'],
+  },
+};
+
+export const deviceApprovalApproveAllTool: Tool = {
+  name: 'device_approval_approve_all',
+  description: 'Approve all current pending device authorization requests',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+    },
+    required: ['organizationId'],
+  },
+};
+
+export const deviceApprovalDenyTool: Tool = {
+  name: 'device_approval_deny',
+  description: 'Deny a pending device authorization request',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+      requestId: {
+        type: 'string',
+        description: 'Device approval request ID',
+      },
+    },
+    required: ['organizationId', 'requestId'],
+  },
+};
+
+export const deviceApprovalDenyAllTool: Tool = {
+  name: 'device_approval_deny_all',
+  description: 'Deny all pending device authorization requests',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      organizationId: {
+        type: 'string',
+        description: 'Organization ID',
+      },
+    },
+    required: ['organizationId'],
+  },
+};
+
 export const restoreTool: Tool = {
   name: 'restore',
   description: 'Restore an item from trash',
@@ -538,5 +621,10 @@ export const cliTools = [
   editOrgCollectionTool,
   editItemCollectionsTool,
   moveTool,
+  deviceApprovalListTool,
+  deviceApprovalApproveTool,
+  deviceApprovalApproveAllTool,
+  deviceApprovalDenyTool,
+  deviceApprovalDenyAllTool,
   restoreTool,
 ];

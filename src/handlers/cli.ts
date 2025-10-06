@@ -21,6 +21,11 @@ import {
   editOrgCollectionSchema,
   editItemCollectionsSchema,
   moveSchema,
+  deviceApprovalListSchema,
+  deviceApprovalApproveSchema,
+  deviceApprovalApproveAllSchema,
+  deviceApprovalDenySchema,
+  deviceApprovalDenyAllSchema,
   restoreSchema,
 } from '../schemas/cli.js';
 import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
@@ -409,6 +414,113 @@ export const handleMove = withValidation(
       itemId,
       organizationId,
       encodedJson,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles listing pending device approval requests for an organization.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleDeviceApprovalList = withValidation(
+  deviceApprovalListSchema,
+  async ({ organizationId }) => {
+    // Build the command
+    const command = buildSafeCommand('device-approval', [
+      'list',
+      '--organizationid',
+      organizationId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles approving a pending device authorization request.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleDeviceApprovalApprove = withValidation(
+  deviceApprovalApproveSchema,
+  async ({ organizationId, requestId }) => {
+    // Build the command
+    const command = buildSafeCommand('device-approval', [
+      'approve',
+      '--organizationid',
+      organizationId,
+      requestId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles approving all pending device authorization requests.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleDeviceApprovalApproveAll = withValidation(
+  deviceApprovalApproveAllSchema,
+  async ({ organizationId }) => {
+    // Build the command
+    const command = buildSafeCommand('device-approval', [
+      'approve-all',
+      '--organizationid',
+      organizationId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles denying a pending device authorization request.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleDeviceApprovalDeny = withValidation(
+  deviceApprovalDenySchema,
+  async ({ organizationId, requestId }) => {
+    // Build the command
+    const command = buildSafeCommand('device-approval', [
+      'deny',
+      '--organizationid',
+      organizationId,
+      requestId,
+    ]);
+
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+/**
+ * Handles denying all pending device authorization requests.
+ *
+ * @param {Record<string, unknown>} args - Arguments from the tool call.
+ * @returns {Promise<McpResponse>} Promise resolving to the formatted result.
+ */
+export const handleDeviceApprovalDenyAll = withValidation(
+  deviceApprovalDenyAllSchema,
+  async ({ organizationId }) => {
+    // Build the command
+    const command = buildSafeCommand('device-approval', [
+      'deny-all',
+      '--organizationid',
+      organizationId,
     ]);
 
     const response = await executeCliCommand(command);

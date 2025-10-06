@@ -691,6 +691,228 @@ describe('CLI Commands', () => {
     });
   });
 
+  describe('device approval commands validation', () => {
+    const deviceApprovalListSchema = z.object({
+      organizationId: z.string().min(1, 'Organization ID is required'),
+    });
+
+    const deviceApprovalApproveSchema = z.object({
+      organizationId: z.string().min(1, 'Organization ID is required'),
+      requestId: z.string().min(1, 'Request ID is required'),
+    });
+
+    const deviceApprovalApproveAllSchema = z.object({
+      organizationId: z.string().min(1, 'Organization ID is required'),
+    });
+
+    const deviceApprovalDenySchema = z.object({
+      organizationId: z.string().min(1, 'Organization ID is required'),
+      requestId: z.string().min(1, 'Request ID is required'),
+    });
+
+    const deviceApprovalDenyAllSchema = z.object({
+      organizationId: z.string().min(1, 'Organization ID is required'),
+    });
+
+    describe('device-approval list', () => {
+      it('should pass validation with valid organizationId', () => {
+        const validInput = {
+          organizationId: 'org-123',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalListSchema,
+          validInput,
+        );
+
+        expect(isValid).toBe(true);
+        if (isValid) {
+          expect(result).toEqual(validInput);
+        }
+      });
+
+      it('should fail validation without organizationId', () => {
+        const invalidInput = {};
+
+        const [isValid, result] = validateInput(
+          deviceApprovalListSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+    });
+
+    describe('device-approval approve', () => {
+      it('should pass validation with valid parameters', () => {
+        const validInput = {
+          organizationId: 'org-123',
+          requestId: 'req-456',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalApproveSchema,
+          validInput,
+        );
+
+        expect(isValid).toBe(true);
+        if (isValid) {
+          expect(result).toEqual(validInput);
+        }
+      });
+
+      it('should fail validation without organizationId', () => {
+        const invalidInput = {
+          requestId: 'req-456',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalApproveSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+
+      it('should fail validation without requestId', () => {
+        const invalidInput = {
+          organizationId: 'org-123',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalApproveSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+    });
+
+    describe('device-approval approve-all', () => {
+      it('should pass validation with valid organizationId', () => {
+        const validInput = {
+          organizationId: 'org-123',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalApproveAllSchema,
+          validInput,
+        );
+
+        expect(isValid).toBe(true);
+        if (isValid) {
+          expect(result).toEqual(validInput);
+        }
+      });
+
+      it('should fail validation without organizationId', () => {
+        const invalidInput = {};
+
+        const [isValid, result] = validateInput(
+          deviceApprovalApproveAllSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+    });
+
+    describe('device-approval deny', () => {
+      it('should pass validation with valid parameters', () => {
+        const validInput = {
+          organizationId: 'org-123',
+          requestId: 'req-456',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalDenySchema,
+          validInput,
+        );
+
+        expect(isValid).toBe(true);
+        if (isValid) {
+          expect(result).toEqual(validInput);
+        }
+      });
+
+      it('should fail validation without organizationId', () => {
+        const invalidInput = {
+          requestId: 'req-456',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalDenySchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+
+      it('should fail validation without requestId', () => {
+        const invalidInput = {
+          organizationId: 'org-123',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalDenySchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+    });
+
+    describe('device-approval deny-all', () => {
+      it('should pass validation with valid organizationId', () => {
+        const validInput = {
+          organizationId: 'org-123',
+        };
+
+        const [isValid, result] = validateInput(
+          deviceApprovalDenyAllSchema,
+          validInput,
+        );
+
+        expect(isValid).toBe(true);
+        if (isValid) {
+          expect(result).toEqual(validInput);
+        }
+      });
+
+      it('should fail validation without organizationId', () => {
+        const invalidInput = {};
+
+        const [isValid, result] = validateInput(
+          deviceApprovalDenyAllSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain('Validation error');
+        }
+      });
+    });
+  });
+
   describe('restore command validation', () => {
     const restoreSchema = z.object({
       object: z.enum(['item']),
