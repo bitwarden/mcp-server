@@ -128,7 +128,7 @@ jobs:
           for tag in "${tags[@]}"; do
             images+="${tag}@${DIGEST} "
           done
-          cosign sign --yes "${images}"
+          cosign sign --yes "${images[@]}"
           echo "images=${images}" >> "$GITHUB_OUTPUT"
 
       - name: Verify the signed image with Cosign
