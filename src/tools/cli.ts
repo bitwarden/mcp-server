@@ -501,6 +501,26 @@ export const moveTool: Tool = {
   },
 };
 
+export const restoreTool: Tool = {
+  name: 'restore',
+  description: 'Restore an item from trash',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      object: {
+        type: 'string',
+        description: 'Type of object to restore',
+        enum: ['item'],
+      },
+      id: {
+        type: 'string',
+        description: 'ID of the object to restore',
+      },
+    },
+    required: ['object', 'id'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
@@ -518,4 +538,5 @@ export const cliTools = [
   editOrgCollectionTool,
   editItemCollectionsTool,
   moveTool,
+  restoreTool,
 ];

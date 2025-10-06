@@ -170,7 +170,7 @@ export const handleApiCommand = withValidation(
 
 - **Session**: lock, unlock, sync, status
 - **Retrieval**: list, get
-- **Modification**: create, edit, delete
+- **Modification**: create, edit, delete, restore
 - **Utility**: generate
 - **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, move (transfer items to organization)
 

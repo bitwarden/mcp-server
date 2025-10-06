@@ -40,6 +40,7 @@ import {
   handleEditOrgCollection,
   handleEditItemCollections,
   handleMove,
+  handleRestore,
 } from './handlers/cli.js';
 
 import {
@@ -126,6 +127,8 @@ async function runServer(): Promise<void> {
             return await handleEditItemCollections(args);
           case 'move':
             return await handleMove(args);
+          case 'restore':
+            return await handleRestore(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':

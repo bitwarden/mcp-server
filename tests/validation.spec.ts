@@ -145,5 +145,57 @@ describe('Validation', () => {
         expect(result.content[0].text).toContain('Validation error');
       }
     });
+
+    it('should validate restore schema with valid input', () => {
+      const restoreSchema = z.object({
+        object: z.enum(['item']),
+        id: z.string().min(1, 'Object ID is required'),
+      });
+
+      const [isValid, result] = validateInput(restoreSchema, {
+        object: 'item',
+        id: 'abc123',
+      });
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result.object).toBe('item');
+        expect(result.id).toBe('abc123');
+      }
+    });
+
+    it('should reject restore schema with empty id', () => {
+      const restoreSchema = z.object({
+        object: z.enum(['item']),
+        id: z.string().min(1, 'Object ID is required'),
+      });
+
+      const [isValid, result] = validateInput(restoreSchema, {
+        object: 'item',
+        id: '',
+      });
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Object ID is required');
+      }
+    });
+
+    it('should reject restore schema with invalid object type', () => {
+      const restoreSchema = z.object({
+        object: z.enum(['item']),
+        id: z.string().min(1, 'Object ID is required'),
+      });
+
+      const [isValid, result] = validateInput(restoreSchema, {
+        object: 'folder',
+        id: 'abc123',
+      });
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
   });
 });

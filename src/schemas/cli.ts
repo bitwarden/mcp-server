@@ -337,3 +337,11 @@ export const moveSchema = z.object({
   // Array of collection IDs the item should be added to
   collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
+
+// Schema for validating 'restore' command parameters
+export const restoreSchema = z.object({
+  // Type of object to restore
+  object: z.enum(['item']),
+  // ID of the object to restore from trash
+  id: z.string().min(1, 'Object ID is required'),
+});

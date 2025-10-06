@@ -21,6 +21,7 @@ import {
   editOrgCollectionSchema,
   editItemCollectionsSchema,
   moveSchema,
+  restoreSchema,
 } from '../schemas/cli.js';
 import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
 
@@ -410,6 +411,16 @@ export const handleMove = withValidation(
       encodedJson,
     ]);
 
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleRestore = withValidation(
+  restoreSchema,
+  async (validatedArgs) => {
+    const { object, id } = validatedArgs;
+    const command = buildSafeCommand('restore', [object, id]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },

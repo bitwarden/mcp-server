@@ -690,4 +690,79 @@ describe('CLI Commands', () => {
       }
     });
   });
+
+  describe('restore command validation', () => {
+    const restoreSchema = z.object({
+      object: z.enum(['item']),
+      id: z.string().min(1, 'Object ID is required'),
+    });
+
+    it('should pass validation with valid object and id', () => {
+      const validInput = {
+        object: 'item' as const,
+        id: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(restoreSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should fail validation without object', () => {
+      const invalidInput = {
+        id: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(restoreSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should fail validation without id', () => {
+      const invalidInput = {
+        object: 'item' as const,
+      };
+
+      const [isValid, result] = validateInput(restoreSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should fail validation with empty id', () => {
+      const invalidInput = {
+        object: 'item' as const,
+        id: '',
+      };
+
+      const [isValid, result] = validateInput(restoreSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Object ID is required');
+      }
+    });
+
+    it('should fail validation with invalid object type', () => {
+      const invalidInput = {
+        object: 'folder',
+        id: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(restoreSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+  });
 });

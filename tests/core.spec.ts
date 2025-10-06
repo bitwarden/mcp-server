@@ -212,6 +212,39 @@ describe('Edit and Delete Schemas', () => {
       expect(result.content[0].text).toContain('Validation error');
     }
   });
+
+  it('should validate restore command with valid parameters', () => {
+    const restoreSchema = z.object({
+      object: z.enum(['item']),
+      id: z.string().min(1, 'Object ID is required'),
+    });
+
+    const validInput = {
+      object: 'item' as const,
+      id: 'restored-item-id',
+    };
+    const [isValid, result] = validateInput(restoreSchema, validInput);
+
+    expect(isValid).toBe(true);
+    if (isValid) {
+      expect(result).toEqual(validInput);
+    }
+  });
+
+  it('should reject restore command with invalid object type', () => {
+    const restoreSchema = z.object({
+      object: z.enum(['item']),
+      id: z.string().min(1, 'Object ID is required'),
+    });
+
+    const invalidInput = { object: 'attachment', id: 'test-id' };
+    const [isValid, result] = validateInput(restoreSchema, invalidInput);
+
+    expect(isValid).toBe(false);
+    if (!isValid) {
+      expect(result.content[0].text).toContain('Validation error');
+    }
+  });
 });
 
 describe('Error Handling', () => {
