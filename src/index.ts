@@ -45,6 +45,7 @@ import {
   handleDeviceApprovalApproveAll,
   handleDeviceApprovalDeny,
   handleDeviceApprovalDenyAll,
+  handleRestore,
 } from './handlers/cli.js';
 
 import {
@@ -141,7 +142,9 @@ async function runServer(): Promise<void> {
             return await handleDeviceApprovalDeny(args);
           case 'device_approval_deny_all':
             return await handleDeviceApprovalDenyAll(args);
-
+          case 'restore':
+            return await handleRestore(args);
+            
           // Organization API Tools - Collections
           case 'list_org_collections':
             return await handleListOrgCollections(args);

@@ -371,3 +371,11 @@ export const deviceApprovalDenyAllSchema = z.object({
   // Organization ID
   organizationId: z.string().min(1, 'Organization ID is required'),
 });
+
+// Schema for validating 'restore' command parameters
+export const restoreSchema = z.object({
+  // Type of object to restore
+  object: z.enum(['item']),
+  // ID of the object to restore from trash
+  id: z.string().min(1, 'Object ID is required'),
+});

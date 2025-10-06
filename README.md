@@ -166,6 +166,7 @@ The server provides comprehensive Bitwarden functionality through two authentica
 | `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                         |
+| `restore`               | Restore item from trash                                       | `object`, `id`                                                               |
 
 ##### Organization Operations (CLI)
 

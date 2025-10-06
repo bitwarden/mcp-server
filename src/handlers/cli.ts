@@ -26,6 +26,7 @@ import {
   deviceApprovalApproveAllSchema,
   deviceApprovalDenySchema,
   deviceApprovalDenyAllSchema,
+  restoreSchema,
 } from '../schemas/cli.js';
 import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
 
@@ -522,6 +523,16 @@ export const handleDeviceApprovalDenyAll = withValidation(
       organizationId,
     ]);
 
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleRestore = withValidation(
+  restoreSchema,
+  async (validatedArgs) => {
+    const { object, id } = validatedArgs;
+    const command = buildSafeCommand('restore', [object, id]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
