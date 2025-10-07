@@ -987,4 +987,818 @@ describe('CLI Commands', () => {
       }
     });
   });
+
+  describe('create item validation', () => {
+    // Simplified URI schema for testing
+    const uriSchema = z.object({
+      uri: z.string().url('Must be a valid URL'),
+      match: z
+        .union([
+          z.literal(0),
+          z.literal(1),
+          z.literal(2),
+          z.literal(3),
+          z.literal(4),
+          z.literal(5),
+        ])
+        .optional(),
+    });
+
+    const loginSchema = z.object({
+      username: z.string().optional(),
+      password: z.string().optional(),
+      uris: z.array(uriSchema).optional(),
+      totp: z.string().optional(),
+    });
+
+    const cardSchema = z.object({
+      cardholderName: z.string().optional(),
+      number: z.string().optional(),
+      brand: z.string().optional(),
+      expMonth: z
+        .string()
+        .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+        .optional(),
+      expYear: z
+        .string()
+        .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+        .optional(),
+      code: z.string().optional(),
+    });
+
+    const identitySchema = z.object({
+      title: z.string().optional(),
+      firstName: z.string().optional(),
+      middleName: z.string().optional(),
+      lastName: z.string().optional(),
+      address1: z.string().optional(),
+      address2: z.string().optional(),
+      address3: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      postalCode: z.string().optional(),
+      country: z.string().optional(),
+      company: z.string().optional(),
+      email: z.string().optional(),
+      phone: z.string().optional(),
+      ssn: z.string().optional(),
+      username: z.string().optional(),
+      passportNumber: z.string().optional(),
+      licenseNumber: z.string().optional(),
+    });
+
+    const secureNoteSchema = z.object({
+      type: z.literal(0).optional(),
+    });
+
+    const createItemSchema = z
+      .object({
+        name: z.string().min(1, 'Name is required'),
+        type: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+        notes: z.string().optional(),
+        login: loginSchema.optional(),
+        card: cardSchema.optional(),
+        identity: identitySchema.optional(),
+        secureNote: secureNoteSchema.optional(),
+        folderId: z.string().optional(),
+      })
+      .refine(
+        (data) => {
+          if (data.type === 1 && !data.login) return false;
+          if (data.type === 2 && !data.secureNote) return false;
+          if (data.type === 3 && !data.card) return false;
+          if (data.type === 4 && !data.identity) return false;
+          return true;
+        },
+        {
+          message:
+            'Type-specific data is required: login for type 1, secureNote for type 2, card for type 3, identity for type 4',
+        },
+      );
+
+    it('should validate create login item with all fields', () => {
+      const validInput = {
+        name: 'Test Login',
+        type: 1 as const,
+        notes: 'Test notes',
+        login: {
+          username: 'user@example.com',
+          password: 'password123',
+          uris: [{ uri: 'https://example.com', match: 0 as const }],
+          totp: 'JBSWY3DPEHPK3PXP',
+        },
+        folderId: 'folder-123',
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate create login item with minimal fields', () => {
+      const validInput = {
+        name: 'Test Login',
+        type: 1 as const,
+        login: {},
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate create secure note item', () => {
+      const validInput = {
+        name: 'Test Secure Note',
+        type: 2 as const,
+        notes: 'This is a secure note',
+        secureNote: { type: 0 as const },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate create card item with all fields', () => {
+      const validInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          cardholderName: 'John Doe',
+          number: '4111111111111111',
+          brand: 'Visa',
+          expMonth: '12',
+          expYear: '2025',
+          code: '123',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate create identity item with all fields', () => {
+      const validInput = {
+        name: 'Test Identity',
+        type: 4 as const,
+        identity: {
+          title: 'Mr',
+          firstName: 'John',
+          middleName: 'M',
+          lastName: 'Doe',
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          postalCode: '10001',
+          country: 'USA',
+          email: 'john@example.com',
+          phone: '555-1234',
+          ssn: '123-45-6789',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject create item without name', () => {
+      const invalidInput = {
+        type: 1 as const,
+        login: { username: 'test' },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create item without type', () => {
+      const invalidInput = {
+        name: 'Test Item',
+        login: { username: 'test' },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create login item without login data', () => {
+      const invalidInput = {
+        name: 'Test Login',
+        type: 1 as const,
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Type-specific data is required',
+        );
+      }
+    });
+
+    it('should reject create secure note without secureNote data', () => {
+      const invalidInput = {
+        name: 'Test Note',
+        type: 2 as const,
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Type-specific data is required',
+        );
+      }
+    });
+
+    it('should reject create card without card data', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Type-specific data is required',
+        );
+      }
+    });
+
+    it('should reject create identity without identity data', () => {
+      const invalidInput = {
+        name: 'Test Identity',
+        type: 4 as const,
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Type-specific data is required',
+        );
+      }
+    });
+
+    it('should reject create item with invalid URI', () => {
+      const invalidInput = {
+        name: 'Test Login',
+        type: 1 as const,
+        login: {
+          uris: [{ uri: 'not-a-url' }],
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Must be a valid URL');
+      }
+    });
+
+    it('should reject create card with invalid expiration month format (1 digit)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '5',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration month format (3 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '123',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with non-numeric expiration month', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: 'AB',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration year format (2 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: '25',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration year format (5 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: '20255',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should reject create card with non-numeric expiration year', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: 'ABCD',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should accept create card with valid 2-digit month and 4-digit year', () => {
+      const validInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          cardholderName: 'John Doe',
+          expMonth: '01',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+  });
+
+  describe('edit item validation', () => {
+    const uriSchema = z.object({
+      uri: z.string().url('Must be a valid URL'),
+      match: z
+        .union([
+          z.literal(0),
+          z.literal(1),
+          z.literal(2),
+          z.literal(3),
+          z.literal(4),
+          z.literal(5),
+        ])
+        .optional(),
+    });
+
+    const editLoginSchema = z.object({
+      username: z.string().optional(),
+      password: z.string().optional(),
+      uris: z.array(uriSchema).optional(),
+      totp: z.string().optional(),
+    });
+
+    const editCardSchema = z.object({
+      cardholderName: z.string().optional(),
+      number: z.string().optional(),
+      brand: z.string().optional(),
+      expMonth: z
+        .string()
+        .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+        .optional(),
+      expYear: z
+        .string()
+        .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+        .optional(),
+      code: z.string().optional(),
+    });
+
+    const editIdentitySchema = z.object({
+      title: z.string().optional(),
+      firstName: z.string().optional(),
+      middleName: z.string().optional(),
+      lastName: z.string().optional(),
+      address1: z.string().optional(),
+      address2: z.string().optional(),
+      address3: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      postalCode: z.string().optional(),
+      country: z.string().optional(),
+      company: z.string().optional(),
+      email: z.string().optional(),
+      phone: z.string().optional(),
+      ssn: z.string().optional(),
+      username: z.string().optional(),
+      passportNumber: z.string().optional(),
+      licenseNumber: z.string().optional(),
+    });
+
+    const editSecureNoteSchema = z.object({
+      type: z.literal(0).optional(),
+    });
+
+    const editItemSchema = z.object({
+      id: z.string().min(1, 'ID is required'),
+      name: z.string().optional(),
+      notes: z.string().optional(),
+      login: editLoginSchema.optional(),
+      card: editCardSchema.optional(),
+      identity: editIdentitySchema.optional(),
+      secureNote: editSecureNoteSchema.optional(),
+      folderId: z.string().optional(),
+    });
+
+    it('should validate edit item with id only', () => {
+      const validInput = {
+        id: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate edit login item with all fields', () => {
+      const validInput = {
+        id: 'item-123',
+        name: 'Updated Login',
+        notes: 'Updated notes',
+        login: {
+          username: 'newuser@example.com',
+          password: 'newpassword',
+          uris: [{ uri: 'https://newsite.com' }],
+          totp: 'NEWTOTP',
+        },
+        folderId: 'folder-456',
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate edit card item', () => {
+      const validInput = {
+        id: 'item-123',
+        card: {
+          cardholderName: 'Jane Doe',
+          expMonth: '06',
+          expYear: '2026',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate edit identity item', () => {
+      const validInput = {
+        id: 'item-123',
+        identity: {
+          firstName: 'Jane',
+          lastName: 'Smith',
+          email: 'jane@example.com',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate edit secure note', () => {
+      const validInput = {
+        id: 'item-123',
+        notes: 'Updated secure note content',
+        secureNote: { type: 0 as const },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject edit item without id', () => {
+      const invalidInput = {
+        name: 'Updated Item',
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject edit item with empty id', () => {
+      const invalidInput = {
+        id: '',
+        name: 'Updated Item',
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('ID is required');
+      }
+    });
+
+    it('should reject edit item with invalid URI', () => {
+      const invalidInput = {
+        id: 'item-123',
+        login: {
+          uris: [{ uri: 'invalid-url' }],
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Must be a valid URL');
+      }
+    });
+
+    it('should reject edit card with invalid expiration month format', () => {
+      const invalidInput = {
+        id: 'item-123',
+        card: {
+          expMonth: '5',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject edit card with invalid expiration year format', () => {
+      const invalidInput = {
+        id: 'item-123',
+        card: {
+          expYear: '25',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should accept edit card with valid expiration month and year', () => {
+      const validInput = {
+        id: 'item-123',
+        card: {
+          expMonth: '06',
+          expYear: '2026',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+  });
+
+  describe('create folder validation', () => {
+    const createFolderSchema = z.object({
+      name: z.string().min(1, 'Name is required'),
+    });
+
+    it('should validate create folder with name', () => {
+      const validInput = {
+        name: 'Test Folder',
+      };
+
+      const [isValid, result] = validateInput(createFolderSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject create folder without name', () => {
+      const invalidInput = {};
+
+      const [isValid, result] = validateInput(createFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create folder with empty name', () => {
+      const invalidInput = {
+        name: '',
+      };
+
+      const [isValid, result] = validateInput(createFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Name is required');
+      }
+    });
+  });
+
+  describe('edit folder validation', () => {
+    const editFolderSchema = z.object({
+      id: z.string().min(1, 'ID is required'),
+      name: z.string().min(1, 'Name is required'),
+    });
+
+    it('should validate edit folder with id and name', () => {
+      const validInput = {
+        id: 'folder-123',
+        name: 'Updated Folder',
+      };
+
+      const [isValid, result] = validateInput(editFolderSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject edit folder without id', () => {
+      const invalidInput = {
+        name: 'Updated Folder',
+      };
+
+      const [isValid, result] = validateInput(editFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject edit folder without name', () => {
+      const invalidInput = {
+        id: 'folder-123',
+      };
+
+      const [isValid, result] = validateInput(editFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject edit folder with empty id', () => {
+      const invalidInput = {
+        id: '',
+        name: 'Updated Folder',
+      };
+
+      const [isValid, result] = validateInput(editFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('ID is required');
+      }
+    });
+
+    it('should reject edit folder with empty name', () => {
+      const invalidInput = {
+        id: 'folder-123',
+        name: '',
+      };
+
+      const [isValid, result] = validateInput(editFolderSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Name is required');
+      }
+    });
+  });
 });

@@ -163,17 +163,116 @@ export const loginSchema = z.object({
   totp: z.string().optional(),
 });
 
-// Schema for validating 'create item' command parameters
-export const createItemSchema = z.object({
-  // Name of the item to create
-  name: z.string().min(1, 'Name is required'),
-  // Optional notes for the item
-  notes: z.string().optional(),
-  // Login details (required for login items)
-  login: loginSchema,
-  // Folder ID to assign the item to
-  folderId: z.string().optional(),
+// Schema for validating card information in vault items
+export const cardSchema = z.object({
+  // Cardholder name
+  cardholderName: z.string().optional(),
+  // Card number
+  number: z.string().optional(),
+  // Card brand (Visa, Mastercard, Amex, Discover, etc.)
+  brand: z.string().optional(),
+  // Expiration month (MM)
+  expMonth: z
+    .string()
+    .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+    .optional(),
+  // Expiration year (YYYY)
+  expYear: z
+    .string()
+    .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+    .optional(),
+  // Security code (CVV)
+  code: z.string().optional(),
 });
+
+// Schema for validating identity information in vault items
+export const identitySchema = z.object({
+  // Title (Mr, Mrs, Ms, Dr, etc.)
+  title: z.string().optional(),
+  // First name
+  firstName: z.string().optional(),
+  // Middle name
+  middleName: z.string().optional(),
+  // Last name
+  lastName: z.string().optional(),
+  // Address line 1
+  address1: z.string().optional(),
+  // Address line 2
+  address2: z.string().optional(),
+  // Address line 3
+  address3: z.string().optional(),
+  // City
+  city: z.string().optional(),
+  // State or province
+  state: z.string().optional(),
+  // Postal code
+  postalCode: z.string().optional(),
+  // Country
+  country: z.string().optional(),
+  // Company name
+  company: z.string().optional(),
+  // Email address
+  email: z.string().optional(),
+  // Phone number
+  phone: z.string().optional(),
+  // Social Security Number
+  ssn: z.string().optional(),
+  // Username
+  username: z.string().optional(),
+  // Passport number
+  passportNumber: z.string().optional(),
+  // License number
+  licenseNumber: z.string().optional(),
+});
+
+// Schema for validating secure note information
+export const secureNoteSchema = z.object({
+  // Type of secure note (0: Generic)
+  type: z.literal(0).optional(),
+});
+
+// Schema for validating 'create item' command parameters
+export const createItemSchema = z
+  .object({
+    // Name of the item to create
+    name: z.string().min(1, 'Name is required'),
+    // Type of item (1: Login, 2: Secure Note, 3: Card, 4: Identity)
+    type: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    // Optional notes for the item
+    notes: z.string().optional(),
+    // Login details (required for login items)
+    login: loginSchema.optional(),
+    // Card details (required for card items)
+    card: cardSchema.optional(),
+    // Identity details (required for identity items)
+    identity: identitySchema.optional(),
+    // Secure note details (required for secure note items)
+    secureNote: secureNoteSchema.optional(),
+    // Folder ID to assign the item to
+    folderId: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // Validate that the appropriate type-specific data is provided
+      if (data.type === 1 && !data.login) {
+        return false;
+      }
+      if (data.type === 2 && !data.secureNote) {
+        return false;
+      }
+      if (data.type === 3 && !data.card) {
+        return false;
+      }
+      if (data.type === 4 && !data.identity) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'Type-specific data is required: login for type 1, secureNote for type 2, card for type 3, identity for type 4',
+    },
+  );
 
 // Schema for validating 'create folder' command parameters
 export const createFolderSchema = z.object({
@@ -193,7 +292,75 @@ export const editLoginSchema = z.object({
   totp: z.string().optional(),
 });
 
-// Schema for validating 'edit item' command parameters (login)
+// Schema for validating card fields during item editing
+export const editCardSchema = z.object({
+  // Cardholder name
+  cardholderName: z.string().optional(),
+  // Card number
+  number: z.string().optional(),
+  // Card brand (Visa, Mastercard, Amex, Discover, etc.)
+  brand: z.string().optional(),
+  // Expiration month (MM)
+  expMonth: z
+    .string()
+    .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+    .optional(),
+  // Expiration year (YYYY)
+  expYear: z
+    .string()
+    .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+    .optional(),
+  // Security code (CVV)
+  code: z.string().optional(),
+});
+
+// Schema for validating identity fields during item editing
+export const editIdentitySchema = z.object({
+  // Title (Mr, Mrs, Ms, Dr, etc.)
+  title: z.string().optional(),
+  // First name
+  firstName: z.string().optional(),
+  // Middle name
+  middleName: z.string().optional(),
+  // Last name
+  lastName: z.string().optional(),
+  // Address line 1
+  address1: z.string().optional(),
+  // Address line 2
+  address2: z.string().optional(),
+  // Address line 3
+  address3: z.string().optional(),
+  // City
+  city: z.string().optional(),
+  // State or province
+  state: z.string().optional(),
+  // Postal code
+  postalCode: z.string().optional(),
+  // Country
+  country: z.string().optional(),
+  // Company name
+  company: z.string().optional(),
+  // Email address
+  email: z.string().optional(),
+  // Phone number
+  phone: z.string().optional(),
+  // Social Security Number
+  ssn: z.string().optional(),
+  // Username
+  username: z.string().optional(),
+  // Passport number
+  passportNumber: z.string().optional(),
+  // License number
+  licenseNumber: z.string().optional(),
+});
+
+// Schema for validating secure note fields during item editing
+export const editSecureNoteSchema = z.object({
+  // Type of secure note (0: Generic)
+  type: z.literal(0).optional(),
+});
+
+// Schema for validating 'edit item' command parameters
 export const editItemSchema = z.object({
   // ID of the item to edit
   id: z.string().min(1, 'ID is required'),
@@ -203,6 +370,12 @@ export const editItemSchema = z.object({
   notes: z.string().optional(),
   // Updated login information
   login: editLoginSchema.optional(),
+  // Updated card information
+  card: editCardSchema.optional(),
+  // Updated identity information
+  identity: editIdentitySchema.optional(),
+  // Updated secure note information
+  secureNote: editSecureNoteSchema.optional(),
   // New folder ID to assign the item to
   folderId: z.string().optional(),
 });
