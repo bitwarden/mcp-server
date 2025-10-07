@@ -32,8 +32,10 @@ import {
   handleList,
   handleGet,
   handleGenerate,
-  handleCreate,
-  handleEdit,
+  handleCreateItem,
+  handleCreateFolder,
+  handleEditItem,
+  handleEditFolder,
   handleDelete,
   handleConfirm,
   handleCreateOrgCollection,
@@ -116,10 +118,14 @@ async function runServer(): Promise<void> {
             return await handleGet(args);
           case 'generate':
             return await handleGenerate(args);
-          case 'create':
-            return await handleCreate(args);
-          case 'edit':
-            return await handleEdit(args);
+          case 'create_item':
+            return await handleCreateItem(args);
+          case 'create_folder':
+            return await handleCreateFolder(args);
+          case 'edit_item':
+            return await handleEditItem(args);
+          case 'edit_folder':
+            return await handleEditFolder(args);
           case 'delete':
             return await handleDelete(args);
           case 'confirm':
@@ -144,7 +150,7 @@ async function runServer(): Promise<void> {
             return await handleDeviceApprovalDenyAll(args);
           case 'restore':
             return await handleRestore(args);
-            
+
           // Organization API Tools - Collections
           case 'list_org_collections':
             return await handleListOrgCollections(args);

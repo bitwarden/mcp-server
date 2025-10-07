@@ -161,8 +161,10 @@ The server provides comprehensive Bitwarden functionality through two authentica
 | `list`                  | List vault items/folders                                      | `type` (items/folders/collections/organizations/org-members/org-collections) |
 | `get`                   | Get specific item/folder                                      | `object`, `id`, optional `organizationid` for org-collection                 |
 | `generate`              | Generate password/passphrase                                  | Various optional parameters                                                  |
-| `create`                | Create new item or folder                                     | `objectType`, `name`, additional fields for items                            |
-| `edit`                  | Edit existing item or folder                                  | `objectType`, `id`, optional fields to update                                |
+| `create_item`           | Create new vault item (login)                                 | `name`, `login`, optional `notes`, `folderId`                                |
+| `create_folder`         | Create new folder                                             | `name`                                                                       |
+| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, `login`, `folderId`                          |
+| `edit_folder`           | Edit existing folder                                          | `id`, `name`                                                                 |
 | `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                         |

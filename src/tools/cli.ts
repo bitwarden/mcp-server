@@ -164,34 +164,24 @@ export const generateTool: Tool = {
   },
 };
 
-export const createTool: Tool = {
-  name: 'create',
-  description: 'Create a new item or folder in your vault',
+export const createItemTool: Tool = {
+  name: 'create_item',
+  description:
+    'Create a new item (login, secure note, card, or identity) in your vault',
   inputSchema: {
     type: 'object',
     properties: {
-      objectType: {
-        type: 'string',
-        description: 'Type of object to create',
-        enum: ['item', 'folder'],
-      },
       name: {
         type: 'string',
-        description: 'Name of the item or folder',
-      },
-      type: {
-        type: 'number',
-        description:
-          'Type of item (1: Login, 2: Secure Note, 3: Card, 4: Identity) - required for items',
-        enum: [1, 2, 3, 4],
+        description: 'Name of the item',
       },
       notes: {
         type: 'string',
-        description: 'Notes for the item (only valid for items, not folders)',
+        description: 'Notes for the item',
       },
       login: {
         type: 'object',
-        description: 'Login information (required for type=1)',
+        description: 'Login information (required for login items)',
         properties: {
           username: {
             type: 'string',
@@ -229,41 +219,49 @@ export const createTool: Tool = {
       },
       folderId: {
         type: 'string',
-        description:
-          'Folder ID to assign the item to (only valid for items, not folders)',
+        description: 'Folder ID to assign the item to',
       },
     },
-    required: ['objectType', 'name'],
+    required: ['name', 'login'],
   },
 };
 
-export const editTool: Tool = {
-  name: 'edit',
-  description: 'Edit an existing item or folder in your vault',
+export const createFolderTool: Tool = {
+  name: 'create_folder',
+  description: 'Create a new folder in your vault',
   inputSchema: {
     type: 'object',
     properties: {
-      objectType: {
+      name: {
         type: 'string',
-        description: 'Type of object to edit',
-        enum: ['item', 'folder'],
+        description: 'Name of the folder',
       },
+    },
+    required: ['name'],
+  },
+};
+
+export const editItemTool: Tool = {
+  name: 'edit_item',
+  description: 'Edit an existing login item in your vault',
+  inputSchema: {
+    type: 'object',
+    properties: {
       id: {
         type: 'string',
-        description: 'ID of the item or folder to edit',
+        description: 'ID of the item to edit',
       },
       name: {
         type: 'string',
-        description: 'New name for the item or folder',
+        description: 'New name for the item',
       },
       notes: {
         type: 'string',
-        description:
-          'New notes for the item (only valid for items, not folders)',
+        description: 'New notes for the item',
       },
       login: {
         type: 'object',
-        description: 'Login information to update (only for items)',
+        description: 'Login information to update',
         properties: {
           username: {
             type: 'string',
@@ -301,11 +299,29 @@ export const editTool: Tool = {
       },
       folderId: {
         type: 'string',
-        description:
-          'New folder ID to assign the item to (only valid for items, not folders)',
+        description: 'New folder ID to assign the item to',
       },
     },
-    required: ['objectType', 'id'],
+    required: ['id'],
+  },
+};
+
+export const editFolderTool: Tool = {
+  name: 'edit_folder',
+  description: 'Edit an existing folder in your vault',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the folder to edit',
+      },
+      name: {
+        type: 'string',
+        description: 'New name for the folder',
+      },
+    },
+    required: ['id', 'name'],
   },
 };
 
@@ -613,8 +629,10 @@ export const cliTools = [
   listTool,
   getTool,
   generateTool,
-  createTool,
-  editTool,
+  createItemTool,
+  createFolderTool,
+  editItemTool,
+  editFolderTool,
   deleteTool,
   confirmTool,
   createOrgCollectionTool,

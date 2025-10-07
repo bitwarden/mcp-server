@@ -170,10 +170,11 @@ export const handleApiCommand = withValidation(
 
 - **Session**: lock, unlock, sync, status
 - **Retrieval**: list, get
-- **Modification**: create, edit, delete, restore
+- **Item Management**: create, edit, delete, restore
+- **Folder Management**: create, edit
 - **Utility**: generate
-- **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, move (transfer items to organization)
-- **Device Approval**: device-approval list, device-approval approve, device-approval approve-all, device-approval deny, device-approval deny-all
+- **Organization**: list and confirm organization members, manage and move organization items
+- **Device Approval**: list, approve, and deny devices
 
 **Organization Administration (API-based):**
 
@@ -182,6 +183,7 @@ export const handleApiCommand = withValidation(
 - **Groups**: list, create, update, delete, manage group membership
 - **Policies**: list, retrieve, update organization policies
 - **Events**: retrieve organization audit logs and events
+- **Organization**: manage organization subscriptions
 
 ## Organization Administration Tools
 
@@ -208,44 +210,6 @@ Key compliance features:
 - Events: `GET /public/events` with proper query parameter handling
 
 This ensures that all organization management operations work correctly with Bitwarden's production API services and maintain compatibility with future API updates.
-
-### Collections Management
-
-- **list-collections**: Retrieve all organization collections with access permissions
-- **get-collection**: Get details of a specific collection by ID
-- **create-collection**: Create new collections for organizing vault items
-- **update-collection**: Modify collection properties and permissions
-- **delete-collection**: Remove collections from the organization
-
-### Members Management
-
-- **list-members**: List all organization members with status and access details
-- **get-member**: Retrieve specific member information and permissions
-- **invite-member**: Send invitations to new users to join the organization
-- **update-member**: Modify member roles, access levels, and permissions
-- **remove-member**: Remove users from the organization
-- **reinvite-member**: Resend invitation emails to pending members
-
-### Groups Management
-
-- **list-groups**: Retrieve all organization groups and their configurations
-- **get-group**: Get details of a specific group including member assignments
-- **create-group**: Create new groups for organizing members
-- **update-group**: Modify group properties and access permissions
-- **delete-group**: Remove groups from the organization
-- **get-group-members**: List all members assigned to a specific group
-- **update-group-members**: Add or remove members from groups
-
-### Policies Management
-
-- **list-policies**: Retrieve all organization policies and their current status
-- **get-policy**: Get details of a specific policy by type
-- **update-policy**: Enable, disable, or configure organization security policies
-
-### Event Monitoring
-
-- **list-events**: Retrieve organization audit logs with filtering options
-- **get-events**: Get specific event details for compliance and security monitoring
 
 ### API Capabilities vs CLI Limitations
 
@@ -322,7 +286,9 @@ npm run lint     # ESLint + Prettier
 
 ### CLI Operations
 
-**Base64 Encoding (create/edit):**
+**Base64 Encoding:**
+
+Operations where JSON data needs to be passed in should always base64 encode the JSON object.
 
 ```typescript
 const itemBase64 = Buffer.from(JSON.stringify(item), 'utf8').toString('base64');

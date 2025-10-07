@@ -163,56 +163,23 @@ export const loginSchema = z.object({
   totp: z.string().optional(),
 });
 
-// Schema for validating 'create' command parameters
-export const createSchema = z
-  .object({
-    // Name of the item/folder to create
-    name: z.string().min(1, 'Name is required'),
-    // Type of object to create: 'item' or 'folder'
-    objectType: z.enum(['item', 'folder']),
-    // Type of item to create (only for items)
-    type: z
-      .union([
-        z.literal(1), // Login
-        z.literal(2), // Secure Note
-        z.literal(3), // Card
-        z.literal(4), // Identity
-      ])
-      .optional(),
-    // Optional notes for the item
-    notes: z.string().optional(),
-    // Login details (required when type is 1)
-    login: loginSchema.optional(),
-    // Folder ID to assign the item to (only for items)
-    folderId: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      // If objectType is item, type should be provided
-      if (data.objectType === 'item') {
-        if (!data.type) {
-          return false;
-        }
-        // If type is login (1), login object should be provided
-        if (data.type === 1) {
-          return !!data.login; // login object should exist
-        }
-      }
-      // Notes should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.notes) {
-        return false;
-      }
-      // Login should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.login) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message:
-        'Item type is required for items, login details are required for login items, and notes/login/folderId are only valid for items',
-    },
-  );
+// Schema for validating 'create item' command parameters
+export const createItemSchema = z.object({
+  // Name of the item to create
+  name: z.string().min(1, 'Name is required'),
+  // Optional notes for the item
+  notes: z.string().optional(),
+  // Login details (required for login items)
+  login: loginSchema,
+  // Folder ID to assign the item to
+  folderId: z.string().optional(),
+});
+
+// Schema for validating 'create folder' command parameters
+export const createFolderSchema = z.object({
+  // Name of the folder to create
+  name: z.string().min(1, 'Name is required'),
+});
 
 // Schema for validating login fields during item editing
 export const editLoginSchema = z.object({
@@ -226,43 +193,27 @@ export const editLoginSchema = z.object({
   totp: z.string().optional(),
 });
 
-// Schema for validating 'edit' command parameters
-export const editSchema = z
-  .object({
-    // Type of object to edit: 'item' or 'folder'
-    objectType: z.enum(['item', 'folder']),
-    // ID of the item/folder to edit
-    id: z.string().min(1, 'ID is required'),
-    // New name for the item/folder
-    name: z.string().optional(),
-    // New notes for the item
-    notes: z.string().optional(),
-    // Updated login information (only for items)
-    login: editLoginSchema.optional(),
-    // New folder ID to assign the item to (only for items)
-    folderId: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      // Notes should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.notes) {
-        return false;
-      }
-      // Login should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.login) {
-        return false;
-      }
-      // FolderId should only be provided for items, not folders
-      if (data.objectType === 'folder' && data.folderId) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message:
-        'Notes, login information, and folder assignment are only valid for items, not folders',
-    },
-  );
+// Schema for validating 'edit item' command parameters (login)
+export const editItemSchema = z.object({
+  // ID of the item to edit
+  id: z.string().min(1, 'ID is required'),
+  // New name for the item
+  name: z.string().optional(),
+  // New notes for the item
+  notes: z.string().optional(),
+  // Updated login information
+  login: editLoginSchema.optional(),
+  // New folder ID to assign the item to
+  folderId: z.string().optional(),
+});
+
+// Schema for validating 'edit folder' command parameters
+export const editFolderSchema = z.object({
+  // ID of the folder to edit
+  id: z.string().min(1, 'ID is required'),
+  // New name for the folder
+  name: z.string().min(1, 'Name is required'),
+});
 
 // Schema for validating 'delete' command parameters
 export const deleteSchema = z.object({
