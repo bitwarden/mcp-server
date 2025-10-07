@@ -211,50 +211,6 @@ Key compliance features:
 
 This ensures that all organization management operations work correctly with Bitwarden's production API services and maintain compatibility with future API updates.
 
-### Collections Management
-
-- **list_org_collections**: Retrieve all organization collections with access permissions
-- **get_org_collection**: Get details of a specific collection by ID
-- **update_org_collection**: Modify collection properties and permissions
-- **delete_org_collection**: Remove collections from the organization
-
-### Members Management
-
-- **list_org_members**: List all organization members with status and access details
-- **get_org_member**: Retrieve specific member information and permissions
-- **invite_org_member**: Send invitations to new users to join the organization
-- **update_org_member**: Modify member roles, access levels, and permissions
-- **remove_org_member**: Remove users from the organization
-- **reinvite_org_member**: Resend invitation emails to pending members
-- **get_org_member_groups**: Get member's group assignments
-- **update_org_member_groups**: Update member's group assignments
-
-### Groups Management
-
-- **list_org_groups**: Retrieve all organization groups and their configurations
-- **get_org_group**: Get details of a specific group including member assignments
-- **create_org_group**: Create new groups for organizing members
-- **update_org_group**: Modify group properties and access permissions
-- **delete_org_group**: Remove groups from the organization
-- **get_org_group_members**: List all members assigned to a specific group
-- **update_org_group_members**: Add or remove members from groups
-
-### Policies Management
-
-- **list_org_policies**: Retrieve all organization policies and their current status
-- **get_org_policy**: Get details of a specific policy by type
-- **update_org_policy**: Enable, disable, or configure organization security policies
-
-### Event Monitoring
-
-- **get_org_events**: Retrieve organization audit logs with filtering options
-
-### Organization Management
-
-- **get_org_subscription**: Get subscription details
-- **update_org_subscription**: Update subscription settings
-- **import_org_users_and_groups**: Import members and groups
-
 ### API Capabilities vs CLI Limitations
 
 **API-Only Features:**
