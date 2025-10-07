@@ -172,9 +172,15 @@ export const cardSchema = z.object({
   // Card brand (Visa, Mastercard, Amex, Discover, etc.)
   brand: z.string().optional(),
   // Expiration month (MM)
-  expMonth: z.string().optional(),
+  expMonth: z
+    .string()
+    .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+    .optional(),
   // Expiration year (YYYY)
-  expYear: z.string().optional(),
+  expYear: z
+    .string()
+    .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+    .optional(),
   // Security code (CVV)
   code: z.string().optional(),
 });
@@ -295,9 +301,15 @@ export const editCardSchema = z.object({
   // Card brand (Visa, Mastercard, Amex, Discover, etc.)
   brand: z.string().optional(),
   // Expiration month (MM)
-  expMonth: z.string().optional(),
+  expMonth: z
+    .string()
+    .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+    .optional(),
   // Expiration year (YYYY)
-  expYear: z.string().optional(),
+  expYear: z
+    .string()
+    .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+    .optional(),
   // Security code (CVV)
   code: z.string().optional(),
 });

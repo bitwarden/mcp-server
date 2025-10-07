@@ -1015,8 +1015,14 @@ describe('CLI Commands', () => {
       cardholderName: z.string().optional(),
       number: z.string().optional(),
       brand: z.string().optional(),
-      expMonth: z.string().optional(),
-      expYear: z.string().optional(),
+      expMonth: z
+        .string()
+        .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+        .optional(),
+      expYear: z
+        .string()
+        .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+        .optional(),
       code: z.string().optional(),
     });
 
@@ -1281,6 +1287,145 @@ describe('CLI Commands', () => {
         expect(result.content[0].text).toContain('Must be a valid URL');
       }
     });
+
+    it('should reject create card with invalid expiration month format (1 digit)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '5',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration month format (3 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '123',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with non-numeric expiration month', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: 'AB',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration year format (2 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: '25',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should reject create card with invalid expiration year format (5 digits)', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: '20255',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should reject create card with non-numeric expiration year', () => {
+      const invalidInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          expMonth: '12',
+          expYear: 'ABCD',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should accept create card with valid 2-digit month and 4-digit year', () => {
+      const validInput = {
+        name: 'Test Card',
+        type: 3 as const,
+        card: {
+          cardholderName: 'John Doe',
+          expMonth: '01',
+          expYear: '2025',
+        },
+      };
+
+      const [isValid, result] = validateInput(createItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
   });
 
   describe('edit item validation', () => {
@@ -1309,8 +1454,14 @@ describe('CLI Commands', () => {
       cardholderName: z.string().optional(),
       number: z.string().optional(),
       brand: z.string().optional(),
-      expMonth: z.string().optional(),
-      expYear: z.string().optional(),
+      expMonth: z
+        .string()
+        .regex(/^\d{2}$/, 'Expiration month must be exactly 2 digits (MM)')
+        .optional(),
+      expYear: z
+        .string()
+        .regex(/^\d{4}$/, 'Expiration year must be exactly 4 digits (YYYY)')
+        .optional(),
       code: z.string().optional(),
     });
 
@@ -1476,6 +1627,59 @@ describe('CLI Commands', () => {
       expect(isValid).toBe(false);
       if (!isValid) {
         expect(result.content[0].text).toContain('Must be a valid URL');
+      }
+    });
+
+    it('should reject edit card with invalid expiration month format', () => {
+      const invalidInput = {
+        id: 'item-123',
+        card: {
+          expMonth: '5',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration month must be exactly 2 digits',
+        );
+      }
+    });
+
+    it('should reject edit card with invalid expiration year format', () => {
+      const invalidInput = {
+        id: 'item-123',
+        card: {
+          expYear: '25',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Expiration year must be exactly 4 digits',
+        );
+      }
+    });
+
+    it('should accept edit card with valid expiration month and year', () => {
+      const validInput = {
+        id: 'item-123',
+        card: {
+          expMonth: '06',
+          expYear: '2026',
+        },
+      };
+
+      const [isValid, result] = validateInput(editItemSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
       }
     });
   });
