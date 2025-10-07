@@ -34,6 +34,37 @@ export interface BitwardenItem {
     }[];
     totp?: string;
   };
+  card?: {
+    cardholderName?: string;
+    number?: string;
+    brand?: string;
+    expMonth?: string;
+    expYear?: string;
+    code?: string;
+  };
+  identity?: {
+    title?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    address1?: string;
+    address2?: string;
+    address3?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    ssn?: string;
+    username?: string;
+    passportNumber?: string;
+    licenseNumber?: string;
+  };
+  secureNote?: {
+    type?: number;
+  };
 }
 
 export interface BitwardenFolder {

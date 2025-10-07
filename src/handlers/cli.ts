@@ -140,12 +140,13 @@ export const handleGenerate = withValidation(
 export const handleCreateItem = withValidation(
   createItemSchema,
   async (validatedArgs) => {
-    const { name, notes, login, folderId } = validatedArgs;
+    const { name, type, notes, login, card, identity, secureNote, folderId } =
+      validatedArgs;
 
-    // Creating an item (currently only supports login type)
+    // Creating an item with the specified type
     const item: BitwardenItem = {
       name,
-      type: 1, // Login type
+      type,
     };
 
     if (notes !== undefined) {
@@ -156,13 +157,66 @@ export const handleCreateItem = withValidation(
       item.folderId = folderId;
     }
 
-    // Only set defined login properties
-    const loginData: BitwardenItem['login'] = {};
-    if (login.username !== undefined) loginData.username = login.username;
-    if (login.password !== undefined) loginData.password = login.password;
-    if (login.totp !== undefined) loginData.totp = login.totp;
-    if (login.uris !== undefined) loginData.uris = login.uris;
-    item.login = loginData;
+    // Set type-specific data based on item type
+    if (type === 1 && login) {
+      // Login type
+      const loginData: BitwardenItem['login'] = {};
+      if (login.username !== undefined) loginData.username = login.username;
+      if (login.password !== undefined) loginData.password = login.password;
+      if (login.totp !== undefined) loginData.totp = login.totp;
+      if (login.uris !== undefined) loginData.uris = login.uris;
+      item.login = loginData;
+    } else if (type === 2 && secureNote) {
+      // Secure Note type
+      const secureNoteData: BitwardenItem['secureNote'] = {};
+      if (secureNote.type !== undefined) secureNoteData.type = secureNote.type;
+      item.secureNote = secureNoteData;
+    } else if (type === 3 && card) {
+      // Card type
+      const cardData: BitwardenItem['card'] = {};
+      if (card.cardholderName !== undefined)
+        cardData.cardholderName = card.cardholderName;
+      if (card.number !== undefined) cardData.number = card.number;
+      if (card.brand !== undefined) cardData.brand = card.brand;
+      if (card.expMonth !== undefined) cardData.expMonth = card.expMonth;
+      if (card.expYear !== undefined) cardData.expYear = card.expYear;
+      if (card.code !== undefined) cardData.code = card.code;
+      item.card = cardData;
+    } else if (type === 4 && identity) {
+      // Identity type
+      const identityData: BitwardenItem['identity'] = {};
+      if (identity.title !== undefined) identityData.title = identity.title;
+      if (identity.firstName !== undefined)
+        identityData.firstName = identity.firstName;
+      if (identity.middleName !== undefined)
+        identityData.middleName = identity.middleName;
+      if (identity.lastName !== undefined)
+        identityData.lastName = identity.lastName;
+      if (identity.address1 !== undefined)
+        identityData.address1 = identity.address1;
+      if (identity.address2 !== undefined)
+        identityData.address2 = identity.address2;
+      if (identity.address3 !== undefined)
+        identityData.address3 = identity.address3;
+      if (identity.city !== undefined) identityData.city = identity.city;
+      if (identity.state !== undefined) identityData.state = identity.state;
+      if (identity.postalCode !== undefined)
+        identityData.postalCode = identity.postalCode;
+      if (identity.country !== undefined)
+        identityData.country = identity.country;
+      if (identity.company !== undefined)
+        identityData.company = identity.company;
+      if (identity.email !== undefined) identityData.email = identity.email;
+      if (identity.phone !== undefined) identityData.phone = identity.phone;
+      if (identity.ssn !== undefined) identityData.ssn = identity.ssn;
+      if (identity.username !== undefined)
+        identityData.username = identity.username;
+      if (identity.passportNumber !== undefined)
+        identityData.passportNumber = identity.passportNumber;
+      if (identity.licenseNumber !== undefined)
+        identityData.licenseNumber = identity.licenseNumber;
+      item.identity = identityData;
+    }
 
     const itemJson = JSON.stringify(item);
     const encodedItem = Buffer.from(itemJson).toString('base64');
@@ -189,7 +243,8 @@ export const handleCreateFolder = withValidation(
 export const handleEditItem = withValidation(
   editItemSchema,
   async (validatedArgs) => {
-    const { id, name, notes, login, folderId } = validatedArgs;
+    const { id, name, notes, login, card, identity, secureNote, folderId } =
+      validatedArgs;
 
     // First, get the existing item
     const getCommand = buildSafeCommand('get', ['item', id]);
@@ -209,8 +264,10 @@ export const handleEditItem = withValidation(
       if (name !== undefined) existingItem.name = name;
       if (notes !== undefined) existingItem.notes = notes;
       if (folderId !== undefined) existingItem.folderId = folderId;
+
+      // Update type-specific data
       if (login !== undefined) {
-        // Merge login properties with existing login data, maintaining type safety
+        // Merge login properties with existing login data
         const currentLogin = existingItem.login || {};
         const updatedLogin: BitwardenItem['login'] = {
           ...currentLogin,
@@ -220,6 +277,80 @@ export const handleEditItem = withValidation(
           ...(login.uris !== undefined && { uris: login.uris }),
         };
         existingItem.login = updatedLogin;
+      }
+
+      if (card !== undefined) {
+        // Merge card properties with existing card data
+        const currentCard = existingItem.card || {};
+        const updatedCard: BitwardenItem['card'] = {
+          ...currentCard,
+          ...(card.cardholderName !== undefined && {
+            cardholderName: card.cardholderName,
+          }),
+          ...(card.number !== undefined && { number: card.number }),
+          ...(card.brand !== undefined && { brand: card.brand }),
+          ...(card.expMonth !== undefined && { expMonth: card.expMonth }),
+          ...(card.expYear !== undefined && { expYear: card.expYear }),
+          ...(card.code !== undefined && { code: card.code }),
+        };
+        existingItem.card = updatedCard;
+      }
+
+      if (identity !== undefined) {
+        // Merge identity properties with existing identity data
+        const currentIdentity = existingItem.identity || {};
+        const updatedIdentity: BitwardenItem['identity'] = {
+          ...currentIdentity,
+          ...(identity.title !== undefined && { title: identity.title }),
+          ...(identity.firstName !== undefined && {
+            firstName: identity.firstName,
+          }),
+          ...(identity.middleName !== undefined && {
+            middleName: identity.middleName,
+          }),
+          ...(identity.lastName !== undefined && {
+            lastName: identity.lastName,
+          }),
+          ...(identity.address1 !== undefined && {
+            address1: identity.address1,
+          }),
+          ...(identity.address2 !== undefined && {
+            address2: identity.address2,
+          }),
+          ...(identity.address3 !== undefined && {
+            address3: identity.address3,
+          }),
+          ...(identity.city !== undefined && { city: identity.city }),
+          ...(identity.state !== undefined && { state: identity.state }),
+          ...(identity.postalCode !== undefined && {
+            postalCode: identity.postalCode,
+          }),
+          ...(identity.country !== undefined && { country: identity.country }),
+          ...(identity.company !== undefined && { company: identity.company }),
+          ...(identity.email !== undefined && { email: identity.email }),
+          ...(identity.phone !== undefined && { phone: identity.phone }),
+          ...(identity.ssn !== undefined && { ssn: identity.ssn }),
+          ...(identity.username !== undefined && {
+            username: identity.username,
+          }),
+          ...(identity.passportNumber !== undefined && {
+            passportNumber: identity.passportNumber,
+          }),
+          ...(identity.licenseNumber !== undefined && {
+            licenseNumber: identity.licenseNumber,
+          }),
+        };
+        existingItem.identity = updatedIdentity;
+      }
+
+      if (secureNote !== undefined) {
+        // Merge secure note properties with existing secure note data
+        const currentSecureNote = existingItem.secureNote || {};
+        const updatedSecureNote: BitwardenItem['secureNote'] = {
+          ...currentSecureNote,
+          ...(secureNote.type !== undefined && { type: secureNote.type }),
+        };
+        existingItem.secureNote = updatedSecureNote;
       }
 
       const updatesJson = JSON.stringify(existingItem);

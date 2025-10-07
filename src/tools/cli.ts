@@ -175,13 +175,19 @@ export const createItemTool: Tool = {
         type: 'string',
         description: 'Name of the item',
       },
+      type: {
+        type: 'number',
+        description:
+          'Type of item to create (1: Login, 2: Secure Note, 3: Card, 4: Identity)',
+        enum: [1, 2, 3, 4],
+      },
       notes: {
         type: 'string',
         description: 'Notes for the item',
       },
       login: {
         type: 'object',
-        description: 'Login information (required for login items)',
+        description: 'Login information (required for type 1 - login items)',
         properties: {
           username: {
             type: 'string',
@@ -217,12 +223,133 @@ export const createItemTool: Tool = {
           },
         },
       },
+      secureNote: {
+        type: 'object',
+        description:
+          'Secure note information (required for type 2 - secure note items)',
+        properties: {
+          type: {
+            type: 'number',
+            description: 'Type of secure note (0: Generic)',
+            enum: [0],
+          },
+        },
+      },
+      card: {
+        type: 'object',
+        description: 'Card information (required for type 3 - card items)',
+        properties: {
+          cardholderName: {
+            type: 'string',
+            description: 'Cardholder name',
+          },
+          number: {
+            type: 'string',
+            description: 'Card number',
+          },
+          brand: {
+            type: 'string',
+            description: 'Card brand (Visa, Mastercard, Amex, Discover, etc.)',
+          },
+          expMonth: {
+            type: 'string',
+            description: 'Expiration month (MM)',
+          },
+          expYear: {
+            type: 'string',
+            description: 'Expiration year (YYYY)',
+          },
+          code: {
+            type: 'string',
+            description: 'Security code (CVV)',
+          },
+        },
+      },
+      identity: {
+        type: 'object',
+        description:
+          'Identity information (required for type 4 - identity items)',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'Title (Mr, Mrs, Ms, Dr, etc.)',
+          },
+          firstName: {
+            type: 'string',
+            description: 'First name',
+          },
+          middleName: {
+            type: 'string',
+            description: 'Middle name',
+          },
+          lastName: {
+            type: 'string',
+            description: 'Last name',
+          },
+          address1: {
+            type: 'string',
+            description: 'Address line 1',
+          },
+          address2: {
+            type: 'string',
+            description: 'Address line 2',
+          },
+          address3: {
+            type: 'string',
+            description: 'Address line 3',
+          },
+          city: {
+            type: 'string',
+            description: 'City',
+          },
+          state: {
+            type: 'string',
+            description: 'State or province',
+          },
+          postalCode: {
+            type: 'string',
+            description: 'Postal code',
+          },
+          country: {
+            type: 'string',
+            description: 'Country',
+          },
+          company: {
+            type: 'string',
+            description: 'Company name',
+          },
+          email: {
+            type: 'string',
+            description: 'Email address',
+          },
+          phone: {
+            type: 'string',
+            description: 'Phone number',
+          },
+          ssn: {
+            type: 'string',
+            description: 'Social Security Number',
+          },
+          username: {
+            type: 'string',
+            description: 'Username',
+          },
+          passportNumber: {
+            type: 'string',
+            description: 'Passport number',
+          },
+          licenseNumber: {
+            type: 'string',
+            description: 'License number',
+          },
+        },
+      },
       folderId: {
         type: 'string',
         description: 'Folder ID to assign the item to',
       },
     },
-    required: ['name', 'login'],
+    required: ['name', 'type'],
   },
 };
 
@@ -243,7 +370,8 @@ export const createFolderTool: Tool = {
 
 export const editItemTool: Tool = {
   name: 'edit_item',
-  description: 'Edit an existing login item in your vault',
+  description:
+    'Edit an existing item (login, secure note, card, or identity) in your vault',
   inputSchema: {
     type: 'object',
     properties: {
@@ -294,6 +422,125 @@ export const editItemTool: Tool = {
           totp: {
             type: 'string',
             description: 'TOTP secret for the login',
+          },
+        },
+      },
+      secureNote: {
+        type: 'object',
+        description: 'Secure note information to update',
+        properties: {
+          type: {
+            type: 'number',
+            description: 'Type of secure note (0: Generic)',
+            enum: [0],
+          },
+        },
+      },
+      card: {
+        type: 'object',
+        description: 'Card information to update',
+        properties: {
+          cardholderName: {
+            type: 'string',
+            description: 'Cardholder name',
+          },
+          number: {
+            type: 'string',
+            description: 'Card number',
+          },
+          brand: {
+            type: 'string',
+            description: 'Card brand (Visa, Mastercard, Amex, Discover, etc.)',
+          },
+          expMonth: {
+            type: 'string',
+            description: 'Expiration month (MM)',
+          },
+          expYear: {
+            type: 'string',
+            description: 'Expiration year (YYYY)',
+          },
+          code: {
+            type: 'string',
+            description: 'Security code (CVV)',
+          },
+        },
+      },
+      identity: {
+        type: 'object',
+        description: 'Identity information to update',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'Title (Mr, Mrs, Ms, Dr, etc.)',
+          },
+          firstName: {
+            type: 'string',
+            description: 'First name',
+          },
+          middleName: {
+            type: 'string',
+            description: 'Middle name',
+          },
+          lastName: {
+            type: 'string',
+            description: 'Last name',
+          },
+          address1: {
+            type: 'string',
+            description: 'Address line 1',
+          },
+          address2: {
+            type: 'string',
+            description: 'Address line 2',
+          },
+          address3: {
+            type: 'string',
+            description: 'Address line 3',
+          },
+          city: {
+            type: 'string',
+            description: 'City',
+          },
+          state: {
+            type: 'string',
+            description: 'State or province',
+          },
+          postalCode: {
+            type: 'string',
+            description: 'Postal code',
+          },
+          country: {
+            type: 'string',
+            description: 'Country',
+          },
+          company: {
+            type: 'string',
+            description: 'Company name',
+          },
+          email: {
+            type: 'string',
+            description: 'Email address',
+          },
+          phone: {
+            type: 'string',
+            description: 'Phone number',
+          },
+          ssn: {
+            type: 'string',
+            description: 'Social Security Number',
+          },
+          username: {
+            type: 'string',
+            description: 'Username',
+          },
+          passportNumber: {
+            type: 'string',
+            description: 'Passport number',
+          },
+          licenseNumber: {
+            type: 'string',
+            description: 'License number',
           },
         },
       },
