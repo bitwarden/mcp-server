@@ -170,10 +170,11 @@ export const handleApiCommand = withValidation(
 
 - **Session**: lock, unlock, sync, status
 - **Retrieval**: list, get
-- **Modification**: create, edit, delete, restore
+- **Item Management**: create, edit, delete, restore
+- **Folder Management**: create, edit
 - **Utility**: generate
-- **Organization**: confirm (confirm invited members), list org-members, list org-collections, create org-collection, edit org-collection, edit item-collections, get org-collection, move (transfer items to organization)
-- **Device Approval**: device-approval list, device-approval approve, device-approval approve-all, device-approval deny, device-approval deny-all
+- **Organization**: list and confirm organization members, manage and move organization items
+- **Device Approval**: list, approve, and deny devices
 
 **Organization Administration (API-based):**
 
@@ -182,6 +183,7 @@ export const handleApiCommand = withValidation(
 - **Groups**: list, create, update, delete, manage group membership
 - **Policies**: list, retrieve, update organization policies
 - **Events**: retrieve organization audit logs and events
+- **Organization**: manage organization subscriptions
 
 ## Organization Administration Tools
 
@@ -211,41 +213,47 @@ This ensures that all organization management operations work correctly with Bit
 
 ### Collections Management
 
-- **list-collections**: Retrieve all organization collections with access permissions
-- **get-collection**: Get details of a specific collection by ID
-- **create-collection**: Create new collections for organizing vault items
-- **update-collection**: Modify collection properties and permissions
-- **delete-collection**: Remove collections from the organization
+- **list_org_collections**: Retrieve all organization collections with access permissions
+- **get_org_collection**: Get details of a specific collection by ID
+- **update_org_collection**: Modify collection properties and permissions
+- **delete_org_collection**: Remove collections from the organization
 
 ### Members Management
 
-- **list-members**: List all organization members with status and access details
-- **get-member**: Retrieve specific member information and permissions
-- **invite-member**: Send invitations to new users to join the organization
-- **update-member**: Modify member roles, access levels, and permissions
-- **remove-member**: Remove users from the organization
-- **reinvite-member**: Resend invitation emails to pending members
+- **list_org_members**: List all organization members with status and access details
+- **get_org_member**: Retrieve specific member information and permissions
+- **invite_org_member**: Send invitations to new users to join the organization
+- **update_org_member**: Modify member roles, access levels, and permissions
+- **remove_org_member**: Remove users from the organization
+- **reinvite_org_member**: Resend invitation emails to pending members
+- **get_org_member_groups**: Get member's group assignments
+- **update_org_member_groups**: Update member's group assignments
 
 ### Groups Management
 
-- **list-groups**: Retrieve all organization groups and their configurations
-- **get-group**: Get details of a specific group including member assignments
-- **create-group**: Create new groups for organizing members
-- **update-group**: Modify group properties and access permissions
-- **delete-group**: Remove groups from the organization
-- **get-group-members**: List all members assigned to a specific group
-- **update-group-members**: Add or remove members from groups
+- **list_org_groups**: Retrieve all organization groups and their configurations
+- **get_org_group**: Get details of a specific group including member assignments
+- **create_org_group**: Create new groups for organizing members
+- **update_org_group**: Modify group properties and access permissions
+- **delete_org_group**: Remove groups from the organization
+- **get_org_group_members**: List all members assigned to a specific group
+- **update_org_group_members**: Add or remove members from groups
 
 ### Policies Management
 
-- **list-policies**: Retrieve all organization policies and their current status
-- **get-policy**: Get details of a specific policy by type
-- **update-policy**: Enable, disable, or configure organization security policies
+- **list_org_policies**: Retrieve all organization policies and their current status
+- **get_org_policy**: Get details of a specific policy by type
+- **update_org_policy**: Enable, disable, or configure organization security policies
 
 ### Event Monitoring
 
-- **list-events**: Retrieve organization audit logs with filtering options
-- **get-events**: Get specific event details for compliance and security monitoring
+- **get_org_events**: Retrieve organization audit logs with filtering options
+
+### Organization Management
+
+- **get_org_subscription**: Get subscription details
+- **update_org_subscription**: Update subscription settings
+- **import_org_users_and_groups**: Import members and groups
 
 ### API Capabilities vs CLI Limitations
 
@@ -322,7 +330,9 @@ npm run lint     # ESLint + Prettier
 
 ### CLI Operations
 
-**Base64 Encoding (create/edit):**
+**Base64 Encoding:**
+
+Operations where JSON data needs to be passed in should always base64 encode the JSON object.
 
 ```typescript
 const itemBase64 = Buffer.from(JSON.stringify(item), 'utf8').toString('base64');

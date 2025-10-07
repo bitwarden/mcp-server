@@ -13,8 +13,10 @@ import {
   listSchema,
   getSchema,
   generateSchema,
-  createSchema,
-  editSchema,
+  createItemSchema,
+  createFolderSchema,
+  editItemSchema,
+  editFolderSchema,
   deleteSchema,
   confirmSchema,
   createOrgCollectionSchema,
@@ -135,67 +137,60 @@ export const handleGenerate = withValidation(
   },
 );
 
-export const handleCreate = withValidation(
-  createSchema,
+export const handleCreateItem = withValidation(
+  createItemSchema,
   async (validatedArgs) => {
-    const { objectType, name, type, notes, login, folderId } = validatedArgs;
+    const { name, notes, login, folderId } = validatedArgs;
 
-    if (objectType === 'folder') {
-      const folder: BitwardenFolder = { name };
-      const itemJson = JSON.stringify(folder);
-      const encodedItem = Buffer.from(itemJson).toString('base64');
-      const command = buildSafeCommand('create', ['folder', encodedItem]);
-      const response = await executeCliCommand(command);
-      return toMcpFormat(response);
-    } else {
-      // Creating an item
-      const item: BitwardenItem = {
-        name,
-      };
+    // Creating an item (currently only supports login type)
+    const item: BitwardenItem = {
+      name,
+      type: 1, // Login type
+    };
 
-      if (type !== undefined) {
-        item.type = type;
-      }
-
-      if (notes !== undefined) {
-        item.notes = notes;
-      }
-
-      if (folderId !== undefined) {
-        item.folderId = folderId;
-      }
-
-      if (type === 1 && login) {
-        // Only set defined login properties
-        const loginData: BitwardenItem['login'] = {};
-        if (login.username !== undefined) loginData.username = login.username;
-        if (login.password !== undefined) loginData.password = login.password;
-        if (login.totp !== undefined) loginData.totp = login.totp;
-        if (login.uris !== undefined) loginData.uris = login.uris;
-        item.login = loginData;
-      }
-
-      const itemJson = JSON.stringify(item);
-      const encodedItem = Buffer.from(itemJson).toString('base64');
-      const command = buildSafeCommand('create', ['item', encodedItem]);
-      const response = await executeCliCommand(command);
-      return toMcpFormat(response);
+    if (notes !== undefined) {
+      item.notes = notes;
     }
+
+    if (folderId !== undefined) {
+      item.folderId = folderId;
+    }
+
+    // Only set defined login properties
+    const loginData: BitwardenItem['login'] = {};
+    if (login.username !== undefined) loginData.username = login.username;
+    if (login.password !== undefined) loginData.password = login.password;
+    if (login.totp !== undefined) loginData.totp = login.totp;
+    if (login.uris !== undefined) loginData.uris = login.uris;
+    item.login = loginData;
+
+    const itemJson = JSON.stringify(item);
+    const encodedItem = Buffer.from(itemJson).toString('base64');
+    const command = buildSafeCommand('create', ['item', encodedItem]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
   },
 );
 
-export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
-  const { objectType, id, name, notes, login, folderId } = validatedArgs;
+export const handleCreateFolder = withValidation(
+  createFolderSchema,
+  async (validatedArgs) => {
+    const { name } = validatedArgs;
 
-  if (objectType === 'folder') {
-    // For folders, we still just update the name directly
-    const folder: BitwardenFolder = { name: name! }; // name is required for folder operations
+    const folder: BitwardenFolder = { name };
     const itemJson = JSON.stringify(folder);
     const encodedItem = Buffer.from(itemJson).toString('base64');
-    const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
+    const command = buildSafeCommand('create', ['folder', encodedItem]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
-  } else {
+  },
+);
+
+export const handleEditItem = withValidation(
+  editItemSchema,
+  async (validatedArgs) => {
+    const { id, name, notes, login, folderId } = validatedArgs;
+
     // First, get the existing item
     const getCommand = buildSafeCommand('get', ['item', id]);
     const getResponse = await executeCliCommand(getCommand);
@@ -238,8 +233,22 @@ export const handleEdit = withValidation(editSchema, async (validatedArgs) => {
       };
       return toMcpFormat(errorResponse);
     }
-  }
-});
+  },
+);
+
+export const handleEditFolder = withValidation(
+  editFolderSchema,
+  async (validatedArgs) => {
+    const { id, name } = validatedArgs;
+
+    const folder: BitwardenFolder = { name };
+    const itemJson = JSON.stringify(folder);
+    const encodedItem = Buffer.from(itemJson).toString('base64');
+    const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
 
 export const handleDelete = withValidation(
   deleteSchema,

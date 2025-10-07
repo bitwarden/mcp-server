@@ -11,8 +11,10 @@ export {
   listTool,
   getTool,
   generateTool,
-  createTool,
-  editTool,
+  createItemTool,
+  createFolderTool,
+  editItemTool,
+  editFolderTool,
   deleteTool,
   cliTools,
 } from './cli.js';
