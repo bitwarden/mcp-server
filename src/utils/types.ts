@@ -71,3 +71,27 @@ export interface BitwardenFolder {
   readonly id?: string;
   name?: string;
 }
+
+export interface BitwardenSend {
+  readonly id?: string;
+  readonly accessId?: string;
+  name?: string;
+  notes?: string;
+  type?: number; // 0: Text, 1: File
+  text?: {
+    text?: string;
+    hidden?: boolean;
+  };
+  file?: {
+    fileName?: string;
+    size?: number;
+    sizeName?: string;
+  };
+  password?: string;
+  maxAccessCount?: number;
+  accessCount?: number;
+  revisionDate?: string;
+  expirationDate?: string;
+  deletionDate?: string;
+  disabled?: boolean;
+}

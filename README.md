@@ -161,14 +161,26 @@ The server provides comprehensive Bitwarden functionality through two authentica
 | `list`                  | List vault items/folders                                      | `type` (items/folders/collections/organizations/org-members/org-collections) |
 | `get`                   | Get specific item/folder                                      | `object`, `id`, optional `organizationid` for org-collection                 |
 | `generate`              | Generate password/passphrase                                  | Various optional parameters                                                  |
-| `create_item`           | Create new vault item (login)                                 | `name`, `login`, optional `notes`, `folderId`                                |
+| `create_item`           | Create new vault item (login, secure note, card, identity)    | `name`, `type`, type-specific data, optional `notes`, `folderId`             |
 | `create_folder`         | Create new folder                                             | `name`                                                                       |
-| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, `login`, `folderId`                          |
+| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, type-specific data, `folderId`               |
 | `edit_folder`           | Edit existing folder                                          | `id`, `name`                                                                 |
 | `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                          |
 | `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                         |
 | `restore`               | Restore item from trash                                       | `object`, `id`                                                               |
+
+##### Bitwarden Send Tools
+
+| Tool                   | Description                            | Required Parameters                                                             |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| `create_text_send`     | Create a text Send for secure sharing  | `name`, `text`, optional `hidden`, `notes`, `password`, `maxAccessCount`, dates |
+| `create_file_send`     | Create a file Send for secure sharing  | `name`, `filePath`, optional `notes`, `password`, `maxAccessCount`, dates       |
+| `list_send`            | List all Sends                         | None                                                                            |
+| `get_send`             | Get Send details                       | `id`                                                                            |
+| `edit_send`            | Edit existing Send                     | `id`, optional `name`, `notes`, `password`, `maxAccessCount`, dates, `disabled` |
+| `delete_send`          | Delete a Send                          | `id`                                                                            |
+| `remove_send_password` | Remove password protection from a Send | `id`                                                                            |
 
 ##### Organization Operations (CLI)
 

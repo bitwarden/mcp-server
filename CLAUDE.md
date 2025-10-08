@@ -170,8 +170,9 @@ export const handleApiCommand = withValidation(
 
 - **Session**: lock, unlock, sync, status
 - **Retrieval**: list, get
-- **Item Management**: create, edit, delete, restore
+- **Item Management**: create, edit, delete, restore (supports login, secure note, card, identity types)
 - **Folder Management**: create, edit
+- **Send**: create text/file Sends, list, get, edit, delete, remove password
 - **Utility**: generate
 - **Organization**: list and confirm organization members, manage and move organization items
 - **Device Approval**: list, approve, and deny devices
@@ -229,6 +230,7 @@ This ensures that all organization management operations work correctly with Bit
 - Password generation utilities
 - Personal folder organization
 - Individual item sharing
+- Bitwarden Send (ephemeral secure sharing of text and files)
 
 ## Development
 
@@ -443,6 +445,7 @@ export BW_IDENTITY_URL="https://identity.bitwarden.com"
 ### CLI Documentation
 
 - **[Bitwarden CLI Command Reference](https://bitwarden.com/help/cli/)** - Complete documentation for all Bitwarden CLI commands and usage patterns
+- **[Bitwarden Send CLI](https://bitwarden.com/help/send-cli/)** - Documentation for Send operations (secure ephemeral sharing)
 
 ### API Documentation
 

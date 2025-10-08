@@ -48,6 +48,13 @@ import {
   handleDeviceApprovalDeny,
   handleDeviceApprovalDenyAll,
   handleRestore,
+  handleCreateTextSend,
+  handleCreateFileSend,
+  handleListSend,
+  handleGetSend,
+  handleEditSend,
+  handleDeleteSend,
+  handleRemoveSendPassword,
 } from './handlers/cli.js';
 
 import {
@@ -150,6 +157,22 @@ async function runServer(): Promise<void> {
             return await handleDeviceApprovalDenyAll(args);
           case 'restore':
             return await handleRestore(args);
+
+          // Send Tools
+          case 'create_text_send':
+            return await handleCreateTextSend(args);
+          case 'create_file_send':
+            return await handleCreateFileSend(args);
+          case 'list_send':
+            return await handleListSend(args);
+          case 'get_send':
+            return await handleGetSend(args);
+          case 'edit_send':
+            return await handleEditSend(args);
+          case 'delete_send':
+            return await handleDeleteSend(args);
+          case 'remove_send_password':
+            return await handleRemoveSendPassword(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':

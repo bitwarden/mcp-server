@@ -29,8 +29,20 @@ import {
   deviceApprovalDenySchema,
   deviceApprovalDenyAllSchema,
   restoreSchema,
+  createTextSendSchema,
+  createFileSendSchema,
+  listSendSchema,
+  getSendSchema,
+  editSendSchema,
+  deleteSendSchema,
+  removeSendPasswordSchema,
 } from '../schemas/cli.js';
-import { CliResponse, BitwardenItem, BitwardenFolder } from '../utils/types.js';
+import {
+  CliResponse,
+  BitwardenItem,
+  BitwardenFolder,
+  BitwardenSend,
+} from '../utils/types.js';
 
 function toMcpFormat(response: CliResponse) {
   return {
@@ -673,6 +685,178 @@ export const handleRestore = withValidation(
   async (validatedArgs) => {
     const { object, id } = validatedArgs;
     const command = buildSafeCommand('restore', [object, id]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleCreateTextSend = withValidation(
+  createTextSendSchema,
+  async (validatedArgs) => {
+    const {
+      name,
+      text,
+      hidden,
+      notes,
+      password,
+      maxAccessCount,
+      expirationDate,
+      deletionDate,
+      disabled,
+    } = validatedArgs;
+
+    // Build the Send object
+    const send: BitwardenSend = {
+      type: 0, // Text Send
+      name,
+      text: {
+        text,
+      },
+      disabled,
+      deletionDate,
+    };
+
+    if (hidden !== undefined && send.text) {
+      send.text.hidden = hidden;
+    }
+
+    if (notes) send.notes = notes;
+    if (password) send.password = password;
+    if (maxAccessCount) send.maxAccessCount = maxAccessCount;
+    if (expirationDate) send.expirationDate = expirationDate;
+
+    const sendJson = JSON.stringify(send);
+    const encodedSend = Buffer.from(sendJson).toString('base64');
+    const command = buildSafeCommand('send', ['create', encodedSend]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleCreateFileSend = withValidation(
+  createFileSendSchema,
+  async (validatedArgs) => {
+    const {
+      name,
+      filePath,
+      notes,
+      password,
+      maxAccessCount,
+      expirationDate,
+      deletionDate,
+      disabled,
+    } = validatedArgs;
+
+    // Build the Send object
+    const send: BitwardenSend = {
+      type: 1, // File Send
+      name,
+      disabled,
+      deletionDate,
+    };
+
+    if (notes) send.notes = notes;
+    if (password) send.password = password;
+    if (maxAccessCount) send.maxAccessCount = maxAccessCount;
+    if (expirationDate) send.expirationDate = expirationDate;
+
+    const sendJson = JSON.stringify(send);
+    const encodedSend = Buffer.from(sendJson).toString('base64');
+    const command = buildSafeCommand('send', [
+      'create',
+      encodedSend,
+      '--file',
+      filePath,
+    ]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleListSend = withValidation(listSendSchema, async () => {
+  const command = buildSafeCommand('send', ['list']);
+  const response = await executeCliCommand(command);
+  return toMcpFormat(response);
+});
+
+export const handleGetSend = withValidation(
+  getSendSchema,
+  async (validatedArgs) => {
+    const { id } = validatedArgs;
+    const command = buildSafeCommand('send', ['get', id]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleEditSend = withValidation(
+  editSendSchema,
+  async (validatedArgs) => {
+    const {
+      id,
+      name,
+      notes,
+      password,
+      maxAccessCount,
+      expirationDate,
+      deletionDate,
+      disabled,
+    } = validatedArgs;
+
+    // First, get the existing Send
+    const getCommand = buildSafeCommand('send', ['get', id]);
+    const getResponse = await executeCliCommand(getCommand);
+
+    if (getResponse.errorOutput) {
+      return toMcpFormat(getResponse);
+    }
+
+    try {
+      // Parse the existing Send
+      const existingSend: BitwardenSend = JSON.parse(
+        getResponse.output || '{}',
+      );
+
+      // Update with new values
+      if (name !== undefined) existingSend.name = name;
+      if (notes !== undefined) existingSend.notes = notes;
+      if (password !== undefined) existingSend.password = password;
+      if (maxAccessCount !== undefined)
+        existingSend.maxAccessCount = maxAccessCount;
+      if (expirationDate !== undefined)
+        existingSend.expirationDate = expirationDate;
+      if (deletionDate !== undefined) existingSend.deletionDate = deletionDate;
+      if (disabled !== undefined) existingSend.disabled = disabled;
+
+      const updatesJson = JSON.stringify(existingSend);
+      const encodedUpdates = Buffer.from(updatesJson).toString('base64');
+      const command = buildSafeCommand('send', ['edit', encodedUpdates]);
+      const response = await executeCliCommand(command);
+      return toMcpFormat(response);
+    } catch (error) {
+      const errorResponse: CliResponse = {
+        errorOutput: `Failed to parse existing Send: ${error instanceof Error ? error.message : String(error)}`,
+      };
+      return toMcpFormat(errorResponse);
+    }
+  },
+);
+
+export const handleDeleteSend = withValidation(
+  deleteSendSchema,
+  async (validatedArgs) => {
+    const { id } = validatedArgs;
+    const command = buildSafeCommand('send', ['delete', id]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleRemoveSendPassword = withValidation(
+  removeSendPasswordSchema,
+  async (validatedArgs) => {
+    const { id } = validatedArgs;
+    const command = buildSafeCommand('send', ['remove-password', id]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },

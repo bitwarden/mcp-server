@@ -4,6 +4,7 @@ import {
   escapeShellParameter,
   buildSafeCommand,
   isValidBitwardenCommand,
+  validateFilePath,
 } from '../src/utils/security.js';
 
 describe('Security - Command Injection Protection', () => {
@@ -183,19 +184,34 @@ describe('Security - Command Injection Protection', () => {
   });
 
   describe('isValidBitwardenCommand', () => {
-    it('should allow valid Bitwarden commands', () => {
-      const validCommands = [
-        'get',
-        'list',
-        'sync',
-        'status',
+    it('should allow all commands used by our CLI handlers', () => {
+      // Commands actually used in src/handlers/cli.ts
+      const implementedCommands = [
         'lock',
         'unlock',
+        'sync',
+        'status',
+        'list',
+        'get',
         'generate',
         'create',
         'edit',
         'delete',
         'confirm',
+        'move',
+        'device-approval',
+        'restore',
+        'send',
+      ];
+
+      implementedCommands.forEach((cmd) => {
+        expect(isValidBitwardenCommand(cmd)).toBe(true);
+      });
+    });
+
+    it('should allow valid Bitwarden commands not yet implemented', () => {
+      // Commands in whitelist but not yet implemented in handlers
+      const additionalValidCommands = [
         'import',
         'export',
         'serve',
@@ -204,7 +220,7 @@ describe('Security - Command Injection Protection', () => {
         'logout',
       ];
 
-      validCommands.forEach((cmd) => {
+      additionalValidCommands.forEach((cmd) => {
         expect(isValidBitwardenCommand(cmd)).toBe(true);
       });
     });
@@ -296,6 +312,120 @@ describe('Security - Command Injection Protection', () => {
         const command = buildSafeCommand('get', ['item', input]);
         expect(command).toBe(`get 'item' '${input}'`);
         expect(isValidBitwardenCommand('get')).toBe(true);
+      });
+    });
+  });
+
+  describe('validateFilePath - Path Traversal Protection', () => {
+    it('should accept valid relative file paths', () => {
+      const validPaths = [
+        'document.pdf',
+        'folder/document.pdf',
+        'my-folder/subfolder/file.txt',
+        './local-file.txt',
+      ];
+
+      validPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(true);
+      });
+    });
+
+    it('should accept absolute paths on Unix/Linux and Windows', () => {
+      const validAbsolutePaths = [
+        // Unix/Linux absolute paths
+        '/home/user/document.pdf',
+        '/tmp/file.txt',
+        '/var/data/backup.tar.gz',
+        '/usr/local/share/file.json',
+        // Windows absolute paths
+        'C:\\Users\\Documents\\file.pdf',
+        'D:\\Projects\\data.json',
+        'E:\\Backup\\archive.zip',
+      ];
+
+      validAbsolutePaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(true);
+      });
+    });
+
+    it('should reject path traversal with ../', () => {
+      const maliciousPaths = [
+        '../etc/passwd',
+        'folder/../../etc/passwd',
+        './../../sensitive-file',
+        'files/../../../system/config',
+      ];
+
+      maliciousPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(false);
+      });
+    });
+
+    it('should reject path traversal with ..\\', () => {
+      const maliciousPaths = [
+        '..\\windows\\system32',
+        'folder\\..\\..\\system',
+        '.\\..\\..\\sensitive-file',
+      ];
+
+      maliciousPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(false);
+      });
+    });
+
+    it('should reject paths ending with ..', () => {
+      const maliciousPaths = ['folder/..', 'files/subfolder/..', 'path/to/..'];
+
+      maliciousPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(false);
+      });
+    });
+
+    it('should reject exactly ".." as path', () => {
+      expect(validateFilePath('..')).toBe(false);
+    });
+
+    it('should reject paths with null bytes', () => {
+      const maliciousPaths = [
+        'file.txt\0.pdf',
+        'document\0',
+        '\0malicious.exe',
+      ];
+
+      maliciousPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(false);
+      });
+    });
+
+    it('should reject UNC paths (network shares)', () => {
+      const uncPaths = [
+        '\\\\server\\share\\file.txt',
+        '\\\\192.168.1.1\\public\\document.pdf',
+        '\\\\evil-server\\malware.exe',
+      ];
+
+      uncPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(false);
+      });
+    });
+
+    it('should reject empty or non-string paths', () => {
+      expect(validateFilePath('')).toBe(false);
+      expect(validateFilePath(null as unknown as string)).toBe(false);
+      expect(validateFilePath(undefined as unknown as string)).toBe(false);
+      expect(validateFilePath(123 as unknown as string)).toBe(false);
+    });
+
+    it('should accept paths with dots that are not traversal patterns', () => {
+      const validPaths = [
+        'file.with.dots.txt',
+        'my.document.pdf',
+        '.hidden-file',
+        'folder/.config',
+      ];
+
+      validPaths.forEach((path) => {
+        expect(validateFilePath(path)).toBe(true);
       });
     });
   });
