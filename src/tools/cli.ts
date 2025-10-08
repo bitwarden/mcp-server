@@ -867,6 +867,187 @@ export const restoreTool: Tool = {
   },
 };
 
+export const createTextSendTool: Tool = {
+  name: 'create_text_send',
+  description:
+    'Create a new Bitwarden Send for sharing text securely with expiration',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the Send',
+      },
+      text: {
+        type: 'string',
+        description: 'Text content to share',
+      },
+      hidden: {
+        type: 'boolean',
+        description: 'Hide text content (requires visibility toggle)',
+      },
+      notes: {
+        type: 'string',
+        description: 'Private notes (not shared with recipient)',
+      },
+      password: {
+        type: 'string',
+        description: 'Access password for the Send',
+      },
+      maxAccessCount: {
+        type: 'number',
+        description: 'Maximum number of times the Send can be accessed',
+      },
+      expirationDate: {
+        type: 'string',
+        description: 'Expiration date in ISO 8601 format',
+      },
+      deletionDate: {
+        type: 'string',
+        description: 'Deletion date in ISO 8601 format',
+      },
+    },
+    required: ['name', 'text'],
+  },
+};
+
+export const createFileSendTool: Tool = {
+  name: 'create_file_send',
+  description:
+    'Create a new Bitwarden Send for sharing a file securely with expiration',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: 'Name of the Send',
+      },
+      filePath: {
+        type: 'string',
+        description: 'Path to the file to share',
+      },
+      notes: {
+        type: 'string',
+        description: 'Private notes (not shared with recipient)',
+      },
+      password: {
+        type: 'string',
+        description: 'Access password for the Send',
+      },
+      maxAccessCount: {
+        type: 'number',
+        description: 'Maximum number of times the Send can be accessed',
+      },
+      expirationDate: {
+        type: 'string',
+        description: 'Expiration date in ISO 8601 format',
+      },
+      deletionDate: {
+        type: 'string',
+        description: 'Deletion date in ISO 8601 format',
+      },
+    },
+    required: ['name', 'filePath'],
+  },
+};
+
+export const listSendTool: Tool = {
+  name: 'list_send',
+  description: 'List all Bitwarden Sends',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const getSendTool: Tool = {
+  name: 'get_send',
+  description: 'Get details of a specific Bitwarden Send',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the Send to retrieve',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+export const editSendTool: Tool = {
+  name: 'edit_send',
+  description: 'Edit an existing Bitwarden Send',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the Send to edit',
+      },
+      name: {
+        type: 'string',
+        description: 'New name for the Send',
+      },
+      notes: {
+        type: 'string',
+        description: 'New private notes',
+      },
+      password: {
+        type: 'string',
+        description: 'New access password',
+      },
+      maxAccessCount: {
+        type: 'number',
+        description: 'New maximum access count',
+      },
+      expirationDate: {
+        type: 'string',
+        description: 'New expiration date in ISO 8601 format',
+      },
+      deletionDate: {
+        type: 'string',
+        description: 'New deletion date in ISO 8601 format',
+      },
+      disabled: {
+        type: 'boolean',
+        description: 'Disable the Send',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+export const deleteSendTool: Tool = {
+  name: 'delete_send',
+  description: 'Delete a Bitwarden Send',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the Send to delete',
+      },
+    },
+    required: ['id'],
+  },
+};
+
+export const removeSendPasswordTool: Tool = {
+  name: 'remove_send_password',
+  description: 'Remove the access password from a Bitwarden Send',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the Send to remove password from',
+      },
+    },
+    required: ['id'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
@@ -892,4 +1073,11 @@ export const cliTools = [
   deviceApprovalDenyTool,
   deviceApprovalDenyAllTool,
   restoreTool,
+  createTextSendTool,
+  createFileSendTool,
+  listSendTool,
+  getSendTool,
+  editSendTool,
+  deleteSendTool,
+  removeSendPasswordTool,
 ];

@@ -503,3 +503,100 @@ export const restoreSchema = z.object({
   // ID of the object to restore from trash
   id: z.string().min(1, 'Object ID is required'),
 });
+
+// Schema for validating 'send create' command parameters for text Sends
+export const createTextSendSchema = z
+  .object({
+    // Name of the Send
+    name: z.string().min(1, 'Name is required'),
+    // Text content to send
+    text: z.string().min(1, 'Text content is required'),
+    // Hide text content (requires visibility toggle)
+    hidden: z.boolean().optional(),
+    // Private notes (not shared with recipient)
+    notes: z.string().optional(),
+    // Access password
+    password: z.string().optional(),
+    // Maximum access count
+    maxAccessCount: z.number().int().positive().optional(),
+    // Expiration date (ISO 8601 format)
+    expirationDate: z.string().optional(),
+    // Deletion date (ISO 8601 format, defaults to 7 days from now)
+    deletionDate: z.string().optional(),
+    // Disable the Send
+    disabled: z.boolean().default(false),
+  })
+  .transform((data) => ({
+    ...data,
+    deletionDate:
+      data.deletionDate ||
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  }));
+
+// Schema for validating 'send create' command parameters for file Sends
+export const createFileSendSchema = z
+  .object({
+    // Name of the Send
+    name: z.string().min(1, 'Name is required'),
+    // File path to send
+    filePath: z.string().min(1, 'File path is required'),
+    // Private notes (not shared with recipient)
+    notes: z.string().optional(),
+    // Access password
+    password: z.string().optional(),
+    // Maximum access count
+    maxAccessCount: z.number().int().positive().optional(),
+    // Expiration date (ISO 8601 format)
+    expirationDate: z.string().optional(),
+    // Deletion date (ISO 8601 format, defaults to 7 days from now)
+    deletionDate: z.string().optional(),
+    // Disable the Send
+    disabled: z.boolean().default(false),
+  })
+  .transform((data) => ({
+    ...data,
+    deletionDate:
+      data.deletionDate ||
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  }));
+
+// Schema for validating 'send list' command parameters
+export const listSendSchema = z.object({});
+
+// Schema for validating 'send get' command parameters
+export const getSendSchema = z.object({
+  // ID of the Send to retrieve
+  id: z.string().min(1, 'Send ID is required'),
+});
+
+// Schema for validating 'send edit' command parameters
+export const editSendSchema = z.object({
+  // ID of the Send to edit
+  id: z.string().min(1, 'Send ID is required'),
+  // New name for the Send
+  name: z.string().optional(),
+  // Private notes (not shared with recipient)
+  notes: z.string().optional(),
+  // Access password
+  password: z.string().optional(),
+  // Maximum access count
+  maxAccessCount: z.number().int().positive().optional(),
+  // Expiration date (ISO 8601 format)
+  expirationDate: z.string().optional(),
+  // Deletion date (ISO 8601 format)
+  deletionDate: z.string().optional(),
+  // Disable the Send
+  disabled: z.boolean().default(false),
+});
+
+// Schema for validating 'send delete' command parameters
+export const deleteSendSchema = z.object({
+  // ID of the Send to delete
+  id: z.string().min(1, 'Send ID is required'),
+});
+
+// Schema for validating 'send remove-password' command parameters
+export const removeSendPasswordSchema = z.object({
+  // ID of the Send to remove password from
+  id: z.string().min(1, 'Send ID is required'),
+});

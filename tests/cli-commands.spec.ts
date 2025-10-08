@@ -1801,4 +1801,320 @@ describe('CLI Commands', () => {
       }
     });
   });
+
+  describe('create text send validation', () => {
+    const createTextSendSchema = z
+      .object({
+        name: z.string().min(1, 'Name is required'),
+        text: z.string().min(1, 'Text content is required'),
+        hidden: z.boolean().optional(),
+        notes: z.string().optional(),
+        password: z.string().optional(),
+        maxAccessCount: z.number().int().positive().optional(),
+        expirationDate: z.string().optional(),
+        deletionDate: z.string().optional(),
+        disabled: z.boolean().default(false),
+      })
+      .transform((data) => ({
+        ...data,
+        deletionDate:
+          data.deletionDate ||
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }));
+
+    it('should validate create text send with required fields', () => {
+      const validInput = {
+        name: 'My Secret Message',
+        text: 'This is the secret content',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(createTextSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result.name).toBe(validInput.name);
+        expect(result.text).toBe(validInput.text);
+        expect(result.deletionDate).toBe(validInput.deletionDate);
+        expect(result.disabled).toBe(false);
+      }
+    });
+
+    it('should validate create text send with all optional fields', () => {
+      const validInput = {
+        name: 'My Secret Message',
+        text: 'This is the secret content',
+        hidden: true,
+        notes: 'Private note',
+        password: 'access123',
+        maxAccessCount: 5,
+        expirationDate: '2025-12-31T23:59:59Z',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(createTextSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual({ ...validInput, disabled: false });
+      }
+    });
+
+    it('should reject create text send without name', () => {
+      const invalidInput = {
+        text: 'Content',
+      };
+
+      const [isValid, result] = validateInput(
+        createTextSendSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create text send without text', () => {
+      const invalidInput = {
+        name: 'My Send',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(
+        createTextSendSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create text send with invalid maxAccessCount', () => {
+      const invalidInput = {
+        name: 'My Send',
+        text: 'Content',
+        deletionDate: '2026-01-07T23:59:59Z',
+        maxAccessCount: -1,
+      };
+
+      const [isValid, result] = validateInput(
+        createTextSendSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('expected number to be >0');
+      }
+    });
+
+    it('should apply default deletionDate when not provided', () => {
+      const validInput = {
+        name: 'My Send',
+        text: 'Content',
+      };
+
+      const [isValid, result] = validateInput(createTextSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result.deletionDate).toBeDefined();
+        expect(result.disabled).toBe(false);
+        // Check that the deletion date is approximately 7 days in the future
+        const deletionDate = new Date(result.deletionDate);
+        const expectedDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const timeDiff = Math.abs(
+          deletionDate.getTime() - expectedDate.getTime(),
+        );
+        expect(timeDiff).toBeLessThan(1000); // Within 1 second
+      }
+    });
+  });
+
+  describe('create file send validation', () => {
+    const createFileSendSchema = z
+      .object({
+        name: z.string().min(1, 'Name is required'),
+        filePath: z.string().min(1, 'File path is required'),
+        notes: z.string().optional(),
+        password: z.string().optional(),
+        maxAccessCount: z.number().int().positive().optional(),
+        expirationDate: z.string().optional(),
+        deletionDate: z.string().optional(),
+        disabled: z.boolean().default(false),
+      })
+      .transform((data) => ({
+        ...data,
+        deletionDate:
+          data.deletionDate ||
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }));
+
+    it('should validate create file send with required fields', () => {
+      const validInput = {
+        name: 'Confidential Document',
+        filePath: '/path/to/document.pdf',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(createFileSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result.name).toBe(validInput.name);
+        expect(result.filePath).toBe(validInput.filePath);
+        expect(result.deletionDate).toBe(validInput.deletionDate);
+        expect(result.disabled).toBe(false);
+      }
+    });
+
+    it('should validate create file send with all fields', () => {
+      const validInput = {
+        name: 'Confidential Document',
+        filePath: '/path/to/document.pdf',
+        notes: 'Internal use only',
+        password: 'secure123',
+        maxAccessCount: 3,
+        expirationDate: '2025-12-31T23:59:59Z',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(createFileSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual({ ...validInput, disabled: false });
+      }
+    });
+
+    it('should reject create file send without filePath', () => {
+      const invalidInput = {
+        name: 'Document',
+        deletionDate: '2026-01-07T23:59:59Z',
+      };
+
+      const [isValid, result] = validateInput(
+        createFileSendSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should apply default deletionDate when not provided', () => {
+      const validInput = {
+        name: 'Document',
+        filePath: '/path/to/document.pdf',
+      };
+
+      const [isValid, result] = validateInput(createFileSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result.deletionDate).toBeDefined();
+        expect(result.disabled).toBe(false);
+        // Check that the deletion date is approximately 7 days in the future
+        const deletionDate = new Date(result.deletionDate);
+        const expectedDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const timeDiff = Math.abs(
+          deletionDate.getTime() - expectedDate.getTime(),
+        );
+        expect(timeDiff).toBeLessThan(1000); // Within 1 second
+      }
+    });
+  });
+
+  describe('send operations validation', () => {
+    const getSendSchema = z.object({
+      id: z.string().min(1, 'Send ID is required'),
+    });
+
+    const editSendSchema = z.object({
+      id: z.string().min(1, 'Send ID is required'),
+      name: z.string().optional(),
+      notes: z.string().optional(),
+      password: z.string().optional(),
+      maxAccessCount: z.number().int().positive().optional(),
+      expirationDate: z.string().optional(),
+      deletionDate: z.string().optional(),
+      disabled: z.boolean().default(false),
+    });
+
+    const deleteSendSchema = z.object({
+      id: z.string().min(1, 'Send ID is required'),
+    });
+
+    it('should validate get send with id', () => {
+      const validInput = {
+        id: 'send-123',
+      };
+
+      const [isValid, result] = validateInput(getSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate edit send with id only', () => {
+      const validInput = {
+        id: 'send-123',
+      };
+
+      const [isValid, result] = validateInput(editSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual({ id: 'send-123', disabled: false });
+      }
+    });
+
+    it('should validate edit send with multiple fields', () => {
+      const validInput = {
+        id: 'send-123',
+        name: 'Updated Send',
+        password: 'newpass',
+        disabled: true,
+      };
+
+      const [isValid, result] = validateInput(editSendSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject get send without id', () => {
+      const invalidInput = {};
+
+      const [isValid, result] = validateInput(getSendSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject delete send with empty id', () => {
+      const invalidInput = {
+        id: '',
+      };
+
+      const [isValid, result] = validateInput(deleteSendSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Send ID is required');
+      }
+    });
+  });
 });
