@@ -2029,6 +2029,79 @@ describe('CLI Commands', () => {
         expect(timeDiff).toBeLessThan(1000); // Within 1 second
       }
     });
+
+    it('should reject file send with path traversal patterns', () => {
+      const maliciousPaths = [
+        '../etc/passwd',
+        '../../sensitive-file',
+        'files/../../../system/config',
+        '..\\windows\\system32',
+        'folder\\..\\..\\system',
+      ];
+
+      maliciousPaths.forEach((maliciousPath) => {
+        const invalidInput = {
+          name: 'Malicious Document',
+          filePath: maliciousPath,
+        };
+
+        const [isValid, result] = validateInput(
+          createFileSendSchema,
+          invalidInput,
+        );
+
+        expect(isValid).toBe(false);
+        if (!isValid) {
+          expect(result.content[0].text).toContain(
+            'path traversal patterns are not allowed',
+          );
+        }
+      });
+    });
+
+    it('should reject file send with UNC paths', () => {
+      const invalidInput = {
+        name: 'Network File',
+        filePath: '\\\\server\\share\\file.txt',
+      };
+
+      const [isValid, result] = validateInput(
+        createFileSendSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'path traversal patterns are not allowed',
+        );
+      }
+    });
+
+    it('should accept file send with valid file paths', () => {
+      const validPaths = [
+        // Relative paths
+        'document.pdf',
+        './local-file.txt',
+        'folder/subfolder/file.txt',
+        // Unix/Linux absolute paths
+        '/home/user/document.pdf',
+        '/tmp/export.json',
+        // Windows absolute paths
+        'C:\\Users\\Documents\\file.pdf',
+        'D:\\Backup\\archive.zip',
+      ];
+
+      validPaths.forEach((validPath) => {
+        const validInput = {
+          name: 'Valid Document',
+          filePath: validPath,
+        };
+
+        const [isValid] = validateInput(createFileSendSchema, validInput);
+        expect(isValid).toBe(true);
+      });
+    });
   });
 
   describe('send operations validation', () => {

@@ -165,3 +165,40 @@ export function sanitizeApiParameters(params: unknown): unknown {
 
   return params;
 }
+
+/**
+ * Validates file paths to prevent path traversal attacks
+ * Checks for common path traversal patterns and suspicious characters
+ */
+export function validateFilePath(filePath: string): boolean {
+  if (typeof filePath !== 'string' || filePath.length === 0) {
+    return false;
+  }
+
+  // Reject paths with null bytes
+  if (filePath.includes('\0')) {
+    return false;
+  }
+
+  // Reject paths with path traversal sequences
+  const dangerousPatterns = [
+    /\.\.\//, // ../
+    /\.\.\\/, // ..\
+    /\.\.$/, // .. at end
+    /^\.\.$/, // exactly ..
+    /\/\.\./, // /..
+    /\\\.\./, // \..
+  ];
+
+  if (dangerousPatterns.some((pattern) => pattern.test(filePath))) {
+    return false;
+  }
+
+  // Reject UNC paths (network shares like \\server\share)
+  // Allow both Unix absolute paths (/path/to/file) and Windows absolute paths (C:\path\to\file)
+  if (filePath.startsWith('\\\\')) {
+    return false;
+  }
+
+  return true;
+}

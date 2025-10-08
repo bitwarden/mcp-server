@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { validateFilePath } from '../utils/security.js';
 
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
@@ -539,7 +540,12 @@ export const createFileSendSchema = z
     // Name of the Send
     name: z.string().min(1, 'Name is required'),
     // File path to send
-    filePath: z.string().min(1, 'File path is required'),
+    filePath: z
+      .string()
+      .min(1, 'File path is required')
+      .refine((path) => validateFilePath(path), {
+        message: 'Invalid file path: path traversal patterns are not allowed',
+      }),
     // Private notes (not shared with recipient)
     notes: z.string().optional(),
     // Access password
