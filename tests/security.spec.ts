@@ -184,19 +184,34 @@ describe('Security - Command Injection Protection', () => {
   });
 
   describe('isValidBitwardenCommand', () => {
-    it('should allow valid Bitwarden commands', () => {
-      const validCommands = [
-        'get',
-        'list',
-        'sync',
-        'status',
+    it('should allow all commands used by our CLI handlers', () => {
+      // Commands actually used in src/handlers/cli.ts
+      const implementedCommands = [
         'lock',
         'unlock',
+        'sync',
+        'status',
+        'list',
+        'get',
         'generate',
         'create',
         'edit',
         'delete',
         'confirm',
+        'move',
+        'device-approval',
+        'restore',
+        'send',
+      ];
+
+      implementedCommands.forEach((cmd) => {
+        expect(isValidBitwardenCommand(cmd)).toBe(true);
+      });
+    });
+
+    it('should allow valid Bitwarden commands not yet implemented', () => {
+      // Commands in whitelist but not yet implemented in handlers
+      const additionalValidCommands = [
         'import',
         'export',
         'serve',
@@ -205,7 +220,7 @@ describe('Security - Command Injection Protection', () => {
         'logout',
       ];
 
-      validCommands.forEach((cmd) => {
+      additionalValidCommands.forEach((cmd) => {
         expect(isValidBitwardenCommand(cmd)).toBe(true);
       });
     });
