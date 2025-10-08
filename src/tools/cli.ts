@@ -869,8 +869,7 @@ export const restoreTool: Tool = {
 
 export const createTextSendTool: Tool = {
   name: 'create_text_send',
-  description:
-    'Create a new Bitwarden Send for sharing text securely with expiration',
+  description: 'Create a new Bitwarden Send for securely sharing text',
   inputSchema: {
     type: 'object',
     properties: {
@@ -913,8 +912,7 @@ export const createTextSendTool: Tool = {
 
 export const createFileSendTool: Tool = {
   name: 'create_file_send',
-  description:
-    'Create a new Bitwarden Send for sharing a file securely with expiration',
+  description: 'Create a new Bitwarden Send for securely sharing a file',
   inputSchema: {
     type: 'object',
     properties: {

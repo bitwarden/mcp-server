@@ -592,7 +592,7 @@ export const editSendSchema = z.object({
   // Deletion date (ISO 8601 format)
   deletionDate: z.string().optional(),
   // Disable the Send
-  disabled: z.boolean().default(false),
+  disabled: z.boolean().optional(),
 });
 
 // Schema for validating 'send delete' command parameters
