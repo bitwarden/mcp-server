@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
+import { validateFilePath } from '../src/utils/security.js';
 
 describe('CLI Commands', () => {
   // Test schemas used in the application
@@ -1939,7 +1940,13 @@ describe('CLI Commands', () => {
     const createFileSendSchema = z
       .object({
         name: z.string().min(1, 'Name is required'),
-        filePath: z.string().min(1, 'File path is required'),
+        filePath: z
+          .string()
+          .min(1, 'File path is required')
+          .refine((path) => validateFilePath(path), {
+            message:
+              'Invalid file path: path traversal patterns are not allowed',
+          }),
         notes: z.string().optional(),
         password: z.string().optional(),
         maxAccessCount: z.number().int().positive().optional(),
