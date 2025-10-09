@@ -1,36 +1,114 @@
 # Bitwarden MCP Server
 
-Model Context Protocol (MCP) server that enables interaction with the Bitwarden password manager vault via the MCP protocol. The server provides two complementary interfaces:
+A Model Context Protocol (MCP) server that provides AI assistants with secure access to Bitwarden password manager functionality through two complementary interfaces:
 
-- **CLI-based tools**: Personal vault management and organization operations using the Bitwarden CLI
-- **API-based tools**: Enterprise organization administration using the Bitwarden Public API
+- **Vault Management and CLI tools** via Bitwarden CLI
+- **Organization Administration** via Bitwarden Public API
 
-This dual approach allows AI models to securely manage both personal vault items and organization-level resources through defined tool interfaces.
+[![npm version](https://img.shields.io/npm/v/@bitwarden/mcp-server.svg)](https://www.npmjs.com/package/@bitwarden/mcp-server)
 
-## Prerequisites
+## What is MCP?
 
-- Node.js 22
-- **For CLI operations**: Bitwarden CLI (`bw`) installed, authenticated, and valid session token
-- **For API operations**: Bitwarden organization with API access and valid client credentials
+The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standard that enables AI assistants to securely interact with local tools and services. This server exposes Bitwarden's vault management and organization administration capabilities to MCP-compatible AI clients like Claude Desktop.
 
-## Installation
+## Features
 
-### Option One: Configuration in your AI app
+### Vault Management and CLI tools (CLI)
 
-Open up your application configuration, e.g. for Claude Desktop:
+- **Session Management**: Lock vault, sync with server, check status
+- **Item Operations**: List, retrieve, create, edit, delete, restore vault items
+  - Supports logins, secure notes, cards, and identities
+  - Advanced filtering by URL, folder, collection, or trash status
+- **Folder Management**: Organize items with folders
+- **Attachments**: Upload, download, and manage file attachments
+- **Password Tools**: Generate secure passwords and retrieve TOTP codes
+- **Bitwarden Send**: Create and manage secure ephemeral shares (text/file)
+- **Organization Items**: Move items to organizations, manage collections
+- **Device Approval**: Approve or deny new device login requests
+- **Member Management**: Confirm organization member registrations
+
+### Organization Administration (API)
+
+- **Collections**: Create, update, delete, and manage collection permissions
+- **Members**: Invite, update roles, remove members, manage group assignments
+- **Groups**: Create role-based access groups and assign members
+- **Policies**: Configure and enforce organization security policies
+- **Audit Logs**: Retrieve organization event history
+- **Subscriptions**: View and update organization billing information
+- **Bulk Import**: Import users and groups from external systems
+
+## Quick Start
+
+### Prerequisites
+
+**For Vault Management and CLI tools:**
+
+- [Bitwarden CLI](https://bitwarden.com/help/cli/) installed (ex `npm install -g @bitwarden/cli`)
+- Node.js 22+
+- Bitwarden account
+
+**For Organization Administration:**
+
+- Node.js 22+
+- Bitwarden Teams or Enterprise organization
+- Organization owner or admin permissions
+
+### Configuration
+
+#### Option 1: Claude Desktop (Recommended)
+
+Add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "bitwarden": {
       "command": "npx",
-      "args": ["-y", "@bitwarden/mcp-server"]
+      "args": ["-y", "@bitwarden/mcp-server"],
+      "env": {
+        "BW_SESSION": "your-session-token-here"
+      }
     }
   }
 }
 ```
 
-### Option Two: Local checkout
+**Get your session token:**
+
+```bash
+bw login
+bw unlock --raw
+```
+
+To enable organization administration features, add API credentials:
+
+```json
+{
+  "mcpServers": {
+    "bitwarden": {
+      "command": "npx",
+      "args": ["-y", "@bitwarden/mcp-server"],
+      "env": {
+        "BW_SESSION": "your-session-token-here",
+        "BW_CLIENT_ID": "organization.your-client-id",
+        "BW_CLIENT_SECRET": "your-client-secret"
+      }
+    }
+  }
+}
+```
+
+**Get organization API credentials:**
+
+1. Go to your Bitwarden Web Vault
+2. Navigate to your organization → Settings → My Organization
+3. Scroll to "API Key" section
+4. Click "View API Key" and authenticate
+
+#### Option 2: Locally Built and Referenced
 
 Requires that this repository be checked out locally. Once that's done:
 
@@ -39,51 +117,126 @@ npm install
 npm run build
 ```
 
-## Setup
+Then reference the built `dist/index.js` file from Claude desktop:
 
-The server supports two authentication methods:
+```json
+{
+  "mcpServers": {
+    "bitwarden": {
+      "command": "node",
+      "args": ["local/path/to/mcp-server/dist/index.js"],
+      "env": {
+        "BW_SESSION": "your-session-token-here"
+      }
+    }
+  }
+}
+```
 
-### Option A: CLI Authentication (for personal vault operations)
+#### Option 3: Other MCP Clients
 
-1. **Install Bitwarden CLI**:
+Any MCP-compatible client can connect to this server via stdio transport. Refer to your client's documentation for configuration details.
 
-   ```bash
-   npm install -g @bitwarden/cli
-   ```
+### Environment Variables
 
-2. **Log in to Bitwarden**:
+| Variable           | Required For   | Description                          | Default                          |
+| ------------------ | -------------- | ------------------------------------ | -------------------------------- |
+| `BW_SESSION`       | CLI operations | Session token from `bw unlock --raw` | -                                |
+| `BW_CLIENT_ID`     | API operations | Organization API client ID           | -                                |
+| `BW_CLIENT_SECRET` | API operations | Organization API client secret       | -                                |
+| `BW_API_BASE_URL`  | API operations | Bitwarden API base URL               | `https://api.bitwarden.com`      |
+| `BW_IDENTITY_URL`  | API operations | OAuth2 identity server URL           | `https://identity.bitwarden.com` |
 
-   ```bash
-   bw login
-   ```
+**Note:** For self-hosted Bitwarden instances, set `BW_API_BASE_URL` and `BW_IDENTITY_URL` to your server URLs.
 
-3. **Get session token**:
-   ```bash
-   export BW_SESSION=$(bw unlock --raw)
-   ```
+## Usage Examples
 
-### Option B: API Authentication (for organization management)
+Once configured, you can interact with Bitwarden through your AI assistant:
 
-1. **Create API credentials** in your Bitwarden organization settings
+**Vault:**
 
-2. **Set environment variables**:
+- "List all my login items"
+- "Get my credentials for github"
+- "Create a new secure note for my home WiFi information"
+- "Generate a 32-character password and save it for apple.com"
+- "Create a Send link for this file"
 
-   ```bash
-   export BW_CLIENT_ID="your_client_id"
-   export BW_CLIENT_SECRET="your_client_secret"
-   ```
+**Organization Administration:**
 
-3. **Optional: Set custom API URLs** (if using self-hosted):
-   ```bash
-   export BW_API_BASE_URL="https://api.bitwarden.com"
-   export BW_IDENTITY_URL="https://identity.bitwarden.com"
-   ```
+- "List all members in my organization"
+- "Invite user@example.com as an organization admin"
+- "Create a 'Development Team' collection"
+- "Show me the last 100 audit log events"
+- "What security policies are enabled?"
 
-> **Note**: You can use both authentication methods simultaneously for full functionality.
+## Available Tools
 
-## Testing
+### Vault Management and CLI Tools
 
-### Running unit tests
+**Session**: `lock`, `sync`, `status`
+**Retrieval**: `list`, `get`
+**Items**: `create_item`, `edit_item`, `delete`, `restore`
+**Folders**: `create_folder`, `edit_folder`
+**Attachments**: `create_attachment`
+**Organizations**: `create_org_collection`, `edit_org_collection`, `edit_item_collections`, `move`, `confirm`
+**Device Approval**: `device_approval_list`, `device_approval_approve`, `device_approval_approve_all`, `device_approval_deny`, `device_approval_deny_all`
+**Send**: `create_text_send`, `create_file_send`, `list_send`, `get_send`, `edit_send`, `delete_send`, `remove_send_password`
+**Utilities**: `generate`
+
+### Organization Administration
+
+**Collections**: `list_org_collections`, `get_org_collection`, `update_org_collection`, `delete_org_collection`
+**Members**: `list_org_members`, `get_org_member`, `invite_org_member`, `update_org_member`, `remove_org_member`, `reinvite_org_member`, `get_org_member_groups`, `update_org_member_groups`
+**Groups**: `list_org_groups`, `get_org_group`, `create_org_group`, `update_org_group`, `delete_org_group`, `get_org_group_members`, `update_org_group_members`
+**Policies**: `list_org_policies`, `get_org_policy`, `update_org_policy`
+**Events**: `get_org_events`
+**Subscriptions**: `get_org_subscription`, `update_org_subscription`
+**Import**: `import_org_users_and_groups`
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/bitwarden/mcp-server.git
+cd mcp-server
+npm install
+```
+
+### Commands
+
+```bash
+npm run build        # Compile TypeScript
+npm test             # Run test suite
+npm run lint         # Check code style
+npm run lint:fix     # Auto-fix linting issues
+npm run inspect      # Test with MCP Inspector
+```
+
+### Testing with MCP Inspector
+
+The MCP Inspector provides an interactive testing environment:
+
+```bash
+npm run build
+npm run inspect
+```
+
+This opens a web interface where you can:
+
+- Browse available tools
+- Test tool execution with custom inputs
+- View request/response payloads
+- Debug tool behavior
+
+### Best Practices
+
+- Store credentials securely (use system keychains or environment managers)
+- Rotate session tokens regularly
+- Review audit logs periodically for suspicious activity
+- Never commit credentials to version control
+
+### Testing
 
 The project includes Jest unit tests covering validation, CLI commands, and core functionality.
 
@@ -104,187 +257,14 @@ npm test validation.spec.ts
 npm test -- --testNamePattern="validation"
 ```
 
-## Inspection and development
-
-### MCP Inspector
-
-Use the MCP Inspector to test the server interactively:
-
-```bash
-# Start the inspector
-npm run inspect
-```
-
-This will:
-
-1. Start the MCP server
-2. Launch the inspector UI in your browser
-3. Allow you to test all available tools interactively
-
-### Available tools
-
-The server provides comprehensive Bitwarden functionality through two authentication methods:
-
-**CLI Authentication** is used for:
-
-- Personal vault operations (items, folders, passwords)
-- Quick organization queries (list members, collections)
-- Organization member confirmation workflows
-- Collection creation and editing
-- Item collection assignments
-
-**API Authentication** is used for:
-
-- Full organization administration (members, groups, policies)
-- Bulk operations and automation
-- Advanced permission management
-- Audit log retrieval
-- Subscription management
-
-> **Note**: You can use both authentication methods simultaneously. The CLI tools are lighter-weight for simple operations, while API tools provide comprehensive organization management.
-
-#### Personal Vault Tools (CLI Authentication)
-
-##### Session Management
-
-| Tool     | Description      | Required Parameters |
-| -------- | ---------------- | ------------------- |
-| `lock`   | Lock the vault   | None                |
-| `sync`   | Sync vault data  | None                |
-| `status` | Check CLI status | None                |
-
-##### Vault Items and Folders
-
-| Tool                    | Description                                                   | Required Parameters                                                                                                                                                                                                                                                                                                                              |
-| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `list`                  | List vault items/folders with optional filters                | `type` (items/folders/collections/organizations/org-members/org-collections), optional `url`, `folderid`, `collectionid`, `trash`                                                                                                                                                                                                                |
-| `get`                   | Get specific item/folder/fingerprint/attachment               | `object` (item/username/password/uri/totp/notes/exposed/attachment/folder/collection/organization/org-collection/fingerprint), `id` (use "me" for fingerprint or filename for attachment), optional `organizationid` for org-collection, optional `itemid` (required for attachment), optional `output` (directory path for attachment download) |
-| `generate`              | Generate password/passphrase                                  | Various optional parameters                                                                                                                                                                                                                                                                                                                      |
-| `create_item`           | Create new vault item (login, secure note, card, identity)    | `name`, `type`, type-specific data, optional `notes`, `folderId`                                                                                                                                                                                                                                                                                 |
-| `create_folder`         | Create new folder                                             | `name`                                                                                                                                                                                                                                                                                                                                           |
-| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, type-specific data, `folderId`                                                                                                                                                                                                                                                                                   |
-| `edit_folder`           | Edit existing folder                                          | `id`, `name`                                                                                                                                                                                                                                                                                                                                     |
-| `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                                                                                                                                                                                                                                                                                              |
-| `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                                                                                                                                                                                                                                                                                              |
-| `delete`                | Delete vault item/folder/attachment                           | `object` (item/folder/attachment), `id`, optional `permanent`                                                                                                                                                                                                                                                                                    |
-| `restore`               | Restore item from trash                                       | `object`, `id`                                                                                                                                                                                                                                                                                                                                   |
-| `create_attachment`     | Attach a file to a vault item                                 | `filePath`, `itemId`                                                                                                                                                                                                                                                                                                                             |
-
-##### Bitwarden Send Tools
-
-| Tool                   | Description                            | Required Parameters                                                             |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `create_text_send`     | Create a text Send for secure sharing  | `name`, `text`, optional `hidden`, `notes`, `password`, `maxAccessCount`, dates |
-| `create_file_send`     | Create a file Send for secure sharing  | `name`, `filePath`, optional `notes`, `password`, `maxAccessCount`, dates       |
-| `list_send`            | List all Sends                         | None                                                                            |
-| `get_send`             | Get Send details                       | `id`                                                                            |
-| `edit_send`            | Edit existing Send                     | `id`, optional `name`, `notes`, `password`, `maxAccessCount`, dates, `disabled` |
-| `delete_send`          | Delete a Send                          | `id`                                                                            |
-| `remove_send_password` | Remove password protection from a Send | `id`                                                                            |
-
-##### Organization Operations (CLI)
-
-| Tool                          | Description                                       | Required Parameters                                         |
-| ----------------------------- | ------------------------------------------------- | ----------------------------------------------------------- |
-| `confirm`                     | Confirm invited organization member               | `organizationId`, `memberId`                                |
-| `create_org_collection`       | Create new organization collection                | `organizationId`, `name`, optional `externalId`, `groups`   |
-| `edit_org_collection`         | Edit existing organization collection             | `organizationId`, `collectionId`, optional `name`, `groups` |
-| `device_approval_list`        | List pending device approval requests             | `organizationId`                                            |
-| `device_approval_approve`     | Approve a device authorization request            | `organizationId`, `requestId`                               |
-| `device_approval_approve_all` | Approve all pending device authorization requests | `organizationId`                                            |
-| `device_approval_deny`        | Deny a device authorization request               | `organizationId`, `requestId`                               |
-| `device_approval_deny_all`    | Deny all pending device authorization requests    | `organizationId`                                            |
-
-> **Note**: Device approval commands are only available to organization admins/owners for managing trusted device approval requests.
-
-#### Organization Management Tools (API Authentication)
-
-##### Collections Management
-
-| Tool                    | Description                   | Required Parameters |
-| ----------------------- | ----------------------------- | ------------------- |
-| `list_org_collections`  | List organization collections | None                |
-| `get_org_collection`    | Get collection details        | `id`                |
-| `update_org_collection` | Update existing collection    | `id`                |
-| `delete_org_collection` | Delete collection             | `id`                |
-
-##### Members Management
-
-| Tool                       | Description                       | Required Parameters |
-| -------------------------- | --------------------------------- | ------------------- |
-| `list_org_members`         | List organization members         | None                |
-| `get_org_member`           | Get member details                | `id`                |
-| `invite_org_member`        | Invite new member                 | `email`, `type`     |
-| `update_org_member`        | Update existing member            | `id`                |
-| `remove_org_member`        | Remove member from organization   | `id`                |
-| `reinvite_org_member`      | Re-invite member                  | `id`                |
-| `get_org_member_groups`    | Get member's group assignments    | `id`                |
-| `update_org_member_groups` | Update member's group assignments | `id`, `groupIds`    |
-
-##### Groups Management
-
-| Tool                       | Description                       | Required Parameters |
-| -------------------------- | --------------------------------- | ------------------- |
-| `list_org_groups`          | List organization groups          | None                |
-| `get_org_group`            | Get group details                 | `id`                |
-| `create_org_group`         | Create new group                  | `name`              |
-| `update_org_group`         | Update existing group             | `id`, `name`        |
-| `delete_org_group`         | Delete group                      | `id`                |
-| `get_org_group_members`    | Get group's member assignments    | `id`                |
-| `update_org_group_members` | Update group's member assignments | `id`, `memberIds`   |
-
-##### Policies Management
-
-| Tool                | Description                | Required Parameters |
-| ------------------- | -------------------------- | ------------------- |
-| `list_org_policies` | List organization policies | None                |
-| `get_org_policy`    | Get policy details         | `type`              |
-| `update_org_policy` | Update organization policy | `type`, `enabled`   |
-
-##### Organization Management
-
-| Tool                          | Description                  | Required Parameters |
-| ----------------------------- | ---------------------------- | ------------------- |
-| `get_org_subscription`        | Get subscription details     | None                |
-| `update_org_subscription`     | Update subscription settings | None                |
-| `import_org_users_and_groups` | Import members and groups    | None                |
-
-##### Events and Auditing
-
-| Tool             | Description                 | Required Parameters |
-| ---------------- | --------------------------- | ------------------- |
-| `get_org_events` | Get organization audit logs | None                |
-
-### Manual testing
-
-1. **Start the server**:
-
-   ```bash
-   export BW_SESSION=$(bw unlock --raw)
-   node dist/index.js
-   ```
-
-2. **Test with an MCP client** or use the inspector to send tool requests.
-
 ### Debugging
 
-- **Enable debug logging** by setting environment variables:
+**Enable debug logging** by setting environment variables:
 
-  ```bash
-  export DEBUG=bitwarden:*
-  export NODE_ENV=development
-  ```
-
-- **Check Bitwarden CLI status**:
-
-  ```bash
-  bw status
-  ```
-
-- **Verify session token**:
-  ```bash
-  echo $BW_SESSION
-  ```
+```bash
+export DEBUG=bitwarden:*
+export NODE_ENV=development
+```
 
 ## Security considerations
 
@@ -293,34 +273,38 @@ The server provides comprehensive Bitwarden functionality through two authentica
 - **Validate all inputs** using Zod schemas (already implemented)
 - **Test with non-production data** when possible
 - **Monitor API usage** through your organization's audit logs
-- **Use HTTPS** for all API communications (default)
 - Understand the security and privacy impacts of exposing sensitive vault data to LLM and AI tools. Using a self-hosted or local LLM may be appropriate, for example.
 
 ## Troubleshooting
 
-### Common issues
+### CLI Issues
 
-1. **"Please set the BW_SESSION environment variable"**
-   - Run: `export BW_SESSION=$(bw unlock --raw)`
+**"Vault is locked"**
 
-2. **"BW_CLIENT_ID and BW_CLIENT_SECRET environment variables are required"**
-   - Set your API credentials: `export BW_CLIENT_ID="your_id"` and `export BW_CLIENT_SECRET="your_secret"`
-   - Verify credentials are valid in your Bitwarden organization settings
+```bash
+bw unlock --raw
+# Copy the token and update BW_SESSION in your MCP config
+```
 
-3. **API authentication failures**
-   - Check that your organization has API access enabled
-   - Verify client credentials have appropriate permissions
-   - Ensure you're using the correct API URLs for your instance
+**"Session key is invalid"**
 
-4. **Tests failing with environment errors**
-   - Use the environment mocking helpers in tests
-   - Ensure test cleanup with `restoreEnvVars()`
+- Session tokens expire after inactivity
+- Run `bw unlock --raw` to get a fresh token
+- Update your MCP configuration with the new token
 
-5. **Inspector not starting**
-   - Check that the server builds successfully: `npm run build`
-   - Verify Node.js version is 22
+### API Issues
 
-6. **CLI commands failing**
-   - Verify Bitwarden CLI is installed: `bw --version`
-   - Check vault is unlocked: `bw status`
-   - Ensure valid session token: `echo $BW_SESSION`
+**"Invalid client credentials"**
+
+- Verify `BW_CLIENT_ID` starts with `organization.`
+- Ensure `BW_CLIENT_SECRET` is correct
+- Check that API keys haven't been rotated in the Admin Console
+
+**"403 Forbidden"**
+
+- Verify you have organization owner or admin permissions
+- Some operations require specific roles (e.g., managing members)
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](https://contributing.bitwarden.com/) for guidelines.
