@@ -282,6 +282,15 @@ npm test validation.spec.ts
 npm test -- --testNamePattern="validation"
 ```
 
+### Debugging
+
+**Enable debug logging** by setting environment variables:
+
+```bash
+export DEBUG=bitwarden:*
+export NODE_ENV=development
+```
+
 ## Security considerations
 
 - **Never commit** sensitive credentials (`BW_SESSION`, `BW_CLIENT_ID`, `BW_CLIENT_SECRET`)
