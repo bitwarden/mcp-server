@@ -43,7 +43,7 @@ The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standa
 
 **For Vault Management and CLI tools:**
 
-- [Bitwarden CLI](https://bitwarden.com/help/cli/) installed (ex `npm install -g @bitwarden/cli`)
+- [Bitwarden CLI](https://bitwarden.com/help/cli/) installed (ex. `npm install -g @bitwarden/cli`)
 - Node.js 22+
 - Bitwarden account
 
@@ -59,8 +59,8 @@ The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standa
 
 Add to your Claude Desktop configuration file:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -173,25 +173,25 @@ Once configured, you can interact with Bitwarden through your AI assistant:
 
 ### Vault Management and CLI Tools
 
-**Session**: `lock`, `sync`, `status`
-**Retrieval**: `list`, `get`
-**Items**: `create_item`, `edit_item`, `delete`, `restore`
-**Folders**: `create_folder`, `edit_folder`
-**Attachments**: `create_attachment`
-**Organizations**: `create_org_collection`, `edit_org_collection`, `edit_item_collections`, `move`, `confirm`
-**Device Approval**: `device_approval_list`, `device_approval_approve`, `device_approval_approve_all`, `device_approval_deny`, `device_approval_deny_all`
-**Send**: `create_text_send`, `create_file_send`, `list_send`, `get_send`, `edit_send`, `delete_send`, `remove_send_password`
-**Utilities**: `generate`
+- **Session**: `lock`, `sync`, `status`
+- **Retrieval**: `list`, `get`
+- **Items**: `create_item`, `edit_item`, `delete`, `restore`
+- **Folders**: `create_folder`, `edit_folder`
+- **Attachments**: `create_attachment`
+- **Organizations**: `create_org_collection`, `edit_org_collection`, `edit_item_collections`, `move`, `confirm`
+- **Device Approval**: `device_approval_list`, `device_approval_approve`, `device_approval_approve_all`, `device_approval_deny`, `device_approval_deny_all`
+- **Send**: `create_text_send`, `create_file_send`, `list_send`, `get_send`, `edit_send`, `delete_send`, `remove_send_password`
+- **Utilities**: `generate`
 
 ### Organization Administration
 
-**Collections**: `list_org_collections`, `get_org_collection`, `update_org_collection`, `delete_org_collection`
-**Members**: `list_org_members`, `get_org_member`, `invite_org_member`, `update_org_member`, `remove_org_member`, `reinvite_org_member`, `get_org_member_groups`, `update_org_member_groups`
-**Groups**: `list_org_groups`, `get_org_group`, `create_org_group`, `update_org_group`, `delete_org_group`, `get_org_group_members`, `update_org_group_members`
-**Policies**: `list_org_policies`, `get_org_policy`, `update_org_policy`
-**Events**: `get_org_events`
-**Subscriptions**: `get_org_subscription`, `update_org_subscription`
-**Import**: `import_org_users_and_groups`
+- **Collections**: `list_org_collections`, `get_org_collection`, `update_org_collection`, `delete_org_collection`
+- **Members**: `list_org_members`, `get_org_member`, `invite_org_member`, `update_org_member`, `remove_org_member`, `reinvite_org_member`, `get_org_member_groups`, `update_org_member_groups`
+- **Groups**: `list_org_groups`, `get_org_group`, `create_org_group`, `update_org_group`, `delete_org_group`, `get_org_group_members`, `update_org_group_members`
+- **Policies**: `list_org_policies`, `get_org_policy`, `update_org_policy`
+- **Events**: `get_org_events`
+- **Subscriptions**: `get_org_subscription`, `update_org_subscription`
+- **Import**: `import_org_users_and_groups`
 
 ## Development
 
@@ -279,31 +279,31 @@ export NODE_ENV=development
 
 ### CLI Issues
 
-**"Vault is locked"**
+- **Vault is locked**
 
-```bash
-bw unlock --raw
-# Copy the token and update BW_SESSION in your MCP config
-```
+  ```bash
+  bw unlock --raw
+  # Copy the token and update BW_SESSION in your MCP config
+  ```
 
-**"Session key is invalid"**
+- **Session key is invalid**
 
-- Session tokens expire after inactivity
-- Run `bw unlock --raw` to get a fresh token
-- Update your MCP configuration with the new token
+  - Session tokens expire after inactivity
+  - Run `bw unlock --raw` to get a fresh token
+  - Update your MCP configuration with the new token
 
 ### API Issues
 
-**"Invalid client credentials"**
+- **Invalid client credentials**
 
-- Verify `BW_CLIENT_ID` starts with `organization.`
-- Ensure `BW_CLIENT_SECRET` is correct
-- Check that API keys haven't been rotated in the Admin Console
+  - Verify `BW_CLIENT_ID` starts with `organization.`
+  - Ensure `BW_CLIENT_SECRET` is correct
+  - Check that API keys haven't been rotated in the Admin Console
 
-**"403 Forbidden"**
+- **403 Forbidden**
 
-- Verify you have organization owner or admin permissions
-- Some operations require specific roles (e.g., managing members)
+  - Verify you have organization owner or admin permissions
+  - Some operations require specific roles (e.g., managing members)
 
 ## Contributing
 
