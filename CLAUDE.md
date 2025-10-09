@@ -1,4 +1,4 @@
-# Bitwarden MCP Server - Developer Guide
+# Bitwarden MCP Server - Claude Code Configuration
 
 This document provides comprehensive guidelines for developing and maintaining the Bitwarden MCP Server.
 
@@ -41,30 +41,6 @@ index.ts (tool routing)
 ```
 
 ## Code Organization
-
-### Directory Structure
-
-```
-src/
-├── index.ts              # MCP server setup and tool routing
-├── handlers/             # Business logic implementations
-│   ├── cli.ts            # CLI command handlers (30 tools)
-│   └── api.ts            # API request handlers (26 tools)
-├── tools/                # MCP tool definitions (schemas for AI)
-│   ├── cli.ts            # CLI tool specs
-│   ├── api.ts            # API tool specs
-│   └── index.ts          # Exports both CLI and API tools
-├── schemas/              # Input validation schemas
-│   ├── cli.ts            # Zod schemas for CLI inputs
-│   └── api.ts            # Zod schemas for API inputs
-└── utils/                # Shared utilities
-    ├── cli.ts            # CLI command execution
-    ├── api.ts            # HTTP client with OAuth2
-    ├── security.ts       # Input sanitization functions
-    ├── validation.ts     # Schema validation wrapper
-    ├── config.ts         # Environment variable loading
-    └── types.ts          # TypeScript type definitions
-```
 
 ### Key Principles
 

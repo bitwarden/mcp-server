@@ -229,30 +229,6 @@ This opens a web interface where you can:
 - View request/response payloads
 - Debug tool behavior
 
-### Project Structure
-
-```
-src/
-├── index.ts              # Server entry point
-├── handlers/
-│   ├── cli.ts            # CLI command handlers
-│   └── api.ts            # API endpoint handlers
-├── tools/
-│   ├── cli.ts            # CLI tool definitions
-│   ├── api.ts            # API tool definitions
-│   └── index.ts          # Tool exports
-├── schemas/
-│   ├── cli.ts            # CLI input validation schemas
-│   └── api.ts            # API input validation schemas
-└── utils/
-    ├── cli.ts            # CLI execution wrapper
-    ├── api.ts            # HTTP client with OAuth2
-    ├── security.ts       # Input sanitization
-    ├── validation.ts     # Schema validation helpers
-    ├── config.ts         # Environment configuration
-    └── types.ts          # TypeScript type definitions
-```
-
 ### Best Practices
 
 - Store credentials securely (use system keychains or environment managers)
@@ -332,10 +308,3 @@ bw unlock --raw
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](https://contributing.bitwarden.com/) for guidelines.
-
-## References
-
-- [Bitwarden CLI Documentation](https://bitwarden.com/help/cli/)
-- [Bitwarden Public API](https://bitwarden.com/help/public-api/)
-- [Bitwarden Send CLI Documentation](https://bitwarden.com/help/send-cli/)
-- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
