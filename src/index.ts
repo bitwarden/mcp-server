@@ -55,6 +55,7 @@ import {
   handleEditSend,
   handleDeleteSend,
   handleRemoveSendPassword,
+  handleCreateAttachment,
 } from './handlers/cli.js';
 
 import {
@@ -173,6 +174,10 @@ async function runServer(): Promise<void> {
             return await handleDeleteSend(args);
           case 'remove_send_password':
             return await handleRemoveSendPassword(args);
+
+          // Attachment Tools
+          case 'create_attachment':
+            return await handleCreateAttachment(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':

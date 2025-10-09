@@ -126,11 +126,20 @@ export const getTool: Tool = {
       id: {
         type: 'string',
         description:
-          'ID or search term for the object (use "me" for your own fingerprint)',
+          'ID or search term for the object (use "me" for your own fingerprint, or filename for attachment)',
       },
       organizationid: {
         type: 'string',
         description: 'Organization ID (required for org-collection)',
+      },
+      itemid: {
+        type: 'string',
+        description: 'Item ID (required for attachment)',
+      },
+      output: {
+        type: 'string',
+        description:
+          'Output directory path for downloading attachment (optional, should end with /)',
       },
     },
     required: ['object', 'id'],
@@ -1067,6 +1076,25 @@ export const removeSendPasswordTool: Tool = {
   },
 };
 
+export const createAttachmentTool: Tool = {
+  name: 'create_attachment',
+  description: 'Attach a file to an existing vault item',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      filePath: {
+        type: 'string',
+        description: 'Path to the file to attach',
+      },
+      itemId: {
+        type: 'string',
+        description: 'ID of the vault item to attach the file to',
+      },
+    },
+    required: ['filePath', 'itemId'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
@@ -1099,4 +1127,5 @@ export const cliTools = [
   editSendTool,
   deleteSendTool,
   removeSendPasswordTool,
+  createAttachmentTool,
 ];
