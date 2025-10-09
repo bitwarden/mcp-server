@@ -1,84 +1,172 @@
-# Bitwarden MCP Server
+# Bitwarden MCP Server - Developer Guide
 
-Security-critical TypeScript MCP server providing AI models with access to Bitwarden through two complementary interfaces:
+This document provides comprehensive guidelines for developing and maintaining the Bitwarden MCP Server.
 
-- **Vault Management**: Personal vault operations via Bitwarden CLI
-- **Organization Administration**: Enterprise admin functions via Bitwarden Public API
+## Architecture Overview
 
-**Stack:** TypeScript ES modules, MCP SDK, Zod validation, Node.js 22, HTTP client
+### Dual Interface Pattern
 
-## 🔒 Dual Security Architecture (MANDATORY)
+The MCP server exposes two distinct operational interfaces:
 
-### CLI Tools Security Pipeline
+**1. CLI Interface (Vault Management and CLI Tools)**
 
-For vault management operations, every tool MUST follow this pattern - NO EXCEPTIONS:
+- Wraps Bitwarden CLI (`bw`) commands for personal vault operations
+- Requires `BW_SESSION` environment variable
+- Executes shell commands with security hardening
+- Returns plain text or JSON responses from CLI
+
+**2. API Interface (Organization Administration)**
+
+- Makes authenticated HTTP requests to Bitwarden Public API
+- Requires OAuth2 client credentials (`BW_CLIENT_ID`, `BW_CLIENT_SECRET`)
+- Uses RESTful JSON communication
+- Returns structured JSON responses
+
+### Request Flow
+
+```
+AI Client (Claude Desktop)
+    ↓
+MCP Protocol (stdio transport)
+    ↓
+index.ts (tool routing)
+    ↓
+┌─────────────────────┬──────────────────────┐
+│   CLI Handler       │   API Handler        │
+│   ↓                 │   ↓                  │
+│   Security Layer    │   OAuth2 Client      │
+│   ↓                 │   ↓                  │
+│   Bitwarden CLI     │   Bitwarden API      │
+└─────────────────────┴──────────────────────┘
+```
+
+## Code Organization
+
+### Directory Structure
+
+```
+src/
+├── index.ts              # MCP server setup and tool routing
+├── handlers/             # Business logic implementations
+│   ├── cli.ts            # CLI command handlers (30 tools)
+│   └── api.ts            # API request handlers (26 tools)
+├── tools/                # MCP tool definitions (schemas for AI)
+│   ├── cli.ts            # CLI tool specs
+│   ├── api.ts            # API tool specs
+│   └── index.ts          # Exports both CLI and API tools
+├── schemas/              # Input validation schemas
+│   ├── cli.ts            # Zod schemas for CLI inputs
+│   └── api.ts            # Zod schemas for API inputs
+└── utils/                # Shared utilities
+    ├── cli.ts            # CLI command execution
+    ├── api.ts            # HTTP client with OAuth2
+    ├── security.ts       # Input sanitization functions
+    ├── validation.ts     # Schema validation wrapper
+    ├── config.ts         # Environment variable loading
+    └── types.ts          # TypeScript type definitions
+```
+
+### Key Principles
+
+1. **Separation of Concerns**: Tools (definitions) → Schemas (validation) → Handlers (logic) → Utils (execution)
+2. **Type Safety**: End-to-end TypeScript with Zod runtime validation
+3. **Security First**: All inputs validated and sanitized before execution
+4. **Consistent Patterns**: Same structure for CLI and API tools
+
+## Security Architecture
+
+### Mandatory Security Pipeline
+
+**EVERY tool must follow the security pipeline - NO EXCEPTIONS.**
+
+#### CLI Tools Security Pipeline
 
 ```typescript
-// Modern pattern using withValidation higher-order function
-export const handleCommand = withValidation(schema, async (validatedArgs) => {
-  // 1. Build safe command (NEVER use string interpolation)
-  const command = buildSafeCommand('baseCommand', [param1, param2]);
+// 1. Define Zod schema
+const schema = z.object({
+  param: z.string(),
+});
 
-  // 2. Execute through security pipeline
+// 2. Create handler with withValidation wrapper
+export const handleCommand = withValidation(schema, async (validatedArgs) => {
+  // 3. Build safe command (NO string interpolation)
+  const command = buildSafeCommand('baseCommand', [validatedArgs.param]);
+
+  // 4. Execute through security layer
   const result = await executeCliCommand(command);
-  return result;
+
+  // 5. Return formatted response
+  return {
+    content: [{ type: 'text', text: result.output || result.errorOutput }],
+    isError: !!result.errorOutput,
+  };
 });
 ```
 
-### HTTP API Security Pipeline
-
-For organization admin operations, every tool MUST follow this pattern - NO EXCEPTIONS:
+#### API Tools Security Pipeline
 
 ```typescript
-// Modern pattern using withValidation higher-order function
+// 1. Define Zod schema matching API spec
+const schema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+
+// 2. Create handler with withValidation wrapper
 export const handleApiCommand = withValidation(
   schema,
   async (validatedArgs) => {
-    // Execute through authenticated HTTP pipeline with validated endpoint
-    const result = await executeApiRequest(endpoint, method, validatedData);
-    return result;
+    // 3. Execute authenticated request
+    const result = await executeApiRequest(
+      `/public/endpoint/${validatedArgs.id}`,
+      'PUT',
+      { name: validatedArgs.name },
+    );
+
+    // 4. Return formatted response
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      isError: !result.success,
+    };
   },
 );
 ```
 
 ### Security Functions
 
-**CLI Security:**
+#### CLI Security
 
-- `sanitizeInput()` - Removes injection chars: `[;&|`$(){}[\]<>'"\\]`
-- `escapeShellParameter()` - Safely quotes parameters
-- `buildSafeCommand()` - Combines command parts securely
-- `isValidBitwardenCommand()` - Validates against whitelist
+- **`sanitizeInput(input: string)`**: Strips dangerous characters `[;&|`$(){}[\]<>'"\\]`
+- **`escapeShellParameter(param: string)`**: Safely quotes shell parameters
+- **`buildSafeCommand(base: string, args: string[])`**: Constructs commands from array
+- **`isValidBitwardenCommand(cmd: string)`**: Validates against whitelist
+- **`validateFilePath(path: string)`**: Prevents path traversal attacks
 
-**API Security:**
+#### API Security
 
-- `validateApiEndpoint()` - Validates API endpoint paths
-- `sanitizeApiParameters()` - Sanitizes HTTP request parameters
-- `buildSafeApiRequest()` - Constructs authenticated HTTP requests
-- `validateBearerToken()` - Ensures valid OAuth2 access token
+- **`validateApiEndpoint(endpoint: string)`**: Ensures endpoint matches `/public/` pattern
+- **`getAccessToken()`**: Manages OAuth2 token lifecycle with automatic refresh
+- **`executeApiRequest(endpoint, method, data?)`**: Authenticated HTTP wrapper
 
-### Security Definitions
+### Security Rules
 
-Apply [Bitwarden security definitions](https://contributing.bitwarden.com/architecture/security/definitions).
+1. **Never use string interpolation** for commands
+2. **Always validate inputs** with Zod schemas before processing
+3. **Whitelist allowed commands** - never trust user input
+4. **Escape all parameters** passed to shell
+5. **Validate file paths** to prevent directory traversal
+6. **Use environment variables** for credentials, never hardcode
 
-## 🚀 withValidation Pattern
+## The `withValidation` Pattern
 
-### Overview
+### Purpose
 
-The `withValidation` higher-order function pattern eliminates validation code duplication across all handlers while maintaining type safety and security.
-
-### Pattern Benefits
-
-- **Type Safety**: Full TypeScript inference for validated arguments
-- **Consistent Error Handling**: Standardized validation error responses
-- **Clean Separation**: Business logic separated from validation concerns
-- **Maintainability**: Single place to modify validation behavior
+Eliminates validation code duplication while maintaining type safety and consistent error handling.
 
 ### Implementation
 
-**withValidation Function:**
-
 ```typescript
+// Located in: src/utils/validation.ts
 export function withValidation<T, R>(
   schema: z.ZodSchema<T>,
   handler: (validatedArgs: T) => Promise<R>,
@@ -86,341 +174,204 @@ export function withValidation<T, R>(
   return async (args: unknown): Promise<R> => {
     const [success, validatedArgs] = validateInput(schema, args);
     if (!success) {
-      return validatedArgs as R;
+      return validatedArgs as R; // Returns formatted error response
     }
     return handler(validatedArgs);
   };
 }
 ```
 
-**Usage Examples:**
+### Benefits
+
+- **Type Inference**: `validatedArgs` is fully typed based on Zod schema
+- **Error Consistency**: All validation errors formatted identically
+- **Code Reduction**: No repeated try/catch or validation boilerplate
+- **Single Responsibility**: Handlers only contain business logic
+
+### Usage Pattern
 
 ```typescript
-// CLI Handler
+// Schema
+const createItemSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(['login', 'note', 'card', 'identity']),
+});
+
+// Handler with automatic validation
+export const handleCreateItem = withValidation(
+  createItemSchema,
+  async (validatedArgs) => {
+    // validatedArgs is typed: { name: string, type: 'login' | 'note' | 'card' | 'identity' }
+    const { name, type } = validatedArgs;
+
+    // Business logic only - no validation code needed
+    const item = { name, type };
+    const encoded = Buffer.from(JSON.stringify(item)).toString('base64');
+    const command = buildSafeCommand('create', ['item', encoded]);
+    const result = await executeCliCommand(command);
+
+    return {
+      content: [{ type: 'text', text: result.output }],
+      isError: false,
+    };
+  },
+);
+```
+
+## Adding New Tools
+
+### Step-by-Step Guide
+
+**1. Define the Schema** (`src/schemas/cli.ts` or `src/schemas/api.ts`)
+
+```typescript
+export const myNewToolSchema = z.object({
+  requiredField: z.string().min(1),
+  optionalField: z.number().optional(),
+});
+```
+
+**2. Define the Tool** (`src/tools/cli.ts` or `src/tools/api.ts`)
+
+```typescript
+export const myNewTool: Tool = {
+  name: 'my_new_tool',
+  description:
+    'Clear, concise description for AI to understand when to use this tool',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      requiredField: {
+        type: 'string',
+        description: 'What this field is for',
+      },
+      optionalField: {
+        type: 'number',
+        description: 'What this optional field is for',
+      },
+    },
+    required: ['requiredField'],
+  },
+};
+```
+
+**3. Export the Tool** (`src/tools/index.ts`)
+
+```typescript
+import { myNewTool } from './cli.js';
+
+export const cliTools: Tool[] = [
+  // ... existing tools
+  myNewTool,
+];
+```
+
+**4. Implement the Handler** (`src/handlers/cli.ts` or `src/handlers/api.ts`)
+
+```typescript
+export const handleMyNewTool = withValidation(
+  myNewToolSchema,
+  async (validatedArgs) => {
+    // Implementation
+    const command = buildSafeCommand('bw-command', [
+      validatedArgs.requiredField,
+    ]);
+    const result = await executeCliCommand(command);
+
+    return {
+      content: [{ type: 'text', text: result.output }],
+      isError: !!result.errorOutput,
+    };
+  },
+);
+```
+
+**5. Register the Handler** (`src/index.ts`)
+
+```typescript
+// Import at top
+import { handleMyNewTool } from './handlers/cli.js';
+
+// Add case in switch statement
+switch (name) {
+  // ... existing cases
+  case 'my_new_tool':
+    return await handleMyNewTool(args);
+```
+
+**6. Write Tests** (`tests/cli-commands.spec.ts` or `tests/api.spec.ts`)
+
+```typescript
+describe('myNewTool', () => {
+  it('should execute successfully with valid input', async () => {
+    const result = await handleMyNewTool({ requiredField: 'test' });
+    expect(result.isError).toBe(false);
+  });
+
+  it('should reject invalid input', async () => {
+    const result = await handleMyNewTool({ requiredField: '' });
+    expect(result.isError).toBe(true);
+  });
+});
+```
+
+**7. Update Documentation**
+
+If appropriate, `CLAUDE.md` and/or `README.md` may need updating with any changes and/or additions.
+
+## CLI Tool Development
+
+### CLI Command Patterns
+
+**Simple Commands (No Arguments)**
+
+```typescript
 export const handleSync = withValidation(syncSchema, async () => {
   const command = buildSafeCommand('sync', []);
   return executeCliCommand(command);
 });
+```
 
-// API Handler
-export const handleCreateOrgCollection = withValidation(
-  createCollectionRequestSchema,
+**Commands with Parameters**
+
+```typescript
+export const handleList = withValidation(listSchema, async (validatedArgs) => {
+  const args = ['list', validatedArgs.type];
+
+  if (validatedArgs.search) {
+    args.push('--search', validatedArgs.search);
+  }
+
+  const command = buildSafeCommand('bw', args);
+  return executeCliCommand(command);
+});
+```
+
+**Commands with Base64-Encoded JSON**
+
+```typescript
+export const handleCreateItem = withValidation(
+  createItemSchema,
   async (validatedArgs) => {
-    const { name, externalId } = validatedArgs; // Fully typed!
-    const body = { name, externalId };
-    return executeApiRequest('/public/collections', 'POST', body);
+    const item = {
+      type: validatedArgs.type,
+      name: validatedArgs.name,
+      // ... other fields
+    };
+
+    const encoded = Buffer.from(JSON.stringify(item), 'utf8').toString(
+      'base64',
+    );
+    const command = buildSafeCommand('create', ['item', encoded]);
+
+    return executeCliCommand(command);
   },
 );
 ```
 
-## Architecture
+### CLI Response Formatting
 
-### Dual Interface Pattern
-
-The MCP server provides two distinct operational interfaces:
-
-**CLI Interface (Personal Vault)**
-
-- Executes Bitwarden CLI commands for individual vault operations
-- Requires `BW_SESSION` environment variable
-- Direct command execution with shell security
-
-**API Interface (Organization Admin)**
-
-- Makes authenticated HTTP requests to Bitwarden Public API
-- Requires OAuth2 client credentials (`CLIENT_ID`, `CLIENT_SECRET`)
-- RESTful JSON communication
-
-### Tool Implementation Pattern
-
-1. **Schema**: `const schema = z.object({...})`
-2. **Declaration**: `const tool: Tool = { name, description, inputSchema }`
-3. **Handler**: `withValidation(schema, async (validatedArgs) => { ... })`
-4. **Execution**: Direct execution within validated handler
-
-**CLI Tools:**
-
-```typescript
-export const handleCommand = withValidation(
-  commandSchema,
-  async (validatedArgs) => {
-    return executeCliCommand(buildSafeCommand('cmd', [validatedArgs.param]));
-  },
-);
-```
-
-**API Tools:**
-
-```typescript
-export const handleApiCommand = withValidation(
-  apiSchema,
-  async (validatedArgs) => {
-    return executeApiRequest('/public/endpoint', 'GET', validatedArgs);
-  },
-);
-```
-
-### Tool Categories
-
-**Vault Management (CLI-based):**
-
-- **Session**: lock, sync, status
-- **Retrieval**: list (with filters: url, folderid, collectionid, trash), get (including fingerprint)
-- **Item Management**: create, edit, delete, restore (supports login, secure note, card, identity types)
-- **Attachment Management**: create attachments, delete attachments, get attachments
-- **Folder Management**: create, edit
-- **Send**: create text/file Sends, list, get, edit, delete, remove password
-- **Utility**: generate, fingerprint verification
-- **Organization**: list and confirm organization members, manage and move organization items
-- **Device Approval**: list, approve, and deny devices
-
-**Organization Administration (API-based):**
-
-- **Collections**: list, create, update, delete collections
-- **Members**: list, invite, update, remove organization members
-- **Groups**: list, create, update, delete, manage group membership
-- **Policies**: list, retrieve, update organization policies
-- **Events**: retrieve organization audit logs and events
-- **Organization**: manage organization subscriptions
-
-## Organization Administration Tools
-
-The MCP server now supports comprehensive organization administration through the Bitwarden Public API. These tools enable enterprise-level management of users, access controls, and security policies.
-
-### API Specification Compliance
-
-**All API tools, handlers, and schemas are based on the official [Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/).**
-
-Key compliance features:
-
-- **Endpoint Accuracy**: All API endpoints use the correct `/public/` prefix patterns as specified in the official swagger documentation
-- **Schema Validation**: Zod schemas mirror the exact request/response formats defined in the API specification
-- **HTTP Methods**: Proper REST verbs (GET, POST, PUT, DELETE) matching the swagger definitions
-- **Parameter Handling**: Query parameters, path parameters, and request bodies follow specification exactly
-- **Response Formats**: Handler responses conform to expected API data structures
-
-**Examples of Specification Compliance:**
-
-- Collections: `GET/POST/PUT/DELETE /public/collections`
-- Members: `GET/POST/PUT/DELETE /public/members`
-- Groups: `GET/POST/PUT/DELETE /public/groups`
-- Group Members: `GET/PUT /public/groups/{id}/member-ids` (not `/members`)
-- Events: `GET /public/events` with proper query parameter handling
-
-This ensures that all organization management operations work correctly with Bitwarden's production API services and maintain compatibility with future API updates.
-
-### API Capabilities vs CLI Limitations
-
-**API-Only Features:**
-
-- Organization member management (invite, remove, role assignment)
-- Group-based access control management
-- Enterprise policy configuration
-- Audit log and event monitoring
-- Collection-level permission management
-- Bulk operations on organization resources
-
-**CLI-Only Features:**
-
-- Individual vault item management (passwords, notes, cards, identities)
-- Personal vault operations (sync, lock)
-- Password generation utilities
-- Personal folder organization
-- Individual item sharing
-- Bitwarden Send (ephemeral secure sharing of text and files)
-
-## Development
-
-### Commands
-
-```bash
-npm run build    # Required before CLI testing
-npm test         # Run all test suites
-npm run inspect  # MCP Inspector for interactive testing
-npm run lint     # ESLint + Prettier
-```
-
-### Testing
-
-- `tests/security.spec.ts` - Injection protection
-- `tests/validation.spec.ts` - Schema validation
-- `tests/cli-commands.spec.ts` - CLI integration
-- `tests/core.spec.ts` - Tool logic
-
-### Environment
-
-**CLI Authentication:**
-
-- **BW_SESSION**: Required for Bitwarden CLI vault operations
-
-**API Authentication:**
-
-- **BW_CLIENT_ID**: Organization API client ID (format: "organization.{uuid}")
-- **BW_CLIENT_SECRET**: Organization API client secret
-- **BW_API_BASE_URL**: API base URL (default: https://api.bitwarden.com)
-- **BW_IDENTITY_URL**: Identity server URL (default: https://identity.bitwarden.com)
-
-**Test Environment:**
-
-- Test mocking: `.jest/setEnvVars.js`
-
-### Authentication Differences
-
-**CLI Authentication (Personal Vault):**
-
-- Uses user's master password to unlock vault
-- Session token (`BW_SESSION`) obtained via `bw unlock --raw`
-- Session tokens expire and require re-authentication
-- Access limited to user's personal vault items
-
-**API Authentication (Organization Admin):**
-
-- Uses OAuth2 Client Credentials flow
-- Organization API key (`client_id` and `client_secret`) obtained from Admin Console
-- Bearer tokens have 1-hour expiration, automatically refreshed
-- Access limited to organization-level resources (no individual vault items)
-- Requires Teams or Enterprise plan
-
-## CLI Feature Details
-
-### List Command Filters
-
-The `list` command supports advanced filtering for items:
-
-**Available Filters:**
-
-- `--url <url>`: Filter items by URL
-- `--folderid <folderid>`: Filter items by folder ID
-- `--collectionid <collectionid>`: Filter items by collection ID
-- `--trash`: Include only items in trash
-
-**Special Filter Values:**
-
-- Filters accept `"null"` to match items without the specified property
-- Filters accept `"notnull"` to match items with the specified property
-
-**Filter Behavior:**
-
-- Multiple filters = OR operation (e.g., items in folder1 OR folder2)
-- Search + filters = AND operation (e.g., items matching "github" AND in specific folder)
-
-**Examples:**
-
-```typescript
-// List items in a specific folder
-{ type: 'items', folderid: 'folder-123' }
-
-// List items without a folder
-{ type: 'items', folderid: 'null' }
-
-// List items matching URL and search term (AND)
-{ type: 'items', search: 'github', url: 'https://github.com' }
-
-// List items in trash
-{ type: 'items', trash: true }
-```
-
-### Get Command Extensions
-
-The `get` command supports retrieving fingerprints for user verification:
-
-**Fingerprint Retrieval:**
-
-- `bw get fingerprint me` - Get your own fingerprint phrase
-- `bw get fingerprint <user-id>` - Get another user's fingerprint phrase
-
-**Purpose:**
-Fingerprint phrases are used for:
-
-- Verifying user identity during organization member confirmation
-- Ensuring secure user verification in administrative operations
-- Out-of-band identity confirmation
-
-**Example:**
-
-```typescript
-// Get your own fingerprint
-{ object: 'fingerprint', id: 'me' }
-
-// Get specific user's fingerprint
-{ object: 'fingerprint', id: '00000000-0000-0000-0000-000000000000' }
-```
-
-### Attachment Management
-
-The MCP server supports attaching files to vault items, retrieving attachments, and deleting attachments:
-
-**Create Attachment:**
-
-- `bw create attachment --file <filepath> --itemid <item_id>` - Attach a file to a vault item
-- Requires valid file path and item ID
-- File path validation includes security checks against path traversal
-
-**Get Attachment:**
-
-- `bw get attachment <filename> --itemid <id> --output <directory>` - Download an attachment
-- Requires `itemid` parameter (the vault item containing the attachment)
-- Optional `output` parameter specifies download directory
-- Output path validation includes security checks against path traversal
-
-**Delete Attachment:**
-
-- `bw delete attachment <id>` - Remove an attachment from a vault item
-- Supported via the existing `delete` command with `object: 'attachment'`
-
-**Security Considerations:**
-
-- File paths are validated against path traversal attacks
-- UNC paths and parent directory references are rejected
-- Supports both absolute and relative file paths on Windows and Unix
-- Both `filePath` (create) and `output` (get) parameters are validated
-
-**Examples:**
-
-```typescript
-// Create attachment - attach a file to an item
-{ filePath: '/path/to/document.pdf', itemId: 'item-123-uuid' }
-
-// Get attachment - retrieve attachment from item
-{
-  object: 'attachment',
-  id: 'photo.png',
-  itemid: 'item-456-uuid'
-}
-
-// Get attachment - download to specific directory
-{
-  object: 'attachment',
-  id: 'document.pdf',
-  itemid: 'item-789-uuid',
-  output: '/home/user/downloads/'
-}
-
-// Valid file paths
-'/home/user/document.pdf'  // Unix absolute
-'C:\\Users\\Documents\\file.pdf'  // Windows absolute
-'./local-file.txt'  // Relative
-'folder/file.txt'  // Relative subdirectory
-
-// Invalid file paths (rejected)
-'../../../etc/passwd'  // Path traversal
-'\\\\server\\share\\file.txt'  // UNC path
-```
-
-## Implementation Patterns
-
-### CLI Operations
-
-**Base64 Encoding:**
-
-Operations where JSON data needs to be passed in should always base64 encode the JSON object.
-
-```typescript
-const itemBase64 = Buffer.from(JSON.stringify(item), 'utf8').toString('base64');
-const command = buildSafeCommand('create', ['item', itemBase64]);
-```
-
-**CLI Response Format:**
+Always return this structure:
 
 ```typescript
 return {
@@ -429,44 +380,69 @@ return {
 };
 ```
 
-### API Operations
+## API Tool Development
 
-**OAuth2 Token Management:**
+### API Request Patterns
 
-```typescript
-async function getAccessToken(): Promise<string> {
-  const tokenResponse = await fetch(`${IDENTITY_URL}/connect/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      scope: 'api.organization',
-      client_id: BW_CLIENT_ID,
-      client_secret: BW_CLIENT_SECRET,
-    }),
-  });
-  return tokenResponse.access_token;
-}
-```
-
-**API Request Pattern:**
+**GET Requests**
 
 ```typescript
-async function executeApiRequest(endpoint: string, method: string, data?: any) {
-  const token = await getAccessToken();
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    ...(data && { body: JSON.stringify(data) }),
-  });
-  return response.json();
-}
+export const handleListOrgCollections = withValidation(
+  listOrgCollectionsSchema,
+  async () => {
+    return executeApiRequest('/public/collections', 'GET');
+  },
+);
 ```
 
-**API Response Format:**
+**GET with Path Parameters**
+
+```typescript
+export const handleGetOrgCollection = withValidation(
+  getOrgCollectionSchema,
+  async (validatedArgs) => {
+    return executeApiRequest(
+      `/public/collections/${validatedArgs.collectionId}`,
+      'GET',
+    );
+  },
+);
+```
+
+**POST/PUT with Request Body**
+
+```typescript
+export const handleUpdateOrgCollection = withValidation(
+  updateOrgCollectionSchema,
+  async (validatedArgs) => {
+    const { collectionId, ...body } = validatedArgs;
+    return executeApiRequest(
+      `/public/collections/${collectionId}`,
+      'PUT',
+      body,
+    );
+  },
+);
+```
+
+**GET with Query Parameters**
+
+```typescript
+export const handleGetOrgEvents = withValidation(
+  getOrgEventsSchema,
+  async (validatedArgs) => {
+    const params = new URLSearchParams();
+    if (validatedArgs.start) params.append('start', validatedArgs.start);
+    if (validatedArgs.end) params.append('end', validatedArgs.end);
+
+    return executeApiRequest(`/public/events?${params.toString()}`, 'GET');
+  },
+);
+```
+
+### API Response Formatting
+
+Always return this structure:
 
 ```typescript
 return {
@@ -475,101 +451,329 @@ return {
 };
 ```
 
-## Key Files
+### API Specification Compliance
 
-### Core Architecture
+**All API tools must conform to the [Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/).**
 
-- `src/index.ts` - Main server entry point
+Key requirements:
 
-### Handlers (Business Logic)
+- Use exact endpoint paths from swagger (e.g., `/public/collections`, not `/collections`)
+- Match HTTP methods specified in API docs
+- Include all required fields in request bodies
+- Use correct query parameter names
+- Follow naming conventions for IDs (e.g., `collectionId`, not `collection_id`)
 
-- `src/handlers/cli.ts` - CLI command handlers
-- `src/handlers/api.ts` - API endpoint handlers
+## Testing
 
-### Schemas (Validation)
+### Test Structure
 
-- `src/schemas/cli.ts` - Zod validation schemas for CLI operations
-- `src/schemas/api.ts` - Zod validation schemas for API operations
+```
+tests/
+├── core.spec.ts          # Server initialization and tool registration
+├── validation.spec.ts    # Schema validation logic
+├── security.spec.ts      # Input sanitization and injection prevention
+├── cli-commands.spec.ts  # CLI tool integration tests
+└── api.spec.ts          # API tool integration tests
+```
 
-### Tools (MCP Interface)
+### Writing Tests
 
-- `src/tools/cli.ts` - CLI tool definitions for MCP protocol
-- `src/tools/api.ts` - API tool definitions for MCP protocol
-- `src/tools/index.ts` - Centralized tool exports
+**Validation Tests**
 
-### Utilities (Shared Services)
+```typescript
+import { myNewToolSchema } from '../src/schemas/cli.js';
 
-- `src/utils/api.ts` - HTTP client with OAuth2 authentication and token management
-- `src/utils/cli.ts` - CLI command execution with security wrappers
-- `src/utils/config.ts` - Environment configuration management
-- `src/utils/security.ts` - Security functions including `buildSafeCommand` and endpoint validation
-- `src/utils/types.ts` - TypeScript type definitions for CLI and API responses
-- `src/utils/validation.ts` - Input validation utilities with `withValidation` higher-order function and consistent error formatting
+describe('myNewToolSchema', () => {
+  it('should accept valid input', () => {
+    const result = myNewToolSchema.safeParse({ requiredField: 'test' });
+    expect(result.success).toBe(true);
+  });
 
-### Testing
+  it('should reject empty required field', () => {
+    const result = myNewToolSchema.safeParse({ requiredField: '' });
+    expect(result.success).toBe(false);
+  });
+});
+```
 
-- `tests/security.spec.ts` - Security validation tests
-- `tests/api.spec.ts` - API functionality tests
-- `tests/cli-commands.spec.ts` - CLI command tests
-- `tests/core.spec.ts` - Core server functionality tests
-- `tests/validation.spec.ts` - Input validation tests
-- `.jest/setEnvVars.js` - Test environment configuration
+**Handler Tests**
+
+```typescript
+import { handleMyNewTool } from '../src/handlers/cli.js';
+
+describe('handleMyNewTool', () => {
+  it('should build correct command', async () => {
+    const result = await handleMyNewTool({ requiredField: 'test-value' });
+    expect(result.isError).toBe(false);
+    // Add expectations about result content
+  });
+});
+```
+
+**Security Tests**
+
+```typescript
+import { sanitizeInput } from '../src/utils/security.js';
+
+describe('sanitizeInput', () => {
+  it('should remove dangerous characters', () => {
+    const input = 'test; rm -rf /';
+    const sanitized = sanitizeInput(input);
+    expect(sanitized).toBe('test rm -rf ');
+  });
+});
+```
+
+### Running Tests
+
+```bash
+npm test                  # Run all tests with coverage
+npm run test:watch        # Watch mode for TDD
+npm test -- security      # Run specific test file
+```
+
+### Test Environment
+
+Tests use mocked environment variables set in `.jest/setEnvVars.js`:
+
+```javascript
+process.env.BW_SESSION = 'mock-session-token';
+process.env.BW_CLIENT_ID = 'organization.mock-id';
+process.env.BW_CLIENT_SECRET = 'mock-secret';
+```
+
+## OAuth2 Token Management
+
+### Token Lifecycle
+
+```typescript
+let accessToken: string | null = null;
+let tokenExpiry: number | null = null;
+
+export async function getAccessToken(): Promise<string> {
+  // Return cached token if still valid
+  if (accessToken && tokenExpiry && Date.now() < tokenExpiry) {
+    return accessToken;
+  }
+
+  // Request new token
+  const response = await fetch(`${IDENTITY_URL}/connect/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'api.organization',
+      client_id: CLIENT_ID!,
+      client_secret: CLIENT_SECRET!,
+    }),
+  });
+
+  const data = await response.json();
+  accessToken = data.access_token;
+  tokenExpiry = Date.now() + data.expires_in * 1000 - 60000; // 1 min buffer
+
+  return accessToken;
+}
+```
+
+### Token Features
+
+- **Automatic Refresh**: Tokens refreshed 1 minute before expiry
+- **In-Memory Caching**: Reduces unnecessary token requests
+- **Error Handling**: Failed requests trigger re-authentication
+- **Thread Safe**: Single token instance shared across all API calls
+
+## Common Patterns
+
+### Filter Handling (CLI)
+
+```typescript
+// Optional filters
+if (validatedArgs.folderid) {
+  args.push('--folderid', validatedArgs.folderid);
+}
+
+// Boolean flags
+if (validatedArgs.trash) {
+  args.push('--trash');
+}
+
+// Special values
+// User can pass "null" or "notnull" as strings to CLI
+```
+
+### Collection/Array Parameters (API)
+
+```typescript
+// Zod schema for array of objects
+collections: z.array(
+  z.object({
+    id: z.string().uuid(),
+    readOnly: z.boolean(),
+  }),
+).optional();
+
+// Handler
+if (validatedArgs.collections) {
+  body.collections = validatedArgs.collections;
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  const result = await executeCliCommand(command);
+  return {
+    content: [{ type: 'text', text: result.output }],
+    isError: false,
+  };
+} catch (error) {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      },
+    ],
+    isError: true,
+  };
+}
+```
 
 ## Code Style
 
-Follow [Bitwarden code style standards](https://contributing.bitwarden.com/contributing/code-style/).
+Follow [Bitwarden Code Style Guidelines](https://contributing.bitwarden.com/contributing/code-style/):
 
-## Requirements
+- **Formatting**: Prettier handles all formatting
+- **Linting**: ESLint enforces code quality
+- **TypeScript**: Strict mode enabled, no `any` types
+- **Naming**: camelCase for variables/functions, PascalCase for types
+- **Imports**: Explicit `.js` extensions for ES modules
+- **Comments**: JSDoc for public APIs, inline for complex logic
 
-### For Vault Management (CLI)
+### Pre-commit Hooks
 
-- Bitwarden CLI (`bw`) installed and configured
-- Node.js 22 with ES modules
-- `BW_SESSION` environment variable
-- Personal Bitwarden account
+Husky automatically runs on staged files:
 
-### For Organization Administration (API)
+- Prettier formatting
+- ESLint fixing
 
-- Node.js 22 with ES modules
-- Bitwarden Teams or Enterprise organization
-- Organization API key (client_id and client_secret)
-- `BW_CLIENT_ID` and `BW_CLIENT_SECRET` environment variables
-- Organization owner or admin permissions
-
-### Setup Instructions
-
-**CLI Setup:**
+### Manual Checks
 
 ```bash
-# Install Bitwarden CLI
-npm install -g @bitwarden/cli
-
-# Login and get session
-bw login
-export BW_SESSION=$(bw unlock --raw)
+npm run lint        # Check for issues
+npm run lint:fix    # Auto-fix issues
 ```
 
-**API Setup:**
+## Deployment
+
+### Building
 
 ```bash
-# Get organization API key from Admin Console:
-# Settings > Organization info > API key section
-
-export BW_CLIENT_ID="organization.your-client-id"
-export BW_CLIENT_SECRET="your-client-secret"
-
-# Optional: Configure custom endpoints for self-hosted
-export BW_API_BASE_URL="https://api.bitwarden.com"
-export BW_IDENTITY_URL="https://identity.bitwarden.com"
+npm run build
+# Compiles TypeScript to dist/
+# Makes dist/index.js executable
 ```
+
+### Publishing
+
+```bash
+npm version patch|minor|major
+npm run build
+npm publish
+```
+
+### Versioning
+
+Follow semantic versioning: `YYYY.M.PATCH`
+
+- `YYYY`: Year
+- `M`: Month (no leading zero)
+- `PATCH`: Patch number
+
+Example: `2025.10.0`
 
 ## References
 
-### CLI Documentation
+### Official Documentation
 
-- **[Bitwarden CLI Command Reference](https://bitwarden.com/help/cli/)** - Complete documentation for all Bitwarden CLI commands and usage patterns
-- **[Bitwarden Send CLI](https://bitwarden.com/help/send-cli/)** - Documentation for Send operations (secure ephemeral sharing)
+- [Bitwarden CLI Reference](https://bitwarden.com/help/cli/)
+- [Bitwarden Public API Swagger](https://bitwarden.com/help/public-api/)
+- [Bitwarden Send CLI Reference](https://bitwarden.com/help/send-cli/)
+- [MCP Specification](https://modelcontextprotocol.io/)
 
-### API Documentation
+### Internal Documentation
 
-- **[Bitwarden Public API Swagger Documentation](https://bitwarden.com/help/public-api/)** - Official API specification for organization administration
+- [Bitwarden Contributing Guide](https://contributing.bitwarden.com/)
+- [Bitwarden Code Style](https://contributing.bitwarden.com/contributing/code-style/)
+- [Bitwarden Security Definitions](https://contributing.bitwarden.com/architecture/security/definitions)
+
+### Tools & Libraries
+
+- [Zod Documentation](https://zod.dev/)
+- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+- [Jest Testing Framework](https://jestjs.io/)
+
+## Troubleshooting Development Issues
+
+### Build Errors
+
+**"Cannot find module" errors**
+
+- Ensure imports use `.js` extension (ES modules require explicit extensions)
+- Check TypeScript version matches `package.json`
+
+**Permission errors on `dist/index.js`**
+
+- Build script includes `shx chmod +x` - ensure `shx` is installed
+
+### Test Failures
+
+**Environment variable errors**
+
+- Check `.jest/setEnvVars.js` is being loaded
+- Verify mocked values match test expectations
+
+**Timeout errors**
+
+- Increase Jest timeout: `jest.setTimeout(10000)`
+- Check for async operations without `await`
+
+### Runtime Errors
+
+**"Session key is invalid" in tests**
+
+- Tests should mock CLI execution, not call real `bw` command
+- Use dependency injection or spy on `executeCliCommand`
+
+**OAuth2 token errors**
+
+- Ensure mock credentials match expected format
+- Check token caching logic doesn't interfere with tests
+
+## Best Practices
+
+### DO
+
+✅ Use `withValidation` for all handlers
+✅ Define Zod schemas for all inputs
+✅ Use `buildSafeCommand` for CLI operations
+✅ Follow API specification exactly
+✅ Write tests for new tools
+✅ Document complex logic
+✅ Handle errors gracefully
+✅ Use TypeScript strict mode
+✅ Cache API tokens appropriately
+
+### DON'T
+
+❌ Use string interpolation for commands
+❌ Skip input validation
+❌ Execute arbitrary user-provided commands
+❌ Hardcode credentials
+❌ Ignore error responses
+❌ Use `any` types
+❌ Commit sensitive data
+❌ Modify security functions without review
+❌ Bypass the validation pipeline
