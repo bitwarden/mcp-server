@@ -7,7 +7,6 @@ import { withValidation } from '../utils/validation.js';
 import { buildSafeCommand } from '../utils/security.js';
 import {
   lockSchema,
-  unlockSchema,
   syncSchema,
   statusSchema,
   listSchema,
@@ -64,16 +63,6 @@ export const handleLock = withValidation(lockSchema, async () => {
   const response = await executeCliCommand('lock');
   return toMcpFormat(response);
 });
-
-export const handleUnlock = withValidation(
-  unlockSchema,
-  async (validatedArgs) => {
-    const { password } = validatedArgs;
-    const command = buildSafeCommand('unlock', [password, '--raw']);
-    const response = await executeCliCommand(command);
-    return toMcpFormat(response);
-  },
-);
 
 export const handleSync = withValidation(syncSchema, async () => {
   const response = await executeCliCommand('sync');

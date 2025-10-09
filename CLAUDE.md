@@ -97,14 +97,10 @@ export function withValidation<T, R>(
 
 ```typescript
 // CLI Handler
-export const handleUnlock = withValidation(
-  unlockSchema,
-  async (validatedArgs) => {
-    const { password } = validatedArgs; // Fully typed!
-    const command = buildSafeCommand('unlock', [password, '--raw']);
-    return executeCliCommand(command);
-  },
-);
+export const handleSync = withValidation(syncSchema, async () => {
+  const command = buildSafeCommand('sync', []);
+  return executeCliCommand(command);
+});
 
 // API Handler
 export const handleCreateOrgCollection = withValidation(
@@ -168,7 +164,7 @@ export const handleApiCommand = withValidation(
 
 **Vault Management (CLI-based):**
 
-- **Session**: lock, unlock, sync, status
+- **Session**: lock, sync, status
 - **Retrieval**: list (with filters: url, folderid, collectionid, trash), get (including fingerprint)
 - **Item Management**: create, edit, delete, restore (supports login, secure note, card, identity types)
 - **Attachment Management**: create attachments, delete attachments, get attachments
@@ -227,7 +223,7 @@ This ensures that all organization management operations work correctly with Bit
 **CLI-Only Features:**
 
 - Individual vault item management (passwords, notes, cards, identities)
-- Personal vault operations (sync, lock, unlock)
+- Personal vault operations (sync, lock)
 - Password generation utilities
 - Personal folder organization
 - Individual item sharing

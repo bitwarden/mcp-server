@@ -147,12 +147,11 @@ The server provides comprehensive Bitwarden functionality through two authentica
 
 ##### Session Management
 
-| Tool     | Description                 | Required Parameters |
-| -------- | --------------------------- | ------------------- |
-| `lock`   | Lock the vault              | None                |
-| `unlock` | Unlock with master password | `password`          |
-| `sync`   | Sync vault data             | None                |
-| `status` | Check CLI status            | None                |
+| Tool     | Description      | Required Parameters |
+| -------- | ---------------- | ------------------- |
+| `lock`   | Lock the vault   | None                |
+| `sync`   | Sync vault data  | None                |
+| `status` | Check CLI status | None                |
 
 ##### Vault Items and Folders
 
