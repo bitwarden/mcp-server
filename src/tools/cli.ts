@@ -74,6 +74,25 @@ export const listTool: Tool = {
         description:
           'Organization ID (required for org-collections and org-members)',
       },
+      url: {
+        type: 'string',
+        description:
+          'Filter items by URL (items only, supports "null" and "notnull" literals)',
+      },
+      folderid: {
+        type: 'string',
+        description:
+          'Filter items by folder ID (items only, supports "null" and "notnull" literals)',
+      },
+      collectionid: {
+        type: 'string',
+        description:
+          'Filter items by collection ID (items only, supports "null" and "notnull" literals)',
+      },
+      trash: {
+        type: 'boolean',
+        description: 'Filter for items in trash (items only)',
+      },
     },
     required: ['type'],
   },
@@ -101,11 +120,13 @@ export const getTool: Tool = {
           'collection',
           'organization',
           'org-collection',
+          'fingerprint',
         ],
       },
       id: {
         type: 'string',
-        description: 'ID or search term for the object',
+        description:
+          'ID or search term for the object (use "me" for your own fingerprint)',
       },
       organizationid: {
         type: 'string',
