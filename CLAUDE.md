@@ -169,7 +169,7 @@ export const handleApiCommand = withValidation(
 **Vault Management (CLI-based):**
 
 - **Session**: lock, unlock, sync, status
-- **Retrieval**: list, get
+- **Retrieval**: list (with filters: url, folderid, collectionid, trash), get
 - **Item Management**: create, edit, delete, restore (supports login, secure note, card, identity types)
 - **Folder Management**: create, edit
 - **Send**: create text/file Sends, list, get, edit, delete, remove password
@@ -283,6 +283,71 @@ npm run lint     # ESLint + Prettier
 - Bearer tokens have 1-hour expiration, automatically refreshed
 - Access limited to organization-level resources (no individual vault items)
 - Requires Teams or Enterprise plan
+
+## CLI Feature Details
+
+### List Command Filters
+
+The `list` command supports advanced filtering for items:
+
+**Available Filters:**
+
+- `--url <url>`: Filter items by URL
+- `--folderid <folderid>`: Filter items by folder ID
+- `--collectionid <collectionid>`: Filter items by collection ID
+- `--trash`: Include only items in trash
+
+**Special Filter Values:**
+
+- Filters accept `"null"` to match items without the specified property
+- Filters accept `"notnull"` to match items with the specified property
+
+**Filter Behavior:**
+
+- Multiple filters = OR operation (e.g., items in folder1 OR folder2)
+- Search + filters = AND operation (e.g., items matching "github" AND in specific folder)
+
+**Examples:**
+
+```typescript
+// List items in a specific folder
+{ type: 'items', folderid: 'folder-123' }
+
+// List items without a folder
+{ type: 'items', folderid: 'null' }
+
+// List items matching URL and search term (AND)
+{ type: 'items', search: 'github', url: 'https://github.com' }
+
+// List items in trash
+{ type: 'items', trash: true }
+```
+
+### Get Command Extensions
+
+The `get` command supports retrieving fingerprints for user verification:
+
+**Fingerprint Retrieval:**
+
+- `bw get fingerprint me` - Get your own fingerprint phrase
+- `bw get fingerprint <user-id>` - Get another user's fingerprint phrase
+
+**Purpose:**
+Fingerprint phrases are used for:
+
+- Verifying user identity during organization member confirmation
+- Ensuring secure user verification in administrative operations
+- Out-of-band identity confirmation
+
+**Example:**
+
+```typescript
+// Get your own fingerprint
+{ object: 'fingerprint', id: 'me' }
+
+// Get specific user's fingerprint
+{ object: 'fingerprint', id: '00000000-0000-0000-0000-000000000000' }
+```
 
 ## Implementation Patterns
 

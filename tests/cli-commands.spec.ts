@@ -12,6 +12,10 @@ describe('CLI Commands', () => {
   const listSchema = z.object({
     type: z.enum(['items', 'folders', 'collections', 'organizations']),
     search: z.string().optional(),
+    url: z.string().optional(),
+    folderid: z.string().optional(),
+    collectionid: z.string().optional(),
+    trash: z.boolean().optional(),
   });
 
   const getSchema = z.object({
@@ -27,6 +31,7 @@ describe('CLI Commands', () => {
       'folder',
       'collection',
       'organization',
+      'fingerprint',
     ]),
     id: z.string().min(1, 'ID or search term is required'),
   });
@@ -93,6 +98,113 @@ describe('CLI Commands', () => {
         expect(result.content[0].text).toContain('Validation error');
       }
     });
+
+    it('should validate list command with url filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        url: 'https://example.com',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with folderid filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'folder-123',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with null folderid', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'null',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with notnull folderid', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'notnull',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with collectionid filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        collectionid: 'collection-456',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with trash filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        trash: true,
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with multiple filters', () => {
+      const validInput = {
+        type: 'items' as const,
+        url: 'https://github.com',
+        folderid: 'folder-123',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with search and filters (AND operation)', () => {
+      const validInput = {
+        type: 'items' as const,
+        search: 'github',
+        folderid: 'folder-123',
+        url: 'https://github.com',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
   });
 
   describe('get command validation', () => {
@@ -125,6 +237,32 @@ describe('CLI Commands', () => {
         expect(result.content[0].text).toContain(
           'ID or search term is required',
         );
+      }
+    });
+
+    it('should validate get fingerprint with user id', () => {
+      const validInput = {
+        object: 'fingerprint' as const,
+        id: '00000000-0000-0000-0000-000000000000',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate get fingerprint with "me"', () => {
+      const validInput = {
+        object: 'fingerprint' as const,
+        id: 'me',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
       }
     });
   });

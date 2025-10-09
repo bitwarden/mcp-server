@@ -43,6 +43,14 @@ export const listSchema = z
     search: z.string().optional(),
     // Organization ID (required for org-collections and org-members)
     organizationid: z.string().optional(),
+    // Filter items by URL (items only, supports 'null' and 'notnull' literals)
+    url: z.string().optional(),
+    // Filter items by folder ID (items only, supports 'null' and 'notnull' literals)
+    folderid: z.string().optional(),
+    // Filter items by collection ID (items only, supports 'null' and 'notnull' literals)
+    collectionid: z.string().optional(),
+    // Filter for items in trash (items only)
+    trash: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -78,8 +86,9 @@ export const getSchema = z
       'collection',
       'organization',
       'org-collection',
+      'fingerprint',
     ]),
-    // ID or search term to identify the object
+    // ID or search term to identify the object (use 'me' for your own fingerprint)
     id: z.string().min(1, 'ID or search term is required'),
     // Organization ID (required for org-collection)
     organizationid: z.string().optional(),

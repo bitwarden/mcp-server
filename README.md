@@ -156,19 +156,19 @@ The server provides comprehensive Bitwarden functionality through two authentica
 
 ##### Vault Items and Folders
 
-| Tool                    | Description                                                   | Required Parameters                                                          |
-| ----------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `list`                  | List vault items/folders                                      | `type` (items/folders/collections/organizations/org-members/org-collections) |
-| `get`                   | Get specific item/folder                                      | `object`, `id`, optional `organizationid` for org-collection                 |
-| `generate`              | Generate password/passphrase                                  | Various optional parameters                                                  |
-| `create_item`           | Create new vault item (login, secure note, card, identity)    | `name`, `type`, type-specific data, optional `notes`, `folderId`             |
-| `create_folder`         | Create new folder                                             | `name`                                                                       |
-| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, type-specific data, `folderId`               |
-| `edit_folder`           | Edit existing folder                                          | `id`, `name`                                                                 |
-| `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                          |
-| `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                          |
-| `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                         |
-| `restore`               | Restore item from trash                                       | `object`, `id`                                                               |
+| Tool                    | Description                                                   | Required Parameters                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`                  | List vault items/folders with optional filters                | `type` (items/folders/collections/organizations/org-members/org-collections), optional `url`, `folderid`, `collectionid`, `trash`                                                                                     |
+| `get`                   | Get specific item/folder/fingerprint                          | `object` (item/username/password/uri/totp/notes/exposed/attachment/folder/collection/organization/org-collection/fingerprint), `id` (use "me" for your own fingerprint), optional `organizationid` for org-collection |
+| `generate`              | Generate password/passphrase                                  | Various optional parameters                                                                                                                                                                                           |
+| `create_item`           | Create new vault item (login, secure note, card, identity)    | `name`, `type`, type-specific data, optional `notes`, `folderId`                                                                                                                                                      |
+| `create_folder`         | Create new folder                                             | `name`                                                                                                                                                                                                                |
+| `edit_item`             | Edit existing vault item                                      | `id`, optional `name`, `notes`, type-specific data, `folderId`                                                                                                                                                        |
+| `edit_folder`           | Edit existing folder                                          | `id`, `name`                                                                                                                                                                                                          |
+| `edit_item_collections` | Edit which collections an item belongs to                     | `itemId`, `organizationId`, `collectionIds` (array)                                                                                                                                                                   |
+| `move`                  | Move (share) a vault item to an organization with collections | `itemId`, `organizationId`, `collectionIds` (array)                                                                                                                                                                   |
+| `delete`                | Delete vault item/folder                                      | `object`, `id`, optional `permanent`                                                                                                                                                                                  |
+| `restore`               | Restore item from trash                                       | `object`, `id`                                                                                                                                                                                                        |
 
 ##### Bitwarden Send Tools
 

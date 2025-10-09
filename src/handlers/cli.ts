@@ -85,13 +85,26 @@ export const handleStatus = withValidation(statusSchema, async () => {
 });
 
 export const handleList = withValidation(listSchema, async (validatedArgs) => {
-  const { type, search, organizationid } = validatedArgs;
+  const { type, search, organizationid, url, folderid, collectionid, trash } =
+    validatedArgs;
   const params: string[] = [type];
   if (search) {
     params.push('--search', search);
   }
   if (organizationid) {
     params.push('--organizationid', organizationid);
+  }
+  if (url) {
+    params.push('--url', url);
+  }
+  if (folderid) {
+    params.push('--folderid', folderid);
+  }
+  if (collectionid) {
+    params.push('--collectionid', collectionid);
+  }
+  if (trash) {
+    params.push('--trash');
   }
   const command = buildSafeCommand('list', params);
   const response = await executeCliCommand(command);
