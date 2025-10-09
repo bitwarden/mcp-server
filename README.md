@@ -6,7 +6,6 @@ A Model Context Protocol (MCP) server that provides AI assistants with secure ac
 - **Organization Administration** via Bitwarden Public API
 
 [![npm version](https://img.shields.io/npm/v/@bitwarden/mcp-server.svg)](https://www.npmjs.com/package/@bitwarden/mcp-server)
-[![License](https://img.shields.io/badge/license-SEE%20LICENSE%20IN%20LICENSE.txt-blue.svg)](LICENSE.txt)
 
 ## What is MCP?
 
