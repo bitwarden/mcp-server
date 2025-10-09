@@ -13,21 +13,6 @@ export const lockTool: Tool = {
   },
 };
 
-export const unlockTool: Tool = {
-  name: 'unlock',
-  description: 'Unlock the vault with your master password',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      password: {
-        type: 'string',
-        description: 'Master password for the vault',
-      },
-    },
-    required: ['password'],
-  },
-};
-
 export const syncTool: Tool = {
   name: 'sync',
   description: 'Sync vault data from the Bitwarden server',
@@ -74,6 +59,25 @@ export const listTool: Tool = {
         description:
           'Organization ID (required for org-collections and org-members)',
       },
+      url: {
+        type: 'string',
+        description:
+          'Filter items by URL (items only, supports "null" and "notnull" literals)',
+      },
+      folderid: {
+        type: 'string',
+        description:
+          'Filter items by folder ID (items only, supports "null" and "notnull" literals)',
+      },
+      collectionid: {
+        type: 'string',
+        description:
+          'Filter items by collection ID (items only, supports "null" and "notnull" literals)',
+      },
+      trash: {
+        type: 'boolean',
+        description: 'Filter for items in trash (items only)',
+      },
     },
     required: ['type'],
   },
@@ -101,15 +105,26 @@ export const getTool: Tool = {
           'collection',
           'organization',
           'org-collection',
+          'fingerprint',
         ],
       },
       id: {
         type: 'string',
-        description: 'ID or search term for the object',
+        description:
+          'ID or search term for the object (use "me" for your own fingerprint, or filename for attachment)',
       },
       organizationid: {
         type: 'string',
         description: 'Organization ID (required for org-collection)',
+      },
+      itemid: {
+        type: 'string',
+        description: 'Item ID (required for attachment)',
+      },
+      output: {
+        type: 'string',
+        description:
+          'Output directory path for downloading attachment (optional, should end with /)',
       },
     },
     required: ['object', 'id'],
@@ -1046,10 +1061,28 @@ export const removeSendPasswordTool: Tool = {
   },
 };
 
+export const createAttachmentTool: Tool = {
+  name: 'create_attachment',
+  description: 'Attach a file to an existing vault item',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      filePath: {
+        type: 'string',
+        description: 'Path to the file to attach',
+      },
+      itemId: {
+        type: 'string',
+        description: 'ID of the vault item to attach the file to',
+      },
+    },
+    required: ['filePath', 'itemId'],
+  },
+};
+
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
-  unlockTool,
   syncTool,
   statusTool,
   listTool,
@@ -1078,4 +1111,5 @@ export const cliTools = [
   editSendTool,
   deleteSendTool,
   removeSendPasswordTool,
+  createAttachmentTool,
 ];

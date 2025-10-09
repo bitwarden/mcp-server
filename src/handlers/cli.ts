@@ -7,7 +7,6 @@ import { withValidation } from '../utils/validation.js';
 import { buildSafeCommand } from '../utils/security.js';
 import {
   lockSchema,
-  unlockSchema,
   syncSchema,
   statusSchema,
   listSchema,
@@ -36,6 +35,7 @@ import {
   editSendSchema,
   deleteSendSchema,
   removeSendPasswordSchema,
+  createAttachmentSchema,
 } from '../schemas/cli.js';
 import {
   CliResponse,
@@ -64,16 +64,6 @@ export const handleLock = withValidation(lockSchema, async () => {
   return toMcpFormat(response);
 });
 
-export const handleUnlock = withValidation(
-  unlockSchema,
-  async (validatedArgs) => {
-    const { password } = validatedArgs;
-    const command = buildSafeCommand('unlock', [password, '--raw']);
-    const response = await executeCliCommand(command);
-    return toMcpFormat(response);
-  },
-);
-
 export const handleSync = withValidation(syncSchema, async () => {
   const response = await executeCliCommand('sync');
   return toMcpFormat(response);
@@ -85,7 +75,8 @@ export const handleStatus = withValidation(statusSchema, async () => {
 });
 
 export const handleList = withValidation(listSchema, async (validatedArgs) => {
-  const { type, search, organizationid } = validatedArgs;
+  const { type, search, organizationid, url, folderid, collectionid, trash } =
+    validatedArgs;
   const params: string[] = [type];
   if (search) {
     params.push('--search', search);
@@ -93,16 +84,34 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
   if (organizationid) {
     params.push('--organizationid', organizationid);
   }
+  if (url) {
+    params.push('--url', url);
+  }
+  if (folderid) {
+    params.push('--folderid', folderid);
+  }
+  if (collectionid) {
+    params.push('--collectionid', collectionid);
+  }
+  if (trash) {
+    params.push('--trash');
+  }
   const command = buildSafeCommand('list', params);
   const response = await executeCliCommand(command);
   return toMcpFormat(response);
 });
 
 export const handleGet = withValidation(getSchema, async (validatedArgs) => {
-  const { object, id, organizationid } = validatedArgs;
+  const { object, id, organizationid, itemid, output } = validatedArgs;
   const params: string[] = [object, id];
   if (organizationid) {
     params.push('--organizationid', organizationid);
+  }
+  if (itemid) {
+    params.push('--itemid', itemid);
+  }
+  if (output) {
+    params.push('--output', output);
   }
   const command = buildSafeCommand('get', params);
   const response = await executeCliCommand(command);
@@ -857,6 +866,22 @@ export const handleRemoveSendPassword = withValidation(
   async (validatedArgs) => {
     const { id } = validatedArgs;
     const command = buildSafeCommand('send', ['remove-password', id]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleCreateAttachment = withValidation(
+  createAttachmentSchema,
+  async (validatedArgs) => {
+    const { filePath, itemId } = validatedArgs;
+    const command = buildSafeCommand('create', [
+      'attachment',
+      '--file',
+      filePath,
+      '--itemid',
+      itemId,
+    ]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },

@@ -188,7 +188,6 @@ describe('Security - Command Injection Protection', () => {
       // Commands actually used in src/handlers/cli.ts
       const implementedCommands = [
         'lock',
-        'unlock',
         'sync',
         'status',
         'list',

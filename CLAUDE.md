@@ -97,14 +97,10 @@ export function withValidation<T, R>(
 
 ```typescript
 // CLI Handler
-export const handleUnlock = withValidation(
-  unlockSchema,
-  async (validatedArgs) => {
-    const { password } = validatedArgs; // Fully typed!
-    const command = buildSafeCommand('unlock', [password, '--raw']);
-    return executeCliCommand(command);
-  },
-);
+export const handleSync = withValidation(syncSchema, async () => {
+  const command = buildSafeCommand('sync', []);
+  return executeCliCommand(command);
+});
 
 // API Handler
 export const handleCreateOrgCollection = withValidation(
@@ -168,12 +164,13 @@ export const handleApiCommand = withValidation(
 
 **Vault Management (CLI-based):**
 
-- **Session**: lock, unlock, sync, status
-- **Retrieval**: list, get
+- **Session**: lock, sync, status
+- **Retrieval**: list (with filters: url, folderid, collectionid, trash), get (including fingerprint)
 - **Item Management**: create, edit, delete, restore (supports login, secure note, card, identity types)
+- **Attachment Management**: create attachments, delete attachments, get attachments
 - **Folder Management**: create, edit
 - **Send**: create text/file Sends, list, get, edit, delete, remove password
-- **Utility**: generate
+- **Utility**: generate, fingerprint verification
 - **Organization**: list and confirm organization members, manage and move organization items
 - **Device Approval**: list, approve, and deny devices
 
@@ -226,7 +223,7 @@ This ensures that all organization management operations work correctly with Bit
 **CLI-Only Features:**
 
 - Individual vault item management (passwords, notes, cards, identities)
-- Personal vault operations (sync, lock, unlock)
+- Personal vault operations (sync, lock)
 - Password generation utilities
 - Personal folder organization
 - Individual item sharing
@@ -283,6 +280,132 @@ npm run lint     # ESLint + Prettier
 - Bearer tokens have 1-hour expiration, automatically refreshed
 - Access limited to organization-level resources (no individual vault items)
 - Requires Teams or Enterprise plan
+
+## CLI Feature Details
+
+### List Command Filters
+
+The `list` command supports advanced filtering for items:
+
+**Available Filters:**
+
+- `--url <url>`: Filter items by URL
+- `--folderid <folderid>`: Filter items by folder ID
+- `--collectionid <collectionid>`: Filter items by collection ID
+- `--trash`: Include only items in trash
+
+**Special Filter Values:**
+
+- Filters accept `"null"` to match items without the specified property
+- Filters accept `"notnull"` to match items with the specified property
+
+**Filter Behavior:**
+
+- Multiple filters = OR operation (e.g., items in folder1 OR folder2)
+- Search + filters = AND operation (e.g., items matching "github" AND in specific folder)
+
+**Examples:**
+
+```typescript
+// List items in a specific folder
+{ type: 'items', folderid: 'folder-123' }
+
+// List items without a folder
+{ type: 'items', folderid: 'null' }
+
+// List items matching URL and search term (AND)
+{ type: 'items', search: 'github', url: 'https://github.com' }
+
+// List items in trash
+{ type: 'items', trash: true }
+```
+
+### Get Command Extensions
+
+The `get` command supports retrieving fingerprints for user verification:
+
+**Fingerprint Retrieval:**
+
+- `bw get fingerprint me` - Get your own fingerprint phrase
+- `bw get fingerprint <user-id>` - Get another user's fingerprint phrase
+
+**Purpose:**
+Fingerprint phrases are used for:
+
+- Verifying user identity during organization member confirmation
+- Ensuring secure user verification in administrative operations
+- Out-of-band identity confirmation
+
+**Example:**
+
+```typescript
+// Get your own fingerprint
+{ object: 'fingerprint', id: 'me' }
+
+// Get specific user's fingerprint
+{ object: 'fingerprint', id: '00000000-0000-0000-0000-000000000000' }
+```
+
+### Attachment Management
+
+The MCP server supports attaching files to vault items, retrieving attachments, and deleting attachments:
+
+**Create Attachment:**
+
+- `bw create attachment --file <filepath> --itemid <item_id>` - Attach a file to a vault item
+- Requires valid file path and item ID
+- File path validation includes security checks against path traversal
+
+**Get Attachment:**
+
+- `bw get attachment <filename> --itemid <id> --output <directory>` - Download an attachment
+- Requires `itemid` parameter (the vault item containing the attachment)
+- Optional `output` parameter specifies download directory
+- Output path validation includes security checks against path traversal
+
+**Delete Attachment:**
+
+- `bw delete attachment <id>` - Remove an attachment from a vault item
+- Supported via the existing `delete` command with `object: 'attachment'`
+
+**Security Considerations:**
+
+- File paths are validated against path traversal attacks
+- UNC paths and parent directory references are rejected
+- Supports both absolute and relative file paths on Windows and Unix
+- Both `filePath` (create) and `output` (get) parameters are validated
+
+**Examples:**
+
+```typescript
+// Create attachment - attach a file to an item
+{ filePath: '/path/to/document.pdf', itemId: 'item-123-uuid' }
+
+// Get attachment - retrieve attachment from item
+{
+  object: 'attachment',
+  id: 'photo.png',
+  itemid: 'item-456-uuid'
+}
+
+// Get attachment - download to specific directory
+{
+  object: 'attachment',
+  id: 'document.pdf',
+  itemid: 'item-789-uuid',
+  output: '/home/user/downloads/'
+}
+
+// Valid file paths
+'/home/user/document.pdf'  // Unix absolute
+'C:\\Users\\Documents\\file.pdf'  // Windows absolute
+'./local-file.txt'  // Relative
+'folder/file.txt'  // Relative subdirectory
+
+// Invalid file paths (rejected)
+'../../../etc/passwd'  // Path traversal
+'\\\\server\\share\\file.txt'  // UNC path
+```
 
 ## Implementation Patterns
 

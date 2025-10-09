@@ -45,36 +45,6 @@ describe('Validation', () => {
       }
     });
 
-    it('should validate unlock schema', () => {
-      const unlockSchema = z.object({
-        password: z.string().min(1, 'Password is required'),
-      });
-
-      const [isValid, result] = validateInput(unlockSchema, {
-        password: 'mypassword',
-      });
-
-      expect(isValid).toBe(true);
-      if (isValid) {
-        expect(result.password).toBe('mypassword');
-      }
-    });
-
-    it('should reject empty password', () => {
-      const unlockSchema = z.object({
-        password: z.string().min(1, 'Password is required'),
-      });
-
-      const [isValid, result] = validateInput(unlockSchema, {
-        password: '',
-      });
-
-      expect(isValid).toBe(false);
-      if (!isValid) {
-        expect(result.content[0].text).toContain('Password is required');
-      }
-    });
-
     it('should validate list schema', () => {
       const listSchema = z.object({
         type: z.enum(['items', 'folders', 'collections', 'organizations']),

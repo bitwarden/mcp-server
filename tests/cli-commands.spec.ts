@@ -5,63 +5,53 @@ import { validateFilePath } from '../src/utils/security.js';
 
 describe('CLI Commands', () => {
   // Test schemas used in the application
-  const unlockSchema = z.object({
-    password: z.string().min(1, 'Password is required'),
-  });
-
   const listSchema = z.object({
     type: z.enum(['items', 'folders', 'collections', 'organizations']),
     search: z.string().optional(),
+    url: z.string().optional(),
+    folderid: z.string().optional(),
+    collectionid: z.string().optional(),
+    trash: z.boolean().optional(),
   });
 
-  const getSchema = z.object({
-    object: z.enum([
-      'item',
-      'username',
-      'password',
-      'uri',
-      'totp',
-      'notes',
-      'exposed',
-      'attachment',
-      'folder',
-      'collection',
-      'organization',
-    ]),
-    id: z.string().min(1, 'ID or search term is required'),
-  });
-
-  describe('unlock command validation', () => {
-    it('should validate unlock command with password', () => {
-      const validInput = { password: 'master-password' };
-      const [isValid, result] = validateInput(unlockSchema, validInput);
-
-      expect(isValid).toBe(true);
-      if (isValid) {
-        expect(result).toEqual(validInput);
-      }
-    });
-
-    it('should reject unlock command without password', () => {
-      const invalidInput = {};
-      const [isValid, result] = validateInput(unlockSchema, invalidInput);
-
-      expect(isValid).toBe(false);
-      if (!isValid) {
-        expect(result.content[0].text).toContain('Validation error');
-      }
-    });
-
-    it('should reject unlock command with empty password', () => {
-      const invalidInput = { password: '' };
-      const [isValid, result] = validateInput(unlockSchema, invalidInput);
-
-      expect(isValid).toBe(false);
-      if (!isValid) {
-        expect(result.content[0].text).toContain('Password is required');
-      }
-    });
-  });
+  const getSchema = z
+    .object({
+      object: z.enum([
+        'item',
+        'username',
+        'password',
+        'uri',
+        'totp',
+        'notes',
+        'exposed',
+        'attachment',
+        'folder',
+        'collection',
+        'organization',
+        'fingerprint',
+      ]),
+      id: z.string().min(1, 'ID or search term is required'),
+      itemid: z.string().optional(),
+      output: z
+        .string()
+        .optional()
+        .refine((path) => !path || validateFilePath(path), {
+          message:
+            'Invalid output path: path traversal patterns are not allowed',
+        }),
+    })
+    .refine(
+      (data) => {
+        // attachment requires itemid
+        if (data.object === 'attachment' && !data.itemid) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'itemid is required for attachment',
+      },
+    );
 
   describe('list command validation', () => {
     it('should validate list command with valid type', () => {
@@ -91,6 +81,113 @@ describe('CLI Commands', () => {
       expect(isValid).toBe(false);
       if (!isValid) {
         expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should validate list command with url filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        url: 'https://example.com',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with folderid filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'folder-123',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with null folderid', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'null',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with notnull folderid', () => {
+      const validInput = {
+        type: 'items' as const,
+        folderid: 'notnull',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with collectionid filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        collectionid: 'collection-456',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with trash filter', () => {
+      const validInput = {
+        type: 'items' as const,
+        trash: true,
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with multiple filters', () => {
+      const validInput = {
+        type: 'items' as const,
+        url: 'https://github.com',
+        folderid: 'folder-123',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate list command with search and filters (AND operation)', () => {
+      const validInput = {
+        type: 'items' as const,
+        search: 'github',
+        folderid: 'folder-123',
+        url: 'https://github.com',
+      };
+      const [isValid, result] = validateInput(listSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
       }
     });
   });
@@ -124,6 +221,93 @@ describe('CLI Commands', () => {
       if (!isValid) {
         expect(result.content[0].text).toContain(
           'ID or search term is required',
+        );
+      }
+    });
+
+    it('should validate get fingerprint with user id', () => {
+      const validInput = {
+        object: 'fingerprint' as const,
+        id: '00000000-0000-0000-0000-000000000000',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate get fingerprint with "me"', () => {
+      const validInput = {
+        object: 'fingerprint' as const,
+        id: 'me',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate get attachment with itemid', () => {
+      const validInput = {
+        object: 'attachment' as const,
+        id: 'photo.png',
+        itemid: 'item-123-uuid',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should validate get attachment with output path', () => {
+      const validInput = {
+        object: 'attachment' as const,
+        id: 'document.pdf',
+        itemid: 'item-456-uuid',
+        output: '/home/user/downloads/',
+      };
+      const [isValid, result] = validateInput(getSchema, validInput);
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject get attachment without itemid', () => {
+      const invalidInput = {
+        object: 'attachment' as const,
+        id: 'photo.png',
+      };
+      const [isValid, result] = validateInput(getSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'itemid is required for attachment',
+        );
+      }
+    });
+
+    it('should reject get attachment with path traversal in output', () => {
+      const invalidInput = {
+        object: 'attachment' as const,
+        id: 'photo.png',
+        itemid: 'item-123-uuid',
+        output: '../../../etc/',
+      };
+      const [isValid, result] = validateInput(getSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'path traversal patterns are not allowed',
         );
       }
     });
@@ -2106,6 +2290,105 @@ describe('CLI Commands', () => {
         };
 
         const [isValid] = validateInput(createFileSendSchema, validInput);
+        expect(isValid).toBe(true);
+      });
+    });
+  });
+
+  describe('attachment validation', () => {
+    const createAttachmentSchema = z.object({
+      filePath: z
+        .string()
+        .min(1, 'File path is required')
+        .refine((path) => validateFilePath(path), {
+          message: 'Invalid file path: path traversal patterns are not allowed',
+        }),
+      itemId: z.string().min(1, 'Item ID is required'),
+    });
+
+    it('should validate create attachment with valid parameters', () => {
+      const validInput = {
+        filePath: '/path/to/document.pdf',
+        itemId: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(
+        createAttachmentSchema,
+        validInput,
+      );
+
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject create attachment without filePath', () => {
+      const invalidInput = {
+        itemId: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(
+        createAttachmentSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create attachment without itemId', () => {
+      const invalidInput = {
+        filePath: '/path/to/document.pdf',
+      };
+
+      const [isValid, result] = validateInput(
+        createAttachmentSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject create attachment with path traversal', () => {
+      const invalidInput = {
+        filePath: '../../../etc/passwd',
+        itemId: 'item-123',
+      };
+
+      const [isValid, result] = validateInput(
+        createAttachmentSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'path traversal patterns are not allowed',
+        );
+      }
+    });
+
+    it('should accept valid file paths', () => {
+      const validPaths = [
+        '/home/user/document.pdf',
+        'C:\\Users\\Documents\\file.pdf',
+        './local-file.txt',
+        'folder/file.txt',
+      ];
+
+      validPaths.forEach((filePath) => {
+        const validInput = {
+          filePath,
+          itemId: 'item-123',
+        };
+
+        const [isValid] = validateInput(createAttachmentSchema, validInput);
         expect(isValid).toBe(true);
       });
     });

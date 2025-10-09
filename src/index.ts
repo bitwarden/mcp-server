@@ -26,7 +26,6 @@ import { cliTools, organizationApiTools } from './tools/index.js';
 // Import handlers
 import {
   handleLock,
-  handleUnlock,
   handleSync,
   handleStatus,
   handleList,
@@ -55,6 +54,7 @@ import {
   handleEditSend,
   handleDeleteSend,
   handleRemoveSendPassword,
+  handleCreateAttachment,
 } from './handlers/cli.js';
 
 import {
@@ -113,8 +113,6 @@ async function runServer(): Promise<void> {
           // CLI Tools (Personal Vault Operations)
           case 'lock':
             return await handleLock(args);
-          case 'unlock':
-            return await handleUnlock(args);
           case 'sync':
             return await handleSync(args);
           case 'status':
@@ -173,6 +171,10 @@ async function runServer(): Promise<void> {
             return await handleDeleteSend(args);
           case 'remove_send_password':
             return await handleRemoveSendPassword(args);
+
+          // Attachment Tools
+          case 'create_attachment':
+            return await handleCreateAttachment(args);
 
           // Organization API Tools - Collections
           case 'list_org_collections':
