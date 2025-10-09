@@ -15,12 +15,6 @@ import { validateFilePath } from '../utils/security.js';
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
 
-// Schema for validating 'unlock' command parameters
-export const unlockSchema = z.object({
-  // Master password for unlocking the vault
-  password: z.string().min(1, 'Password is required'),
-});
-
 // Schema for validating 'sync' command parameters (no parameters required)
 export const syncSchema = z.object({});
 

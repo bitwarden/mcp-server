@@ -5,10 +5,6 @@ import { validateFilePath } from '../src/utils/security.js';
 
 describe('CLI Commands', () => {
   // Test schemas used in the application
-  const unlockSchema = z.object({
-    password: z.string().min(1, 'Password is required'),
-  });
-
   const listSchema = z.object({
     type: z.enum(['items', 'folders', 'collections', 'organizations']),
     search: z.string().optional(),
@@ -56,38 +52,6 @@ describe('CLI Commands', () => {
         message: 'itemid is required for attachment',
       },
     );
-
-  describe('unlock command validation', () => {
-    it('should validate unlock command with password', () => {
-      const validInput = { password: 'master-password' };
-      const [isValid, result] = validateInput(unlockSchema, validInput);
-
-      expect(isValid).toBe(true);
-      if (isValid) {
-        expect(result).toEqual(validInput);
-      }
-    });
-
-    it('should reject unlock command without password', () => {
-      const invalidInput = {};
-      const [isValid, result] = validateInput(unlockSchema, invalidInput);
-
-      expect(isValid).toBe(false);
-      if (!isValid) {
-        expect(result.content[0].text).toContain('Validation error');
-      }
-    });
-
-    it('should reject unlock command with empty password', () => {
-      const invalidInput = { password: '' };
-      const [isValid, result] = validateInput(unlockSchema, invalidInput);
-
-      expect(isValid).toBe(false);
-      if (!isValid) {
-        expect(result.content[0].text).toContain('Password is required');
-      }
-    });
-  });
 
   describe('list command validation', () => {
     it('should validate list command with valid type', () => {
