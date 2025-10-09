@@ -36,6 +36,7 @@ import {
   editSendSchema,
   deleteSendSchema,
   removeSendPasswordSchema,
+  createAttachmentSchema,
 } from '../schemas/cli.js';
 import {
   CliResponse,
@@ -112,10 +113,16 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
 });
 
 export const handleGet = withValidation(getSchema, async (validatedArgs) => {
-  const { object, id, organizationid } = validatedArgs;
+  const { object, id, organizationid, itemid, output } = validatedArgs;
   const params: string[] = [object, id];
   if (organizationid) {
     params.push('--organizationid', organizationid);
+  }
+  if (itemid) {
+    params.push('--itemid', itemid);
+  }
+  if (output) {
+    params.push('--output', output);
   }
   const command = buildSafeCommand('get', params);
   const response = await executeCliCommand(command);
@@ -870,6 +877,22 @@ export const handleRemoveSendPassword = withValidation(
   async (validatedArgs) => {
     const { id } = validatedArgs;
     const command = buildSafeCommand('send', ['remove-password', id]);
+    const response = await executeCliCommand(command);
+    return toMcpFormat(response);
+  },
+);
+
+export const handleCreateAttachment = withValidation(
+  createAttachmentSchema,
+  async (validatedArgs) => {
+    const { filePath, itemId } = validatedArgs;
+    const command = buildSafeCommand('create', [
+      'attachment',
+      '--file',
+      filePath,
+      '--itemid',
+      itemId,
+    ]);
     const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },

@@ -88,10 +88,19 @@ export const getSchema = z
       'org-collection',
       'fingerprint',
     ]),
-    // ID or search term to identify the object (use 'me' for your own fingerprint)
+    // ID or search term to identify the object (use 'me' for your own fingerprint, or filename for attachment)
     id: z.string().min(1, 'ID or search term is required'),
     // Organization ID (required for org-collection)
     organizationid: z.string().optional(),
+    // Item ID (required for attachment)
+    itemid: z.string().optional(),
+    // Output directory for attachment downloads (optional, must end with /)
+    output: z
+      .string()
+      .optional()
+      .refine((path) => !path || validateFilePath(path), {
+        message: 'Invalid output path: path traversal patterns are not allowed',
+      }),
   })
   .refine(
     (data) => {
@@ -99,10 +108,15 @@ export const getSchema = z
       if (data.object === 'org-collection' && !data.organizationid) {
         return false;
       }
+      // attachment requires itemid
+      if (data.object === 'attachment' && !data.itemid) {
+        return false;
+      }
       return true;
     },
     {
-      message: 'organizationid is required when getting org-collection',
+      message:
+        'organizationid is required for org-collection, itemid is required for attachment',
     },
   );
 
@@ -614,4 +628,17 @@ export const deleteSendSchema = z.object({
 export const removeSendPasswordSchema = z.object({
   // ID of the Send to remove password from
   id: z.string().min(1, 'Send ID is required'),
+});
+
+// Schema for validating 'create attachment' command parameters
+export const createAttachmentSchema = z.object({
+  // Path to the file to attach
+  filePath: z
+    .string()
+    .min(1, 'File path is required')
+    .refine((path) => validateFilePath(path), {
+      message: 'Invalid file path: path traversal patterns are not allowed',
+    }),
+  // ID of the item to attach the file to
+  itemId: z.string().min(1, 'Item ID is required'),
 });
