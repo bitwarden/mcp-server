@@ -7,6 +7,34 @@ A Model Context Protocol (MCP) server that provides AI assistants with secure ac
 
 [![npm version](https://img.shields.io/npm/v/@bitwarden/mcp-server.svg)](https://www.npmjs.com/package/@bitwarden/mcp-server)
 
+> [!WARNING]
+> This MCP server is designed exclusively for local use and must never be hosted publicly or exposed over a network.
+>
+> When you grant an AI assistant access to this server, you are providing the ability to:
+>
+> - Read vault items including passwords, secure notes, and sensitive data
+> - Create, modify, and delete vault items
+> - Access organization secrets and administrative functions
+>   ?- Expose credentials and vault contents through AI responses
+>
+> **You are responsible for:**
+>
+> - Ensuring this server runs only on your local machine or self-hosted environment
+> - Understanding what data you're exposing to your AI assistant
+> - Being aware that AI responses may inadvertently reveal sensitive information
+> - Using appropriate AI providers (consider self-hosted or local LLMs for sensitive data)
+> - Never sharing configuration files containing session tokens or API credentials
+> - Monitoring logs for unexpected activity
+>
+> **Never:**
+>
+> - Deploy this server to cloud hosting, containers, or public servers
+> - Share your MCP configuration files with others
+> - Use this server over untrusted networks
+> - Grant access to untrusted AI clients or services
+>
+> Use this tool responsibly and at your own risk.
+
 ## What is MCP?
 
 The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standard that enables AI assistants to securely interact with local tools and services. This server exposes Bitwarden's vault management and organization administration capabilities to MCP-compatible AI clients like Claude Desktop.
@@ -54,6 +82,9 @@ The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standa
 - Organization owner or admin permissions
 
 ### Configuration
+
+> [!WARNING]
+> The configuration files below will contain sensitive credentials that grant access to your Bitwarden vault. Keep these files secure, never commit them to version control, and never share them with others. Ensure your MCP client (e.g., Claude Desktop) is configured to run the server locally only.
 
 #### Option 1: Claude Desktop (Recommended)
 
@@ -287,7 +318,6 @@ export NODE_ENV=development
   ```
 
 - **Session key is invalid**
-
   - Session tokens expire after inactivity
   - Run `bw unlock --raw` to get a fresh token
   - Update your MCP configuration with the new token
@@ -295,13 +325,11 @@ export NODE_ENV=development
 ### API Issues
 
 - **Invalid client credentials**
-
   - Verify `BW_CLIENT_ID` starts with `organization.`
   - Ensure `BW_CLIENT_SECRET` is correct
   - Check that API keys haven't been rotated in the Admin Console
 
 - **403 Forbidden**
-
   - Verify you have organization owner or admin permissions
   - Some operations require specific roles (e.g., managing members)
 
