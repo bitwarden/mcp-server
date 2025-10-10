@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) server that provides AI assistants with secure ac
 > - Read vault items including passwords, secure notes, and sensitive data
 > - Create, modify, and delete vault items
 > - Access organization secrets and administrative functions
->   ?- Expose credentials and vault contents through AI responses
+> - Expose credentials and vault contents through AI responses
 >
 > **You are responsible for:**
 >
