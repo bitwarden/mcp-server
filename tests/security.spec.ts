@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   sanitizeInput,
-  escapeShellParameter,
+  validateParameter,
   buildSafeCommand,
   isValidBitwardenCommand,
   validateFilePath,
@@ -107,79 +107,85 @@ describe('Security - Command Injection Protection', () => {
     });
   });
 
-  describe('escapeShellParameter', () => {
-    it('should wrap normal values in single quotes', () => {
-      const result = escapeShellParameter('normal-value');
-      expect(result).toBe("'normal-value'");
+  describe('validateParameter', () => {
+    it('should accept normal values', () => {
+      const result = validateParameter('normal-value');
+      expect(result).toBe(true);
     });
 
-    it('should preserve spaces within single quotes', () => {
-      const result = escapeShellParameter('value with spaces');
-      expect(result).toBe("'value with spaces'");
+    it('should accept values with spaces', () => {
+      const result = validateParameter('value with spaces');
+      expect(result).toBe(true);
     });
 
-    it('should properly escape single quotes', () => {
-      const result = escapeShellParameter("value'with'quotes");
-      expect(result).toBe("'value'\\''with'\\''quotes'");
+    it('should accept special characters that will be handled by spawn', () => {
+      const result = validateParameter("value'with'quotes");
+      expect(result).toBe(true);
     });
 
-    it('should handle double quotes safely', () => {
-      const result = escapeShellParameter('value"with"double"quotes');
-      expect(result).toBe('\'value"with"double"quotes\'');
+    it('should accept most dangerous characters (spawn handles them safely)', () => {
+      const result = validateParameter('value;with;semicolons');
+      expect(result).toBe(true);
     });
 
-    it('should neutralize dangerous characters by wrapping in quotes', () => {
-      const result = escapeShellParameter('value;with;semicolons');
-      expect(result).toBe("'value;with;semicolons'");
+    it('should reject values with null bytes', () => {
+      const result = validateParameter('value\0dangerous');
+      expect(result).toBe(false);
     });
 
-    it('should neutralize command substitution attempts', () => {
-      const result = escapeShellParameter('value$(dangerous)');
-      expect(result).toBe("'value$(dangerous)'");
+    it('should reject values with newlines', () => {
+      expect(validateParameter('value\nwith\nnewlines')).toBe(false);
+      expect(validateParameter('value\rwith\rcarriage')).toBe(false);
     });
 
-    it('should throw error for non-string input', () => {
-      expect(() => escapeShellParameter(123 as unknown as string)).toThrow(
-        'Parameter must be a string',
-      );
-      expect(() => escapeShellParameter(null as unknown as string)).toThrow(
-        'Parameter must be a string',
-      );
-      expect(() =>
-        escapeShellParameter(undefined as unknown as string),
-      ).toThrow('Parameter must be a string');
+    it('should return false for non-string input', () => {
+      expect(validateParameter(123 as unknown as string)).toBe(false);
+      expect(validateParameter(null as unknown as string)).toBe(false);
+      expect(validateParameter(undefined as unknown as string)).toBe(false);
     });
   });
 
   describe('buildSafeCommand', () => {
     it('should build simple command with no parameters', () => {
       const result = buildSafeCommand('get');
-      expect(result).toBe('get');
+      expect(result).toEqual(['get']);
     });
 
     it('should build command with safe parameters', () => {
       const result = buildSafeCommand('get', ['item', 'test-id']);
-      expect(result).toBe("get 'item' 'test-id'");
+      expect(result).toEqual(['get', 'item', 'test-id']);
     });
 
     it('should sanitize base command', () => {
       const result = buildSafeCommand('get; rm -rf /', ['item']);
-      expect(result).toBe("get rm -rf / 'item'");
+      expect(result).toEqual(['get rm -rf /', 'item']);
     });
 
-    it('should escape parameters with dangerous characters', () => {
+    it('should keep parameters unchanged (spawn handles them safely)', () => {
       const result = buildSafeCommand('get', ['item', 'test; rm -rf /']);
-      expect(result).toBe("get 'item' 'test; rm -rf /'");
+      expect(result).toEqual(['get', 'item', 'test; rm -rf /']);
     });
 
     it('should handle empty parameters array', () => {
       const result = buildSafeCommand('status', []);
-      expect(result).toBe('status');
+      expect(result).toEqual(['status']);
     });
 
-    it('should handle parameters with quotes', () => {
+    it('should handle parameters with quotes (spawn handles them safely)', () => {
       const result = buildSafeCommand('create', ['item', "test'with'quotes"]);
-      expect(result).toBe("create 'item' 'test'\\''with'\\''quotes'");
+      expect(result).toEqual(['create', 'item', "test'with'quotes"]);
+    });
+
+    it('should reject parameters with null bytes', () => {
+      expect(() => buildSafeCommand('get', ['item\0malicious'])).toThrow(
+        'Invalid parameter detected',
+      );
+    });
+
+    it('should reject parameters with newlines', () => {
+      expect(() => buildSafeCommand('get', ['item\nmalicious'])).toThrow(
+        'Invalid parameter detected',
+      );
     });
   });
 
@@ -268,14 +274,11 @@ describe('Security - Command Injection Protection', () => {
       const maliciousId = "; rm -rf /; echo 'hacked'";
       const command = buildSafeCommand('get', ['item', maliciousId]);
 
-      // The command should be safely escaped
-      expect(command).toBe("get 'item' '; rm -rf /; echo '\\''hacked'\\'''");
+      // The command should be returned as an array where spawn() handles it safely
+      expect(command).toEqual(['get', 'item', "; rm -rf /; echo 'hacked'"]);
 
-      // Verify it's still a valid bitwarden command
-      const firstPart = command.split(' ')[0];
-      if (firstPart) {
-        expect(isValidBitwardenCommand(firstPart)).toBe(true);
-      }
+      // Verify base command is still valid
+      expect(isValidBitwardenCommand(command[0])).toBe(true);
     });
 
     it('should prevent complex injection attempts', () => {
@@ -290,8 +293,8 @@ describe('Security - Command Injection Protection', () => {
       maliciousInputs.forEach((maliciousInput) => {
         const command = buildSafeCommand('get', ['item', maliciousInput]);
 
-        // Should be safely wrapped in quotes
-        expect(command.includes(`'${maliciousInput}'`)).toBe(true);
+        // Should be returned as array - spawn() will treat malicious input as literal string
+        expect(command).toEqual(['get', 'item', maliciousInput]);
 
         // Base command should still be valid
         expect(isValidBitwardenCommand('get')).toBe(true);
@@ -309,7 +312,7 @@ describe('Security - Command Injection Protection', () => {
 
       legitimateInputs.forEach((input) => {
         const command = buildSafeCommand('get', ['item', input]);
-        expect(command).toBe(`get 'item' '${input}'`);
+        expect(command).toEqual(['get', 'item', input]);
         expect(isValidBitwardenCommand('get')).toBe(true);
       });
     });
