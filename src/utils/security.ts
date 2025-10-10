@@ -30,28 +30,45 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Safely escapes a parameter value for use in shell commands
+ * Validates a parameter to ensure it doesn't contain dangerous patterns
+ * Used as an additional safety check before passing to spawn()
  */
-export function escapeShellParameter(value: string): string {
+export function validateParameter(value: string): boolean {
   if (typeof value !== 'string') {
-    throw new TypeError('Parameter must be a string');
+    return false;
   }
 
-  // Replace single quotes with '\'' (end quote, escaped quote, start quote)
-  return `'${value.replace(/'/g, "'\\''")}'`;
+  // Reject parameters with null bytes
+  if (value.includes('\0')) {
+    return false;
+  }
+
+  // Reject parameters with newlines/carriage returns
+  if (/[\r\n]/.test(value)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
- * Builds a safe Bitwarden CLI command with properly escaped parameters
+ * Builds a safe Bitwarden CLI command array for use with spawn()
+ * Returns an array of [baseCommand, ...parameters] for safe execution
  */
 export function buildSafeCommand(
   baseCommand: string,
   parameters: readonly string[] = [],
-): string {
+): readonly [string, ...string[]] {
   const sanitizedBase = sanitizeInput(baseCommand);
-  const escapedParams = parameters.map((param) => escapeShellParameter(param));
 
-  return [sanitizedBase, ...escapedParams].join(' ');
+  // Validate all parameters
+  for (const param of parameters) {
+    if (!validateParameter(param)) {
+      throw new Error(`Invalid parameter detected: ${param}`);
+    }
+  }
+
+  return [sanitizedBase, ...parameters] as const;
 }
 
 /**

@@ -4,7 +4,6 @@
 
 import { executeCliCommand } from '../utils/cli.js';
 import { withValidation } from '../utils/validation.js';
-import { buildSafeCommand } from '../utils/security.js';
 import {
   lockSchema,
   syncSchema,
@@ -60,17 +59,17 @@ function toMcpFormat(response: CliResponse) {
 }
 
 export const handleLock = withValidation(lockSchema, async () => {
-  const response = await executeCliCommand('lock');
+  const response = await executeCliCommand('lock', []);
   return toMcpFormat(response);
 });
 
 export const handleSync = withValidation(syncSchema, async () => {
-  const response = await executeCliCommand('sync');
+  const response = await executeCliCommand('sync', []);
   return toMcpFormat(response);
 });
 
 export const handleStatus = withValidation(statusSchema, async () => {
-  const response = await executeCliCommand('status');
+  const response = await executeCliCommand('status', []);
   return toMcpFormat(response);
 });
 
@@ -96,8 +95,7 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
   if (trash) {
     params.push('--trash');
   }
-  const command = buildSafeCommand('list', params);
-  const response = await executeCliCommand(command);
+  const response = await executeCliCommand('list', params);
   return toMcpFormat(response);
 });
 
@@ -113,8 +111,7 @@ export const handleGet = withValidation(getSchema, async (validatedArgs) => {
   if (output) {
     params.push('--output', output);
   }
-  const command = buildSafeCommand('get', params);
-  const response = await executeCliCommand(command);
+  const response = await executeCliCommand('get', params);
   return toMcpFormat(response);
 });
 
@@ -152,8 +149,7 @@ export const handleGenerate = withValidation(
       }
     }
 
-    const command = buildSafeCommand('generate', params);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('generate', params);
     return toMcpFormat(response);
   },
 );
@@ -241,8 +237,7 @@ export const handleCreateItem = withValidation(
 
     const itemJson = JSON.stringify(item);
     const encodedItem = Buffer.from(itemJson).toString('base64');
-    const command = buildSafeCommand('create', ['item', encodedItem]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('create', ['item', encodedItem]);
     return toMcpFormat(response);
   },
 );
@@ -255,8 +250,7 @@ export const handleCreateFolder = withValidation(
     const folder: BitwardenFolder = { name };
     const itemJson = JSON.stringify(folder);
     const encodedItem = Buffer.from(itemJson).toString('base64');
-    const command = buildSafeCommand('create', ['folder', encodedItem]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('create', ['folder', encodedItem]);
     return toMcpFormat(response);
   },
 );
@@ -268,8 +262,7 @@ export const handleEditItem = withValidation(
       validatedArgs;
 
     // First, get the existing item
-    const getCommand = buildSafeCommand('get', ['item', id]);
-    const getResponse = await executeCliCommand(getCommand);
+    const getResponse = await executeCliCommand('get', ['item', id]);
 
     if (getResponse.errorOutput) {
       return toMcpFormat(getResponse);
@@ -376,8 +369,11 @@ export const handleEditItem = withValidation(
 
       const updatesJson = JSON.stringify(existingItem);
       const encodedUpdates = Buffer.from(updatesJson).toString('base64');
-      const command = buildSafeCommand('edit', ['item', id, encodedUpdates]);
-      const response = await executeCliCommand(command);
+      const response = await executeCliCommand('edit', [
+        'item',
+        id,
+        encodedUpdates,
+      ]);
       return toMcpFormat(response);
     } catch (error) {
       const errorResponse: CliResponse = {
@@ -396,8 +392,11 @@ export const handleEditFolder = withValidation(
     const folder: BitwardenFolder = { name };
     const itemJson = JSON.stringify(folder);
     const encodedItem = Buffer.from(itemJson).toString('base64');
-    const command = buildSafeCommand('edit', ['folder', id, encodedItem]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('edit', [
+      'folder',
+      id,
+      encodedItem,
+    ]);
     return toMcpFormat(response);
   },
 );
@@ -410,8 +409,7 @@ export const handleDelete = withValidation(
     if (permanent) {
       params.push('--permanent');
     }
-    const command = buildSafeCommand('delete', params);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('delete', params);
     return toMcpFormat(response);
   },
 );
@@ -420,13 +418,12 @@ export const handleConfirm = withValidation(
   confirmSchema,
   async (validatedArgs) => {
     const { organizationId, memberId } = validatedArgs;
-    const command = buildSafeCommand('confirm', [
+    const response = await executeCliCommand('confirm', [
       'org-member',
       memberId,
       '--organizationid',
       organizationId,
     ]);
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -455,14 +452,12 @@ export const handleCreateOrgCollection = withValidation(
     const encodedJson = Buffer.from(collectionJson, 'utf8').toString('base64');
 
     // Build the command
-    const command = buildSafeCommand('create', [
+    const response = await executeCliCommand('create', [
       'org-collection',
       encodedJson,
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -474,13 +469,12 @@ export const handleEditOrgCollection = withValidation(
       validatedArgs;
 
     // First, get the existing collection
-    const getCommand = buildSafeCommand('get', [
+    const getResponse = await executeCliCommand('get', [
       'org-collection',
       collectionId,
       '--organizationid',
       organizationId,
     ]);
-    const getResponse = await executeCliCommand(getCommand);
 
     if (getResponse.errorOutput) {
       return toMcpFormat(getResponse);
@@ -517,15 +511,13 @@ export const handleEditOrgCollection = withValidation(
     const encodedJson = Buffer.from(collectionJson, 'utf8').toString('base64');
 
     // Build the command
-    const command = buildSafeCommand('edit', [
+    const response = await executeCliCommand('edit', [
       'org-collection',
       collectionId,
       encodedJson,
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -542,15 +534,13 @@ export const handleEditItemCollections = withValidation(
     );
 
     // Build the command
-    const command = buildSafeCommand('edit', [
+    const response = await executeCliCommand('edit', [
       'item-collections',
       itemId,
       encodedJson,
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -571,13 +561,11 @@ export const handleMove = withValidation(
     );
 
     // Build the command
-    const command = buildSafeCommand('move', [
+    const response = await executeCliCommand('move', [
       itemId,
       organizationId,
       encodedJson,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -592,13 +580,11 @@ export const handleDeviceApprovalList = withValidation(
   deviceApprovalListSchema,
   async ({ organizationId }) => {
     // Build the command
-    const command = buildSafeCommand('device-approval', [
+    const response = await executeCliCommand('device-approval', [
       'list',
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -613,14 +599,12 @@ export const handleDeviceApprovalApprove = withValidation(
   deviceApprovalApproveSchema,
   async ({ organizationId, requestId }) => {
     // Build the command
-    const command = buildSafeCommand('device-approval', [
+    const response = await executeCliCommand('device-approval', [
       'approve',
       '--organizationid',
       organizationId,
       requestId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -635,13 +619,11 @@ export const handleDeviceApprovalApproveAll = withValidation(
   deviceApprovalApproveAllSchema,
   async ({ organizationId }) => {
     // Build the command
-    const command = buildSafeCommand('device-approval', [
+    const response = await executeCliCommand('device-approval', [
       'approve-all',
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -656,14 +638,12 @@ export const handleDeviceApprovalDeny = withValidation(
   deviceApprovalDenySchema,
   async ({ organizationId, requestId }) => {
     // Build the command
-    const command = buildSafeCommand('device-approval', [
+    const response = await executeCliCommand('device-approval', [
       'deny',
       '--organizationid',
       organizationId,
       requestId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -678,13 +658,11 @@ export const handleDeviceApprovalDenyAll = withValidation(
   deviceApprovalDenyAllSchema,
   async ({ organizationId }) => {
     // Build the command
-    const command = buildSafeCommand('device-approval', [
+    const response = await executeCliCommand('device-approval', [
       'deny-all',
       '--organizationid',
       organizationId,
     ]);
-
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
@@ -693,8 +671,7 @@ export const handleRestore = withValidation(
   restoreSchema,
   async (validatedArgs) => {
     const { object, id } = validatedArgs;
-    const command = buildSafeCommand('restore', [object, id]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('restore', [object, id]);
     return toMcpFormat(response);
   },
 );
@@ -736,8 +713,7 @@ export const handleCreateTextSend = withValidation(
 
     const sendJson = JSON.stringify(send);
     const encodedSend = Buffer.from(sendJson).toString('base64');
-    const command = buildSafeCommand('send', ['create', encodedSend]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('send', ['create', encodedSend]);
     return toMcpFormat(response);
   },
 );
@@ -771,20 +747,18 @@ export const handleCreateFileSend = withValidation(
 
     const sendJson = JSON.stringify(send);
     const encodedSend = Buffer.from(sendJson).toString('base64');
-    const command = buildSafeCommand('send', [
+    const response = await executeCliCommand('send', [
       'create',
       encodedSend,
       '--file',
       filePath,
     ]);
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );
 
 export const handleListSend = withValidation(listSendSchema, async () => {
-  const command = buildSafeCommand('send', ['list']);
-  const response = await executeCliCommand(command);
+  const response = await executeCliCommand('send', ['list']);
   return toMcpFormat(response);
 });
 
@@ -792,8 +766,7 @@ export const handleGetSend = withValidation(
   getSendSchema,
   async (validatedArgs) => {
     const { id } = validatedArgs;
-    const command = buildSafeCommand('send', ['get', id]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('send', ['get', id]);
     return toMcpFormat(response);
   },
 );
@@ -813,8 +786,7 @@ export const handleEditSend = withValidation(
     } = validatedArgs;
 
     // First, get the existing Send
-    const getCommand = buildSafeCommand('send', ['get', id]);
-    const getResponse = await executeCliCommand(getCommand);
+    const getResponse = await executeCliCommand('send', ['get', id]);
 
     if (getResponse.errorOutput) {
       return toMcpFormat(getResponse);
@@ -839,8 +811,10 @@ export const handleEditSend = withValidation(
 
       const updatesJson = JSON.stringify(existingSend);
       const encodedUpdates = Buffer.from(updatesJson).toString('base64');
-      const command = buildSafeCommand('send', ['edit', encodedUpdates]);
-      const response = await executeCliCommand(command);
+      const response = await executeCliCommand('send', [
+        'edit',
+        encodedUpdates,
+      ]);
       return toMcpFormat(response);
     } catch (error) {
       const errorResponse: CliResponse = {
@@ -855,8 +829,7 @@ export const handleDeleteSend = withValidation(
   deleteSendSchema,
   async (validatedArgs) => {
     const { id } = validatedArgs;
-    const command = buildSafeCommand('send', ['delete', id]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('send', ['delete', id]);
     return toMcpFormat(response);
   },
 );
@@ -865,8 +838,7 @@ export const handleRemoveSendPassword = withValidation(
   removeSendPasswordSchema,
   async (validatedArgs) => {
     const { id } = validatedArgs;
-    const command = buildSafeCommand('send', ['remove-password', id]);
-    const response = await executeCliCommand(command);
+    const response = await executeCliCommand('send', ['remove-password', id]);
     return toMcpFormat(response);
   },
 );
@@ -875,14 +847,13 @@ export const handleCreateAttachment = withValidation(
   createAttachmentSchema,
   async (validatedArgs) => {
     const { filePath, itemId } = validatedArgs;
-    const command = buildSafeCommand('create', [
+    const response = await executeCliCommand('create', [
       'attachment',
       '--file',
       filePath,
       '--itemid',
       itemId,
     ]);
-    const response = await executeCliCommand(command);
     return toMcpFormat(response);
   },
 );

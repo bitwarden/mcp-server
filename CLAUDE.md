@@ -65,13 +65,10 @@ const schema = z.object({
 
 // 2. Create handler with withValidation wrapper
 export const handleCommand = withValidation(schema, async (validatedArgs) => {
-  // 3. Build safe command (NO string interpolation)
-  const command = buildSafeCommand('baseCommand', [validatedArgs.param]);
+  // 3. Execute command (automatically validates and uses spawn())
+  const result = await executeCliCommand('baseCommand', [validatedArgs.param]);
 
-  // 4. Execute through security layer
-  const result = await executeCliCommand(command);
-
-  // 5. Return formatted response
+  // 4. Return formatted response
   return {
     content: [{ type: 'text', text: result.output || result.errorOutput }],
     isError: !!result.errorOutput,
@@ -112,10 +109,11 @@ export const handleApiCommand = withValidation(
 
 #### CLI Security
 
-- **`sanitizeInput(input: string)`**: Strips dangerous characters `[;&|`$(){}[\]<>'"\\]`
-- **`escapeShellParameter(param: string)`**: Safely quotes shell parameters
-- **`buildSafeCommand(base: string, args: string[])`**: Constructs commands from array
-- **`isValidBitwardenCommand(cmd: string)`**: Validates against whitelist
+- **`sanitizeInput(input: string)`**: Strips dangerous characters `[;&|`$(){}[\]<>'"\\]` from base command
+- **`validateParameter(param: string)`**: Validates parameters for null bytes and newlines
+- **`buildSafeCommand(base: string, args: string[])`**: Returns array `[command, ...args]` for spawn() (used internally by `executeCliCommand`)
+- **`executeCliCommand(command: string, parameters: string[])`**: Single entry point for CLI execution - internally calls `buildSafeCommand()` then uses `spawn()` to prevent shell injection
+- **`isValidBitwardenCommand(cmd: string)`**: Validates against whitelist of allowed Bitwarden commands
 - **`validateFilePath(path: string)`**: Prevents path traversal attacks
 
 #### API Security
@@ -126,12 +124,13 @@ export const handleApiCommand = withValidation(
 
 ### Security Rules
 
-1. **Never use string interpolation** for commands
+1. **Use spawn() with argument arrays** - NEVER use exec() or string interpolation for commands
 2. **Always validate inputs** with Zod schemas before processing
 3. **Whitelist allowed commands** - never trust user input
-4. **Escape all parameters** passed to shell
+4. **Pass arguments as array elements** to spawn() which handles them as literal strings
 5. **Validate file paths** to prevent directory traversal
 6. **Use environment variables** for credentials, never hardcode
+7. **Disable shell** - Always use `shell: false` option with spawn()
 
 ## The `withValidation` Pattern
 
@@ -183,8 +182,7 @@ export const handleCreateItem = withValidation(
     // Business logic only - no validation code needed
     const item = { name, type };
     const encoded = Buffer.from(JSON.stringify(item)).toString('base64');
-    const command = buildSafeCommand('create', ['item', encoded]);
-    const result = await executeCliCommand(command);
+    const result = await executeCliCommand('create', ['item', encoded]);
 
     return {
       content: [{ type: 'text', text: result.output }],
@@ -249,10 +247,9 @@ export const handleMyNewTool = withValidation(
   myNewToolSchema,
   async (validatedArgs) => {
     // Implementation
-    const command = buildSafeCommand('bw-command', [
+    const result = await executeCliCommand('bw-command', [
       validatedArgs.requiredField,
     ]);
-    const result = await executeCliCommand(command);
 
     return {
       content: [{ type: 'text', text: result.output }],
@@ -303,8 +300,7 @@ If appropriate, `CLAUDE.md` and/or `README.md` may need updating with any change
 
 ```typescript
 export const handleSync = withValidation(syncSchema, async () => {
-  const command = buildSafeCommand('sync', []);
-  return executeCliCommand(command);
+  return executeCliCommand('sync', []);
 });
 ```
 
@@ -312,14 +308,13 @@ export const handleSync = withValidation(syncSchema, async () => {
 
 ```typescript
 export const handleList = withValidation(listSchema, async (validatedArgs) => {
-  const args = ['list', validatedArgs.type];
+  const params = [validatedArgs.type];
 
   if (validatedArgs.search) {
-    args.push('--search', validatedArgs.search);
+    params.push('--search', validatedArgs.search);
   }
 
-  const command = buildSafeCommand('bw', args);
-  return executeCliCommand(command);
+  return executeCliCommand('list', params);
 });
 ```
 
@@ -338,9 +333,8 @@ export const handleCreateItem = withValidation(
     const encoded = Buffer.from(JSON.stringify(item), 'utf8').toString(
       'base64',
     );
-    const command = buildSafeCommand('create', ['item', encoded]);
 
-    return executeCliCommand(command);
+    return executeCliCommand('create', ['item', encoded]);
   },
 );
 ```
