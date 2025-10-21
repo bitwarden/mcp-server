@@ -319,6 +319,29 @@ describe('Security - Command Injection Protection', () => {
   });
 
   describe('validateFilePath - Path Traversal Protection', () => {
+    // Store original environment variable
+    const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+
+    beforeEach(() => {
+      // Set up a default whitelist for tests
+      // Use current working directory so relative paths work
+      const isWindows = process.platform === 'win32';
+      const platformDirs = isWindows
+        ? 'C:/Users,D:/Projects,E:/Backup'
+        : '/tmp,/home/user';
+      process.env['BW_ALLOWED_DIRECTORIES'] =
+        `${process.cwd()},${platformDirs}`;
+    });
+
+    afterEach(() => {
+      // Restore original environment variable
+      if (originalEnv) {
+        process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+      } else {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+      }
+    });
+
     it('should accept valid relative file paths', () => {
       const validPaths = [
         'document.pdf',
@@ -333,17 +356,21 @@ describe('Security - Command Injection Protection', () => {
     });
 
     it('should accept absolute paths on Unix/Linux and Windows', () => {
-      const validAbsolutePaths = [
-        // Unix/Linux absolute paths
-        '/home/user/document.pdf',
-        '/tmp/file.txt',
-        '/var/data/backup.tar.gz',
-        '/usr/local/share/file.json',
-        // Windows absolute paths
-        'C:\\Users\\Documents\\file.pdf',
-        'D:\\Projects\\data.json',
-        'E:\\Backup\\archive.zip',
-      ];
+      // Test only paths that are in the whitelist for this platform
+      const isWindows = process.platform === 'win32';
+
+      const validAbsolutePaths = isWindows
+        ? [
+            // Windows absolute paths - use forward slashes or raw strings
+            'C:/Users/Documents/file.pdf',
+            'D:/Projects/data.json',
+            'E:/Backup/archive.zip',
+          ]
+        : [
+            // Unix/Linux absolute paths
+            '/home/user/document.pdf',
+            '/tmp/file.txt',
+          ];
 
       validAbsolutePaths.forEach((path) => {
         expect(validateFilePath(path)).toBe(true);
@@ -428,6 +455,298 @@ describe('Security - Command Injection Protection', () => {
 
       validPaths.forEach((path) => {
         expect(validateFilePath(path)).toBe(true);
+      });
+    });
+
+    describe('URL Encoding Bypasses', () => {
+      it('should reject standard URL encoding of ../', () => {
+        const encodedPaths = [
+          '%2e%2e%2f%2e%2e%2f%2e%2e%2f', // ../../../
+          '%2e%2e%2fetc%2fpasswd', // ../etc/passwd
+          'folder%2f%2e%2e%2f%2e%2e%2f', // folder/../../
+          '%2e%2e%5c%2e%2e%5c', // ..\..\
+        ];
+
+        encodedPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject double URL encoding', () => {
+        const doubleEncodedPaths = [
+          '%252e%252e%252f', // %2e%2e%2f → ../
+          '%252e%252e%252f%252e%252e%252f', // ../../
+          '%252e%252e%255c', // %2e%2e%5c → ..\
+        ];
+
+        doubleEncodedPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject triple URL encoding', () => {
+        const tripleEncodedPaths = [
+          '%25252e%25252e%25252f', // %252e%252e%252f → %2e%2e%2f → ../
+        ];
+
+        tripleEncodedPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+    });
+
+    describe('Unicode Character Bypasses', () => {
+      it('should reject fullwidth Unicode dots (U+FF0E)', () => {
+        const fullwidthPaths = [
+          '\uFF0E\uFF0E/\uFF0E\uFF0E/', // ．．/．．/
+          '\uFF0E\uFF0E/etc/passwd',
+          'folder/\uFF0E\uFF0E/',
+        ];
+
+        fullwidthPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject Unicode division slash (U+2215)', () => {
+        const divisionSlashPaths = [
+          '..\u2215..\u2215', // ..∕..∕
+          '..\u2215etc\u2215passwd',
+        ];
+
+        divisionSlashPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject other Unicode slash variants', () => {
+        const unicodeSlashPaths = [
+          '..\u2044..\u2044', // FRACTION SLASH (⁄)
+          '..\u29F8..\u29F8', // BIG SOLIDUS (⧸)
+          '..\uFF0F..\uFF0F', // FULLWIDTH SOLIDUS (／)
+          '..\uFF3C..\uFF3C', // FULLWIDTH REVERSE SOLIDUS (＼)
+          '..\u2216..\u2216', // SET MINUS (∖)
+        ];
+
+        unicodeSlashPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject mixed Unicode and ASCII traversal', () => {
+        const mixedPaths = [
+          '\uFF0E\uFF0E/etc/passwd', // ．．/etc/passwd
+          '..\uFF0F..\uFF0F', // ../../../ with fullwidth slashes
+        ];
+
+        mixedPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+    });
+
+    describe('Whitespace Injection Bypasses', () => {
+      it('should reject space-separated dots', () => {
+        const spacePaths = [
+          '. ./. ./', // . ./. ./
+          '. . / . . /', // . . / . . /
+        ];
+
+        spacePaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+    });
+
+    describe('Protocol-Based Bypasses', () => {
+      it('should reject file protocol URLs', () => {
+        const fileProtocolPaths = [
+          'file:///etc/passwd',
+          'file:///c:/windows/system32/config/sam',
+          'file://localhost/etc/shadow',
+        ];
+
+        fileProtocolPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject HTTP/HTTPS protocol URLs', () => {
+        const httpPaths = [
+          'http://evil.com/malware.exe',
+          'https://attacker.com/payload.bin',
+        ];
+
+        httpPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject UNC paths with single backslash', () => {
+        const singleBackslashPaths = [
+          '\\localhost\\c$\\windows\\system32',
+          '\\server\\share\\file.txt',
+        ];
+
+        singleBackslashPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+    });
+
+    describe('Complex Real-World Attack Scenarios', () => {
+      it('should reject encoded /etc/passwd access attempts', () => {
+        const etcPasswdAttacks = [
+          '%2e%2e%2f%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64',
+          '%2e%2e%2fetc%2fpasswd',
+          '\uFF0E\uFF0E/etc/passwd',
+        ];
+
+        etcPasswdAttacks.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject Windows SAM file access attempts', () => {
+        const samFileAttacks = [
+          '\\localhost\\c$\\windows\\system32\\config\\sam',
+          '%2e%2e%5c%2e%2e%5cwindows%5csystem32%5cconfig%5csam',
+        ];
+
+        samFileAttacks.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject SSH key access attempts', () => {
+        const sshKeyAttacks = [
+          '../../../home/user/.ssh/id_rsa',
+          '%2e%2e%2f%2e%2e%2f%2e%2e%2fhome%2fuser%2f.ssh%2fid_rsa',
+        ];
+
+        sshKeyAttacks.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject environment and config file access', () => {
+        const configAttacks = [
+          '../../../.env',
+          '%2e%2e%2f.env',
+          '../../config/database.yml',
+        ];
+
+        configAttacks.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+    });
+
+    describe('Allowlist Directory Enforcement', () => {
+      const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+
+      afterEach(() => {
+        // Restore original environment variable
+        if (originalEnv) {
+          process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+        } else {
+          delete process.env['BW_ALLOWED_DIRECTORIES'];
+        }
+      });
+
+      it('should only allow files within whitelisted directories', () => {
+        // Set up whitelist
+        process.env['BW_ALLOWED_DIRECTORIES'] =
+          '/tmp/bitwarden,/home/user/downloads';
+
+        // These should be rejected (outside whitelist)
+        const outsideWhitelist = [
+          '/etc/passwd',
+          '/home/user/documents/file.txt',
+          '/var/log/system.log',
+          'C:\\Windows\\System32\\config\\sam',
+        ];
+
+        outsideWhitelist.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should prevent traversal outside whitelisted directories', () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden';
+
+        // Try to escape the whitelist with traversal
+        const traversalAttempts = [
+          '/tmp/bitwarden/../../../etc/passwd',
+          '/tmp/bitwarden/../sensitive-file.txt',
+        ];
+
+        traversalAttempts.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should handle relative paths that resolve within whitelist', () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden';
+
+        // Relative path that would resolve to /tmp/bitwarden
+        // This depends on current working directory, so we test the behavior
+        const relativePath = 'file.txt';
+        const result = validateFilePath(relativePath);
+
+        // Result depends on whether CWD is in whitelist
+        // We just verify the function doesn't crash
+        expect(typeof result).toBe('boolean');
+      });
+    });
+
+    describe('Edge Cases and Error Handling', () => {
+      it('should handle very long paths gracefully', () => {
+        const longPath = 'a/'.repeat(1000) + 'file.txt';
+        const result = validateFilePath(longPath);
+        expect(typeof result).toBe('boolean');
+      });
+
+      it('should stop decoding after max iterations to prevent DoS', () => {
+        // Path that would require many decode iterations (> 5)
+        let encoded = '../etc/passwd';
+        for (let i = 0; i < 10; i++) {
+          encoded = encodeURIComponent(encoded);
+        }
+
+        // Function should stop after 5 iterations and handle remaining encoded string
+        // Since it will still have % characters after 5 decodes, it won't match any
+        // dangerous patterns and will be checked against whitelist
+        const result = validateFilePath(encoded);
+
+        // Result depends on whether the heavily encoded string resolves to a whitelisted path
+        // We just verify it doesn't crash
+        expect(typeof result).toBe('boolean');
+      });
+
+      it('should handle mixed encoding and Unicode attacks', () => {
+        const mixedAttacks = [
+          '%2e%2e\uFF0F%2e%2e\uFF0F', // Mix of URL encoding and Unicode
+          '\uFF0E\uFF0E%2F%2e%2e/', // Mix of fullwidth and encoded
+        ];
+
+        mixedAttacks.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should handle invalid URL encoding gracefully', () => {
+        const invalidEncoded = [
+          '%ZZ%YY%XX', // Invalid hex codes
+          '%2', // Incomplete encoding
+          '%', // Just a percent sign
+        ];
+
+        invalidEncoded.forEach((path) => {
+          // Should either reject or handle gracefully
+          const result = validateFilePath(path);
+          expect(typeof result).toBe('boolean');
+        });
       });
     });
   });

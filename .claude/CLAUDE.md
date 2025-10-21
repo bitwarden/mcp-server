@@ -114,7 +114,7 @@ export const handleApiCommand = withValidation(
 - **`buildSafeCommand(base: string, args: string[])`**: Returns array `[command, ...args]` for spawn() (used internally by `executeCliCommand`)
 - **`executeCliCommand(command: string, parameters: string[])`**: Single entry point for CLI execution - internally calls `buildSafeCommand()` then uses `spawn()` to prevent shell injection
 - **`isValidBitwardenCommand(cmd: string)`**: Validates against whitelist of allowed Bitwarden commands
-- **`validateFilePath(path: string)`**: Prevents path traversal attacks
+- **`validateFilePath(path: string)`**: Comprehensive path traversal protection (see below)
 
 #### API Security
 
@@ -122,15 +122,56 @@ export const handleApiCommand = withValidation(
 - **`getAccessToken()`**: Manages OAuth2 token lifecycle with automatic refresh
 - **`executeApiRequest(endpoint, method, data?)`**: Authenticated HTTP wrapper
 
+#### File Path Security
+
+The `validateFilePath()` function provides defense-in-depth protection against path traversal attacks:
+
+**Multi-Layer Security Approach**:
+
+1. **Null byte rejection** - Blocks null byte injection
+2. **Protocol filtering** - Rejects URL schemes (file://, http://, etc.) but allows Windows drive letters
+3. **UNC path blocking** - Prevents network share access (\\server\share)
+4. **Iterative URL decoding** - Handles multiple encoding layers (max 5 iterations)
+5. **Unicode normalization** - Converts fullwidth characters and variants to canonical form (NFC)
+6. **Pattern matching** - Detects traversal sequences (../, ..\, etc.)
+7. **Unicode lookalike detection** - Blocks alternative slash characters (U+2215, U+FF0F, etc.)
+8. **Path canonicalization** - Resolves to absolute paths
+9. **Allowlist validation** - Only permits files within `BW_ALLOWED_DIRECTORIES`
+
+**Environment Configuration**:
+
+```bash
+# Set allowed directories (comma-separated)
+export BW_ALLOWED_DIRECTORIES="/home/user/downloads,/tmp/bitwarden-files"
+
+# Windows example
+set BW_ALLOWED_DIRECTORIES=C:/Users/YourName/Documents,C:/Temp/Bitwarden
+```
+
+**Default Behavior**: If not configured, defaults to system temp directory (`os.tmpdir()/bitwarden-files`)
+
+**Protects Against**:
+
+- Standard URL encoding (`%2e%2e%2f`)
+- Double/triple URL encoding (`%252e%252e%252f`)
+- Fullwidth Unicode characters (U+FF0E)
+- Alternative Unicode slashes (U+2215, U+2044, U+29F8, etc.)
+- Space-injection bypasses (`. ./. ./`)
+- Protocol-based attacks (`file:///etc/passwd`)
+- UNC path variants (`\localhost\c$`)
+- Overlong UTF-8 encoding
+- Mixed encoding techniques
+
 ### Security Rules
 
 1. **Use spawn() with argument arrays** - NEVER use exec() or string interpolation for commands
 2. **Always validate inputs** with Zod schemas before processing
 3. **Whitelist allowed commands** - never trust user input
 4. **Pass arguments as array elements** to spawn() which handles them as literal strings
-5. **Validate file paths** to prevent directory traversal
-6. **Use environment variables** for credentials, never hardcode
-7. **Disable shell** - Always use `shell: false` option with spawn()
+5. **Validate file paths** using `validateFilePath()` - all file operations MUST go through this function
+6. **Configure `BW_ALLOWED_DIRECTORIES`** - Always set explicit directory allowlist in production
+7. **Use environment variables** for credentials, never hardcode
+8. **Disable shell** - Always use `shell: false` option with spawn()
 
 ## The `withValidation` Pattern
 
