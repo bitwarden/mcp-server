@@ -170,14 +170,14 @@ Any MCP-compatible client can connect to this server via stdio transport. Refer 
 
 ### Environment Variables
 
-| Variable                 | Required For    | Description                                      | Default                          |
-| ------------------------ | --------------- | ------------------------------------------------ | -------------------------------- |
-| `BW_SESSION`             | CLI operations  | Session token from `bw unlock --raw`             | -                                |
-| `BW_CLIENT_ID`           | API operations  | Organization API client ID                       | -                                |
-| `BW_CLIENT_SECRET`       | API operations  | Organization API client secret                   | -                                |
-| `BW_API_BASE_URL`        | API operations  | Bitwarden API base URL                           | `https://api.bitwarden.com`      |
-| `BW_IDENTITY_URL`        | API operations  | OAuth2 identity server URL                       | `https://identity.bitwarden.com` |
-| `BW_ALLOWED_DIRECTORIES` | File operations | Comma-separated list of allowed file directories | System temp directory            |
+| Variable                 | Required For    | Description                                      | Default                            |
+| ------------------------ | --------------- | ------------------------------------------------ | ---------------------------------- |
+| `BW_SESSION`             | CLI operations  | Session token from `bw unlock --raw`             | -                                  |
+| `BW_CLIENT_ID`           | API operations  | Organization API client ID                       | -                                  |
+| `BW_CLIENT_SECRET`       | API operations  | Organization API client secret                   | -                                  |
+| `BW_API_BASE_URL`        | API operations  | Bitwarden API base URL                           | `https://api.bitwarden.com`        |
+| `BW_IDENTITY_URL`        | API operations  | OAuth2 identity server URL                       | `https://identity.bitwarden.com`   |
+| `BW_ALLOWED_DIRECTORIES` | File operations | Comma-separated list of allowed file directories | `os.tmpdir() + '/bitwarden-files'` |
 
 **Note:** For self-hosted Bitwarden instances, set `BW_API_BASE_URL` and `BW_IDENTITY_URL` to your server URLs.
 
