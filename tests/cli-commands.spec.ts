@@ -2375,12 +2375,10 @@ describe('CLI Commands', () => {
     });
 
     it('should accept valid file paths', () => {
-      const validPaths = [
-        '/home/user/document.pdf',
-        'C:\\Users\\Documents\\file.pdf',
-        './local-file.txt',
-        'folder/file.txt',
-      ];
+      const isWindows = process.platform === 'win32';
+      const validPaths = isWindows
+        ? ['C:/Users/Documents/file.pdf', './local-file.txt', 'folder/file.txt']
+        : ['/home/user/document.pdf', './local-file.txt', 'folder/file.txt'];
 
       validPaths.forEach((filePath) => {
         const validInput = {
