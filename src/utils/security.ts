@@ -215,7 +215,10 @@ export function validateFilePath(filePath: string): boolean {
 
     // Step 2: Reject URL protocols (file://, http://, etc.)
     // But allow Windows drive letters (C:, D:, etc.) which are single letters
-    if (/^[a-zA-Z][a-zA-Z0-9+.-]+:/.test(filePath)) {
+    if (
+      /^[a-zA-Z][a-zA-Z0-9+.-]+:/.test(filePath) &&
+      !/^[a-zA-Z]:[\\/]/.test(filePath)
+    ) {
       return false;
     }
 
