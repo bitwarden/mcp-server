@@ -15,6 +15,11 @@
   "homepage": "https://bitwarden.com",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.19.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
     "shx": "0.4.0",
     "zod": "4.1.11"
   },
@@ -36,7 +41,8 @@
     "typescript-eslint": "8.45.0"
   },
   "bin": {
-    "mcp-server-bitwarden": "dist/index.js"
+    "mcp-server-bitwarden": "dist/index.js",
+    "openai-app-bitwarden": "dist/openai-app.js"
   },
   "files": [
     "dist"
@@ -51,6 +57,8 @@
     "lint:fix": "eslint . --cache --cache-strategy content --fix",
     "build": "tsc && shx chmod +x dist/*.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "start:openai": "node dist/openai-app.js",
+    "dev:openai": "npm run build && npm run start:openai",
     "test": "jest --silent",
     "test:watch": "jest --watch",
     "test:run": "npm run test",
