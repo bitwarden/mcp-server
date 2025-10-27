@@ -114,7 +114,7 @@ jobs:
 
       - name: Install Cosign
         if: ${{ github.ref == 'refs/heads/main' }}
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
       - name: Sign image with Cosign
         if: ${{ github.ref == 'refs/heads/main' }}
