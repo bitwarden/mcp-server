@@ -65,6 +65,7 @@ jobs:
         with:
           name: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}.zip
           path: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}.zip
+          compression-level: 0
           if-no-files-found: error
 
       - name: Log in to GitHub Container Registry
