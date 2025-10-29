@@ -16,5 +16,5 @@ jobs:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     permissions:
       contents: read
-      pull-requests: write
       id-token: write
+      pull-requests: write
