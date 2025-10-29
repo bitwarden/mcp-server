@@ -93,7 +93,7 @@ async function runServer(): Promise<void> {
   const server = new Server(
     {
       name: 'Bitwarden MCP Server',
-      version: '2025.10.3',
+      version: '2025.10.4',
     },
     {
       capabilities: {
