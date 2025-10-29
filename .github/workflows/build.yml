@@ -62,6 +62,7 @@ jobs:
         with:
           name: mcp-server-${{ env.PACKAGE_VERSION }}
           path: ${{ env.TARGET_ARTIFACT }}
+          compression-level: 9
           if-no-files-found: error
 
       - name: Log in to GitHub Container Registry
