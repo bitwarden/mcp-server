@@ -54,17 +54,14 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Archive
-        env:
-          PACKAGE_VERSION: ${{ steps.retrieve-package-version.outputs.package_version }}
-        run: |
-          zip -r "mcp-server-${PACKAGE_VERSION}.zip" dist
-
       - name: Upload archive to GitHub
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        env:
+          PACKAGE_VERSION: ${{ steps.retrieve-package-version.outputs.package_version }}
+          TARGET_ARTIFACT: dist
         with:
-          name: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}
-          path: mcp-server-${{ steps.retrieve-package-version.outputs.package_version }}.zip
+          name: mcp-server-${{ env.PACKAGE_VERSION }}
+          path: ${{ env.TARGET_ARTIFACT }}
           if-no-files-found: error
 
       - name: Log in to GitHub Container Registry
