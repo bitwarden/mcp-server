@@ -14,7 +14,7 @@
   },
   "homepage": "https://bitwarden.com",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.20.1",
+    "@modelcontextprotocol/sdk": "1.24.0",
     "shx": "0.4.0",
     "zod": "4.1.12"
   },
