@@ -16,15 +16,15 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.25.2",
     "shx": "0.4.0",
-    "zod": "4.1.13"
+    "zod": "4.3.2"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.1",
+    "@eslint/js": "9.39.2",
     "@jest/globals": "30.2.0",
-    "@modelcontextprotocol/inspector": "0.17.5",
+    "@modelcontextprotocol/inspector": "0.18.0",
     "@types/jest": "30.0.0",
     "@types/node": "24.10.4",
-    "eslint": "9.39.1",
+    "eslint": "9.39.2",
     "globals": "16.5.0",
     "husky": "9.1.7",
     "jest": "30.2.0",
@@ -33,7 +33,7 @@
     "prettier": "3.7.4",
     "ts-jest": "29.4.6",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.49.0"
+    "typescript-eslint": "8.51.0"
   },
   "bin": {
     "mcp-server-bitwarden": "dist/index.js"
