@@ -1,17 +1,8 @@
 name: Publish
-run-name: ${{ inputs.publish_type == 'Dry Run' && 'Publish (Dry Run)' || 'Publish' }}
 
 on:
   workflow_dispatch:
     inputs:
-      publish_type:
-        description: "Publish options"
-        required: true
-        default: "Publish"
-        type: choice
-        options:
-          - Publish
-          - Dry Run
       version:
         description: "Version to publish (default: latest release)"
         required: true
@@ -21,6 +12,8 @@ on:
 defaults:
   run:
     working-directory: .
+
+permissions: {}
 
 jobs:
   setup:
@@ -35,7 +28,6 @@ jobs:
 
     steps:
       - name: Check branch
-        if: ${{ inputs.publish_type != 'Dry Run' }}
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "==================================="
@@ -59,7 +51,6 @@ jobs:
           fi
 
       - name: Create GitHub deployment
-        if: ${{ inputs.publish_type != 'Dry Run' }}
         uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
         id: deployment
         with:
@@ -113,12 +104,7 @@ jobs:
           wget "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${_PKG_VERSION}/mcp-server-${_PKG_VERSION}.zip"
           unzip "mcp-server-${_PKG_VERSION}.zip"
 
-      - name: Publish to NPM (Dry Run)
-        if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: npm publish --access public --dry-run
-
       - name: Publish to NPM
-        if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public
 
   publish-ghpr:
@@ -152,12 +138,7 @@ jobs:
       - name: Install Husky
         run: npm install -g husky
 
-      - name: Publish to GHPR (Dry Run)
-        if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: npm publish --access public --registry=https://npm.pkg.github.com/ --userconfig=./.npmrc --dry-run
-
       - name: Publish to GHPR
-        if: ${{ inputs.publish_type != 'Dry Run' }}
         run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
 
   publish-ghcr:
@@ -179,14 +160,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Dry Run - Pull, tag, and push release as latest
-        if: ${{ inputs.publish_type == 'Dry Run' }}
-        run: |
-          docker pull "${_IMAGE_NAME}:${_RELEASE_TAG}"
-          docker tag "${_IMAGE_NAME}:${_RELEASE_TAG}" "${_IMAGE_NAME}:latest"
-
       - name: Pull, tag, and push release as latest
-        if: ${{ inputs.publish_type != 'Dry Run' }}
         run: |
           docker pull "${_IMAGE_NAME}:${_RELEASE_TAG}"
           docker tag "${_IMAGE_NAME}:${_RELEASE_TAG}" "${_IMAGE_NAME}:latest"
@@ -202,15 +176,15 @@ jobs:
     permissions:
       contents: read
       deployments: write
+    if: ${{ always() }}
 
-    if: ${{ always() && inputs.publish_type != 'Dry Run' }}
     steps:
       - name: Check if any job failed
         if: contains(needs.*.result, 'failure')
         run: exit 1
 
       - name: Update deployment status to Success
-        if: ${{ inputs.publish_type != 'Dry Run' && success() }}
+        if: ${{ success() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
@@ -218,7 +192,7 @@ jobs:
           deployment-id: ${{ needs.setup.outputs.deployment_id }}
 
       - name: Update deployment status to Failure
-        if: ${{ inputs.publish_type != 'Dry Run' && failure() }}
+        if: ${{ failure() }}
         uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"

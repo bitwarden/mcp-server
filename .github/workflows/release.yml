@@ -1,20 +1,9 @@
 name: Release
-run-name: ${{ inputs.release_type == 'Dry Run' && 'Release (Dry Run)' || 'Release' }}
 
 on:
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: "Release options"
-        required: true
-        default: "Initial Release"
-        type: choice
-        options:
-          - Initial Release
-          - Dry Run
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   setup:
@@ -22,6 +11,9 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       release_version: ${{ steps.version.outputs.version }}
+    permissions:
+      contents: read
+
     steps:
       - name: Check out repo
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -29,7 +21,6 @@ jobs:
           persist-credentials: false
 
       - name: Check branch
-        if: ${{ inputs.release_type != 'Dry Run' }}
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "==================================="
@@ -42,7 +33,7 @@ jobs:
         id: version
         uses: bitwarden/gh-actions/release-version-check@main
         with:
-          release-type: ${{ inputs.release_type }}
+          release-type: Initial Release
           project-type: ts
           file: ./package.json
 
@@ -59,7 +50,6 @@ jobs:
 
     steps:
       - name: Download all release artifacts
-        if: ${{ inputs.release_type != 'Dry Run' }}
         uses: bitwarden/gh-actions/download-artifacts@main
         with:
           workflow: build.yml
@@ -67,17 +57,7 @@ jobs:
           artifacts: "mcp-server-${{ env._PKG_VERSION }}.zip"
           branch: ${{ github.ref_name }}
 
-      - name: Dry Run - Download all artifacts
-        if: ${{ inputs.release_type == 'Dry Run' }}
-        uses: bitwarden/gh-actions/download-artifacts@main
-        with:
-          workflow: build.yml
-          workflow_conclusion: success
-          artifacts: "mcp-server-${{ env._PKG_VERSION }}.zip"
-          branch: main
-
       - name: Create release
-        if: ${{ inputs.release_type != 'Dry Run' }}
         uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
         with:
           artifacts: "./mcp-server-${{ env._PKG_VERSION }}.zip"
@@ -106,14 +86,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Dry Run - Pull, tag, and push release
-        if: ${{ inputs.release_type == 'Dry Run' }}
-        run: |
-          docker pull "${_IMAGE_NAME}:dev"
-          docker tag "${_IMAGE_NAME}:dev" "${_IMAGE_NAME}:${_RELEASE_TAG}"
-
       - name: Pull, tag, and push release
-        if: ${{ inputs.release_type != 'Dry Run' }}
         run: |
           docker pull "${_IMAGE_NAME}:dev"
           docker tag "${_IMAGE_NAME}:dev" "${_IMAGE_NAME}:${_RELEASE_TAG}"
