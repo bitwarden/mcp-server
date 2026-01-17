@@ -132,6 +132,8 @@ export function validateApiEndpoint(endpoint: string): boolean {
     /^\/public\/members\/[a-f0-9-]{36}$/, // GET, PUT, DELETE
     /^\/public\/members\/[a-f0-9-]{36}\/group-ids$/, // GET (member's group IDs)
     /^\/public\/members\/[a-f0-9-]{36}\/reinvite$/, // POST (reinvite member)
+    /^\/public\/members\/[a-f0-9-]{36}\/revoke$/, // POST (revoke member)
+    /^\/public\/members\/[a-f0-9-]{36}\/restore$/, // POST (restore member)
 
     // Groups API
     /^\/public\/groups$/, // GET (list), POST (create)

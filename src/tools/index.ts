@@ -34,6 +34,8 @@ export {
   updateOrgMemberGroupsTool,
   removeOrgMemberTool,
   reinviteOrgMemberTool,
+  revokeOrgMemberTool,
+  restoreOrgMemberTool,
   // Groups
   listOrgGroupsTool,
   getOrgGroupTool,
