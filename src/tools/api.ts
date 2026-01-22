@@ -507,6 +507,38 @@ export const reinviteOrgMemberTool: Tool = {
   },
 };
 
+export const revokeOrgMemberTool: Tool = {
+  name: 'revoke_org_member',
+  description: "Revoke a member's access to an organization",
+  inputSchema: {
+    type: 'object',
+    properties: {
+      memberId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'ID of the member to revoke',
+      },
+    },
+    required: ['memberId'],
+  },
+};
+
+export const restoreOrgMemberTool: Tool = {
+  name: 'restore_org_member',
+  description: 'Restore a previously revoked member',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      memberId: {
+        type: 'string',
+        format: 'uuid',
+        description: 'ID of the member to restore',
+      },
+    },
+    required: ['memberId'],
+  },
+};
+
 export const updateOrgGroupMembersTool: Tool = {
   name: 'update_org_group_members',
   description: "Update a group's members",
@@ -783,6 +815,8 @@ export const organizationApiTools = [
   updateOrgMemberGroupsTool,
   removeOrgMemberTool,
   reinviteOrgMemberTool,
+  revokeOrgMemberTool,
+  restoreOrgMemberTool,
   // Groups
   listOrgGroupsTool,
   getOrgGroupTool,

@@ -193,6 +193,14 @@ export const reinviteMemberRequestSchema = z.object({
   memberId: z.string().uuid('Member ID must be a valid UUID'),
 });
 
+export const revokeMemberRequestSchema = z.object({
+  memberId: z.uuid('Member ID must be a valid UUID'),
+});
+
+export const restoreMemberRequestSchema = z.object({
+  memberId: z.uuid('Member ID must be a valid UUID'),
+});
+
 // Policies Schemas
 export const listPoliciesRequestSchema = z.object({});
 

@@ -70,6 +70,8 @@ import {
   handleGetOrgMemberGroups,
   handleUpdateOrgMemberGroups,
   handleReinviteOrgMember,
+  handleRevokeOrgMember,
+  handleRestoreOrgMember,
   handleListOrgGroups,
   handleGetOrgGroup,
   handleGetOrgGroupMembers,
@@ -203,6 +205,10 @@ async function runServer(): Promise<void> {
             return await handleUpdateOrgMemberGroups(args);
           case 'reinvite_org_member':
             return await handleReinviteOrgMember(args);
+          case 'revoke_org_member':
+            return await handleRevokeOrgMember(args);
+          case 'restore_org_member':
+            return await handleRestoreOrgMember(args);
 
           // Organization API Tools - Groups
           case 'list_org_groups':

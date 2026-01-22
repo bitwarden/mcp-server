@@ -48,6 +48,16 @@ describe('API Security Functions', () => {
           '/public/members/a1b2c3d4-5678-9abc-def0-123456789abc/reinvite',
         ),
       ).toBe(true);
+      expect(
+        validateApiEndpoint(
+          '/public/members/a1b2c3d4-5678-9abc-def0-123456789abc/revoke',
+        ),
+      ).toBe(true);
+      expect(
+        validateApiEndpoint(
+          '/public/members/a1b2c3d4-5678-9abc-def0-123456789abc/restore',
+        ),
+      ).toBe(true);
     });
 
     it('should allow valid group endpoints', () => {
@@ -275,6 +285,110 @@ describe('API Schema Validation', () => {
 
       const invalidInput = { email: 'test@example.com', type: 99 };
       const [isValid, result] = validateInput(inviteMemberSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should validate revoke member schema', async () => {
+      const { revokeMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const validInput = {
+        memberId: '550e8400-e29b-41d4-a716-446655440000',
+      };
+
+      const [isValid, result] = validateInput(
+        revokeMemberRequestSchema,
+        validInput,
+      );
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject revoke member with invalid UUID', async () => {
+      const { revokeMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const invalidInput = { memberId: 'not-a-uuid' };
+      const [isValid, result] = validateInput(
+        revokeMemberRequestSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Member ID must be a valid UUID',
+        );
+      }
+    });
+
+    it('should reject revoke member with missing memberId', async () => {
+      const { revokeMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const invalidInput = {};
+      const [isValid, result] = validateInput(
+        revokeMemberRequestSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should validate restore member schema', async () => {
+      const { restoreMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const validInput = {
+        memberId: '550e8400-e29b-41d4-a716-446655440000',
+      };
+
+      const [isValid, result] = validateInput(
+        restoreMemberRequestSchema,
+        validInput,
+      );
+      expect(isValid).toBe(true);
+      if (isValid) {
+        expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject restore member with invalid UUID', async () => {
+      const { restoreMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const invalidInput = { memberId: 'not-a-uuid' };
+      const [isValid, result] = validateInput(
+        restoreMemberRequestSchema,
+        invalidInput,
+      );
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'Member ID must be a valid UUID',
+        );
+      }
+    });
+
+    it('should reject restore member with missing memberId', async () => {
+      const { restoreMemberRequestSchema } =
+        await import('../src/schemas/api.js');
+
+      const invalidInput = {};
+      const [isValid, result] = validateInput(
+        restoreMemberRequestSchema,
+        invalidInput,
+      );
 
       expect(isValid).toBe(false);
       if (!isValid) {
