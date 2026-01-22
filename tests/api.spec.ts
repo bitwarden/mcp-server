@@ -1,10 +1,24 @@
-import { describe, it, expect } from '@jest/globals';
+import {
+  describe,
+  it,
+  expect,
+  jest,
+  beforeEach,
+  afterEach,
+} from '@jest/globals';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
 import {
   validateApiEndpoint,
   sanitizeApiParameters,
 } from '../src/utils/security.js';
+
+// Store original environment variables
+const originalEnv = { ...process.env };
+
+// Mock fetch globally for handler tests
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch;
 
 describe('API Security Functions', () => {
   describe('validateApiEndpoint', () => {
@@ -503,6 +517,542 @@ describe('API Schema Validation', () => {
       if (isValid) {
         expect(result).toEqual(validInput);
       }
+    });
+  });
+});
+
+describe('API Handlers', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.resetModules();
+
+    // Set up required environment variables
+    process.env['BW_CLIENT_ID'] = 'organization.test-client-id';
+    process.env['BW_CLIENT_SECRET'] = 'test-client-secret';
+    process.env['BW_API_BASE_URL'] = 'https://api.bitwarden.test';
+    process.env['BW_IDENTITY_URL'] = 'https://identity.bitwarden.test';
+  });
+
+  afterEach(() => {
+    // Restore original environment
+    process.env = { ...originalEnv };
+  });
+
+  // Helper to mock token and API responses
+  function mockTokenAndApiResponse(apiResponse: object, status = 200) {
+    // First call is token request
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        access_token: 'test-token',
+        expires_in: 3600,
+        token_type: 'Bearer',
+      }),
+    } as Response);
+
+    // Second call is API request
+    mockFetch.mockResolvedValueOnce({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: status === 200 ? 'OK' : 'Error',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => apiResponse,
+    } as Response);
+  }
+
+  describe('toMcpFormat (via handlers)', () => {
+    it('should format successful response with data', async () => {
+      const { handleListOrgCollections } = await import(
+        '../src/handlers/api.js'
+      );
+
+      mockTokenAndApiResponse({ data: [{ id: '123', name: 'Test' }] });
+
+      const result = await handleListOrgCollections({});
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]!.text).toContain('123');
+      expect(result.content[0]!.text).toContain('Test');
+    });
+
+    it('should format error response', async () => {
+      const { handleListOrgCollections } = await import(
+        '../src/handlers/api.js'
+      );
+
+      // Mock token
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: 'test-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
+      } as Response);
+
+      // Mock failed API response
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ message: 'Not found' }),
+      } as Response);
+
+      const result = await handleListOrgCollections({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('404');
+    });
+  });
+
+  describe('Collections Handlers', () => {
+    describe('handleListOrgCollections', () => {
+      it('should call correct endpoint', async () => {
+        const { handleListOrgCollections } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ data: [] });
+
+        await handleListOrgCollections({});
+
+        // Second call should be the API request
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/collections',
+        );
+      });
+    });
+
+    describe('handleGetOrgCollection', () => {
+      it('should call correct endpoint with collectionId', async () => {
+        const { handleGetOrgCollection } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+
+        await handleGetOrgCollection({
+          collectionId: '12345678-1234-1234-1234-123456789012',
+        });
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+        );
+      });
+
+      it('should return error for invalid UUID format', async () => {
+        const { handleGetOrgCollection } = await import(
+          '../src/handlers/api.js'
+        );
+
+        const result = await handleGetOrgCollection({
+          collectionId: 'invalid',
+        });
+
+        expect(result.isError).toBe(true);
+        // The endpoint validation rejects invalid UUIDs because the pattern requires UUID format
+        expect(result.content[0]!.text).toContain('Invalid API endpoint');
+      });
+    });
+
+    describe('handleUpdateOrgCollection', () => {
+      it('should call correct endpoint with PUT method', async () => {
+        const { handleUpdateOrgCollection } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+
+        await handleUpdateOrgCollection({
+          collectionId: '12345678-1234-1234-1234-123456789012',
+          externalId: 'ext-123',
+          groups: [],
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe(
+          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+        );
+        expect((apiCall![1] as RequestInit).method).toBe('PUT');
+      });
+    });
+
+    describe('handleDeleteOrgCollection', () => {
+      it('should call correct endpoint with DELETE method', async () => {
+        const { handleDeleteOrgCollection } = await import(
+          '../src/handlers/api.js'
+        );
+
+        // Mock token
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-token',
+            expires_in: 3600,
+            token_type: 'Bearer',
+          }),
+        } as Response);
+
+        // Mock DELETE response (no content)
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 204,
+          headers: new Headers({ 'content-type': 'text/plain' }),
+          text: async () => '',
+        } as Response);
+
+        await handleDeleteOrgCollection({
+          collectionId: '12345678-1234-1234-1234-123456789012',
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe(
+          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+        );
+        expect((apiCall![1] as RequestInit).method).toBe('DELETE');
+      });
+    });
+  });
+
+  describe('Members Handlers', () => {
+    describe('handleListOrgMembers', () => {
+      it('should call correct endpoint', async () => {
+        const { handleListOrgMembers } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ data: [] });
+
+        await handleListOrgMembers({});
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/members',
+        );
+      });
+    });
+
+    describe('handleGetOrgMember', () => {
+      it('should call correct endpoint with memberId', async () => {
+        const { handleGetOrgMember } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+
+        await handleGetOrgMember({
+          memberId: '12345678-1234-1234-1234-123456789012',
+        });
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/members/12345678-1234-1234-1234-123456789012',
+        );
+      });
+    });
+
+    describe('handleInviteOrgMember', () => {
+      it('should call correct endpoint with POST method', async () => {
+        const { handleInviteOrgMember } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ id: 'new-member-id' }, 201);
+
+        await handleInviteOrgMember({
+          email: 'test@example.com',
+          type: 2,
+          accessAll: false,
+          collections: [],
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe('https://api.bitwarden.test/public/members');
+        expect((apiCall![1] as RequestInit).method).toBe('POST');
+
+        const body = JSON.parse((apiCall![1] as RequestInit).body as string);
+        expect(body.email).toBe('test@example.com');
+        expect(body.type).toBe(2);
+      });
+
+      it('should return validation error for invalid email', async () => {
+        const { handleInviteOrgMember } = await import(
+          '../src/handlers/api.js'
+        );
+
+        const result = await handleInviteOrgMember({
+          email: 'invalid-email',
+          type: 2,
+          accessAll: false,
+          collections: [],
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('email');
+      });
+    });
+
+    describe('handleRemoveOrgMember', () => {
+      it('should call correct endpoint with DELETE method', async () => {
+        const { handleRemoveOrgMember } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-token',
+            expires_in: 3600,
+            token_type: 'Bearer',
+          }),
+        } as Response);
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 204,
+          headers: new Headers({ 'content-type': 'text/plain' }),
+          text: async () => '',
+        } as Response);
+
+        await handleRemoveOrgMember({
+          memberId: '12345678-1234-1234-1234-123456789012',
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect((apiCall![1] as RequestInit).method).toBe('DELETE');
+      });
+    });
+  });
+
+  describe('Groups Handlers', () => {
+    describe('handleListOrgGroups', () => {
+      it('should call correct endpoint', async () => {
+        const { handleListOrgGroups } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ data: [] });
+
+        await handleListOrgGroups({});
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/groups',
+        );
+      });
+    });
+
+    describe('handleCreateOrgGroup', () => {
+      it('should call correct endpoint with POST method', async () => {
+        const { handleCreateOrgGroup } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ id: 'new-group-id' }, 201);
+
+        await handleCreateOrgGroup({
+          name: 'Engineering',
+          accessAll: false,
+          collections: [],
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe('https://api.bitwarden.test/public/groups');
+        expect((apiCall![1] as RequestInit).method).toBe('POST');
+
+        const body = JSON.parse((apiCall![1] as RequestInit).body as string);
+        expect(body.name).toBe('Engineering');
+      });
+
+      it('should return validation error for empty name', async () => {
+        const { handleCreateOrgGroup } = await import('../src/handlers/api.js');
+
+        const result = await handleCreateOrgGroup({
+          name: '',
+          accessAll: false,
+          collections: [],
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('name');
+      });
+    });
+
+    describe('handleDeleteOrgGroup', () => {
+      it('should call correct endpoint with DELETE method', async () => {
+        const { handleDeleteOrgGroup } = await import('../src/handlers/api.js');
+
+        // Use a valid UUID format (version 4) - the group schema validates UUID format
+        const validGroupId = '12345678-1234-4234-8234-123456789012';
+
+        // Mock token request
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-token',
+            expires_in: 3600,
+            token_type: 'Bearer',
+          }),
+        } as Response);
+
+        // Mock DELETE response (no content)
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 204,
+          headers: new Headers({ 'content-type': 'text/plain' }),
+          text: async () => '',
+        } as Response);
+
+        const result = await handleDeleteOrgGroup({ groupId: validGroupId });
+
+        // Verify the operation succeeded
+        expect(result.isError).toBe(false);
+
+        // Check that the API call was made to the correct endpoint
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe(
+          `https://api.bitwarden.test/public/groups/${validGroupId}`,
+        );
+        expect((apiCall![1] as RequestInit).method).toBe('DELETE');
+      });
+    });
+  });
+
+  describe('Policies Handlers', () => {
+    describe('handleListOrgPolicies', () => {
+      it('should call correct endpoint', async () => {
+        const { handleListOrgPolicies } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ data: [] });
+
+        await handleListOrgPolicies({});
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/policies',
+        );
+      });
+    });
+
+    describe('handleGetOrgPolicy', () => {
+      it('should call correct endpoint with policyType', async () => {
+        const { handleGetOrgPolicy } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ type: 0, enabled: true });
+
+        await handleGetOrgPolicy({ policyType: 0 });
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/policies/0',
+        );
+      });
+    });
+  });
+
+  describe('Events Handlers', () => {
+    describe('handleGetOrgEvents', () => {
+      it('should call correct endpoint with required date params', async () => {
+        const { handleGetOrgEvents } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ data: [] });
+
+        // start and end are required parameters
+        await handleGetOrgEvents({
+          start: '2024-01-01',
+          end: '2024-01-31',
+        });
+
+        expect(mockFetch.mock.calls[1]![0]).toContain(
+          'https://api.bitwarden.test/public/events',
+        );
+      });
+
+      it('should include date filters in query params', async () => {
+        const { handleGetOrgEvents } = await import('../src/handlers/api.js');
+
+        mockTokenAndApiResponse({ data: [] });
+
+        await handleGetOrgEvents({
+          start: '2024-01-01',
+          end: '2024-01-31',
+        });
+
+        const url = mockFetch.mock.calls[1]![0] as string;
+        expect(url).toContain('start=2024-01-01');
+        expect(url).toContain('end=2024-01-31');
+      });
+
+      it('should return validation error when start date is missing', async () => {
+        const { handleGetOrgEvents } = await import('../src/handlers/api.js');
+
+        const result = await handleGetOrgEvents({ end: '2024-01-31' } as never);
+
+        expect(result.isError).toBe(true);
+        // Zod reports "expected string, received undefined" for missing required string fields
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+    });
+  });
+
+  describe('Billing Handlers', () => {
+    describe('handleGetOrgSubscription', () => {
+      it('should call correct endpoint', async () => {
+        const { handleGetOrgSubscription } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockTokenAndApiResponse({ passwordManager: { seats: 10 } });
+
+        await handleGetOrgSubscription({});
+
+        expect(mockFetch.mock.calls[1]![0]).toBe(
+          'https://api.bitwarden.test/public/organization/subscription',
+        );
+      });
+    });
+  });
+
+  describe('Import Handlers', () => {
+    describe('handleImportOrgUsersAndGroups', () => {
+      it('should call correct endpoint with POST method', async () => {
+        const { handleImportOrgUsersAndGroups } = await import(
+          '../src/handlers/api.js'
+        );
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-token',
+            expires_in: 3600,
+            token_type: 'Bearer',
+          }),
+        } as Response);
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'content-type': 'text/plain' }),
+          text: async () => '',
+        } as Response);
+
+        await handleImportOrgUsersAndGroups({
+          groups: [],
+          members: [],
+          overwriteExisting: false,
+          largeImport: false,
+        });
+
+        const apiCall = mockFetch.mock.calls[1];
+        expect(apiCall![0]).toBe(
+          'https://api.bitwarden.test/public/organization/import',
+        );
+        expect((apiCall![1] as RequestInit).method).toBe('POST');
+      });
+    });
+  });
+
+  describe('Validation Errors', () => {
+    it('should return validation error for missing required fields', async () => {
+      const { handleUpdateOrgCollection } = await import(
+        '../src/handlers/api.js'
+      );
+
+      // Missing required collectionId
+      const result = await handleUpdateOrgCollection({} as never);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
     });
   });
 });
