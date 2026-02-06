@@ -24,6 +24,8 @@ import {
   updateMemberGroupsRequestSchema,
   updateGroupMembersRequestSchema,
   reinviteMemberRequestSchema,
+  revokeMemberRequestSchema,
+  restoreMemberRequestSchema,
   listPoliciesRequestSchema,
   getPolicyRequestSchema,
   updatePolicyRequestSchema,
@@ -260,6 +262,30 @@ export const handleReinviteOrgMember = withValidation(
     const { memberId } = validatedArgs;
     const response = await executeApiRequest(
       `/public/members/${memberId}/reinvite`,
+      'POST',
+    );
+    return toMcpFormat(response);
+  },
+);
+
+export const handleRevokeOrgMember = withValidation(
+  revokeMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId } = validatedArgs;
+    const response = await executeApiRequest(
+      `/public/members/${memberId}/revoke`,
+      'POST',
+    );
+    return toMcpFormat(response);
+  },
+);
+
+export const handleRestoreOrgMember = withValidation(
+  restoreMemberRequestSchema,
+  async (validatedArgs) => {
+    const { memberId } = validatedArgs;
+    const response = await executeApiRequest(
+      `/public/members/${memberId}/restore`,
       'POST',
     );
     return toMcpFormat(response);
