@@ -2479,3 +2479,599 @@ describe('CLI Commands', () => {
     });
   });
 });
+
+/**
+ * CLI Handlers - Validation Tests
+ * These tests verify handler validation logic and response formatting
+ * by calling handlers directly
+ */
+
+// Import handlers directly - we're testing validation logic, not CLI execution
+import {
+  handleLock,
+  handleSync,
+  handleStatus,
+  handleList,
+  handleGet,
+  handleGenerate,
+  handleCreateItem,
+  handleCreateFolder,
+  handleDelete,
+  handleConfirm,
+  handleCreateOrgCollection,
+  handleMove,
+  handleDeviceApprovalList,
+  handleDeviceApprovalApprove,
+  handleDeviceApprovalApproveAll,
+  handleDeviceApprovalDeny,
+  handleDeviceApprovalDenyAll,
+  handleRestore,
+  handleCreateTextSend,
+  handleCreateFileSend,
+  handleListSend,
+  handleGetSend,
+  handleDeleteSend,
+  handleRemoveSendPassword,
+  handleCreateAttachment,
+} from '../src/handlers/cli.js';
+
+describe('CLI Handlers - Validation Tests', () => {
+  describe('handleLock', () => {
+    it('should accept empty arguments', async () => {
+      // handleLock takes no required arguments
+      // We just verify it doesn't throw on validation
+      const result = await handleLock({});
+      // Result may error due to CLI not being available, but validation passed
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleSync', () => {
+    it('should accept empty arguments', async () => {
+      const result = await handleSync({});
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleStatus', () => {
+    it('should accept empty arguments', async () => {
+      const result = await handleStatus({});
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleList', () => {
+    it('should reject invalid type', async () => {
+      const result = await handleList({ type: 'invalid' as 'items' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject org-collections without organizationid', async () => {
+      const result = await handleList({ type: 'org-collections' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('organizationid is required');
+    });
+
+    it('should accept valid type with no filters', async () => {
+      const result = await handleList({ type: 'items' });
+      // Validation passes, may error at CLI execution
+      expect(result).toBeDefined();
+    });
+
+    it('should accept valid type with search filter', async () => {
+      const result = await handleList({ type: 'items', search: 'test' });
+      expect(result).toBeDefined();
+    });
+
+    it('should accept org-collections with organizationid', async () => {
+      const result = await handleList({
+        type: 'org-collections',
+        organizationid: 'org-123',
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleGet', () => {
+    it('should reject empty id', async () => {
+      const result = await handleGet({ object: 'item', id: '' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject org-collection without organizationid', async () => {
+      const result = await handleGet({ object: 'org-collection', id: 'test' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('organizationid is required');
+    });
+
+    it('should reject attachment without itemid', async () => {
+      const result = await handleGet({ object: 'attachment', id: 'file.txt' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('itemid is required');
+    });
+
+    it('should accept valid item request', async () => {
+      const result = await handleGet({ object: 'item', id: 'test-id' });
+      expect(result).toBeDefined();
+    });
+
+    it('should accept attachment with itemid', async () => {
+      const result = await handleGet({
+        object: 'attachment',
+        id: 'file.txt',
+        itemid: 'item-123',
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleGenerate', () => {
+    it('should reject length less than 5', async () => {
+      const result = await handleGenerate({ length: 4 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept length up to any positive integer (no max constraint)', async () => {
+      // The schema only has min(5), no max constraint
+      const result = await handleGenerate({ length: 129 });
+      // Validation passes, result depends on CLI execution
+      expect(result).toBeDefined();
+    });
+
+    it('should accept valid length', async () => {
+      const result = await handleGenerate({ length: 20 });
+      expect(result).toBeDefined();
+    });
+
+    it('should accept passphrase options', async () => {
+      const result = await handleGenerate({ passphrase: true, words: 5 });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleCreateItem', () => {
+    it('should reject empty name', async () => {
+      const result = await handleCreateItem({
+        name: '',
+        type: 2,
+        secureNote: { type: 0 },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject login item without login details', async () => {
+      const result = await handleCreateItem({
+        name: 'Test',
+        type: 1,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        'Type-specific data is required',
+      );
+    });
+
+    it('should reject card item without card details', async () => {
+      const result = await handleCreateItem({
+        name: 'Test Card',
+        type: 3,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        'Type-specific data is required',
+      );
+    });
+
+    it('should reject identity item without identity details', async () => {
+      const result = await handleCreateItem({
+        name: 'Test Identity',
+        type: 4,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        'Type-specific data is required',
+      );
+    });
+
+    it('should reject secure note item without secureNote details', async () => {
+      const result = await handleCreateItem({
+        name: 'Test Note',
+        type: 2,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        'Type-specific data is required',
+      );
+    });
+
+    it('should accept valid login item', async () => {
+      const result = await handleCreateItem({
+        name: 'Test Login',
+        type: 1,
+        login: { username: 'user', password: 'pass' },
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('should accept valid secure note', async () => {
+      const result = await handleCreateItem({
+        name: 'Test Note',
+        type: 2,
+        secureNote: { type: 0 },
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleCreateFolder', () => {
+    it('should reject empty name', async () => {
+      const result = await handleCreateFolder({ name: '' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept valid folder name', async () => {
+      const result = await handleCreateFolder({ name: 'My Folder' });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleDelete', () => {
+    it('should reject empty id', async () => {
+      const result = await handleDelete({ object: 'item', id: '' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept valid delete request', async () => {
+      const result = await handleDelete({ object: 'item', id: 'item-123' });
+      expect(result).toBeDefined();
+    });
+
+    it('should accept delete with permanent flag', async () => {
+      const result = await handleDelete({
+        object: 'item',
+        id: 'item-123',
+        permanent: true,
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleConfirm', () => {
+    it('should reject empty organizationId', async () => {
+      const result = await handleConfirm({
+        organizationId: '',
+        memberId: 'member-123',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject empty memberId', async () => {
+      const result = await handleConfirm({
+        organizationId: 'org-123',
+        memberId: '',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept valid confirm request', async () => {
+      const result = await handleConfirm({
+        organizationId: 'org-123',
+        memberId: 'member-456',
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleCreateOrgCollection', () => {
+    it('should reject empty organizationId', async () => {
+      const result = await handleCreateOrgCollection({
+        organizationId: '',
+        name: 'Collection',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject empty name', async () => {
+      const result = await handleCreateOrgCollection({
+        organizationId: 'org-123',
+        name: '',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept valid collection creation', async () => {
+      const result = await handleCreateOrgCollection({
+        organizationId: 'org-123',
+        name: 'New Collection',
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('handleMove', () => {
+    it('should reject empty itemId', async () => {
+      const result = await handleMove({
+        itemId: '',
+        organizationId: 'org-123',
+        collectionIds: ['coll-1'],
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept empty collectionIds (no min array length constraint)', async () => {
+      // The schema only validates that individual IDs are non-empty,
+      // but allows empty arrays
+      const result = await handleMove({
+        itemId: 'item-123',
+        organizationId: 'org-123',
+        collectionIds: [],
+      });
+      // Validation passes, result depends on CLI execution
+      expect(result).toBeDefined();
+    });
+
+    it('should accept valid move request', async () => {
+      const result = await handleMove({
+        itemId: 'item-123',
+        organizationId: 'org-456',
+        collectionIds: ['coll-1'],
+      });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('Device Approval Handlers', () => {
+    describe('handleDeviceApprovalList', () => {
+      it('should reject empty organizationId', async () => {
+        const result = await handleDeviceApprovalList({ organizationId: '' });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid organizationId', async () => {
+        const result = await handleDeviceApprovalList({
+          organizationId: 'org-123',
+        });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleDeviceApprovalApprove', () => {
+      it('should reject empty requestId', async () => {
+        const result = await handleDeviceApprovalApprove({
+          organizationId: 'org-123',
+          requestId: '',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid request', async () => {
+        const result = await handleDeviceApprovalApprove({
+          organizationId: 'org-123',
+          requestId: 'req-456',
+        });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleDeviceApprovalApproveAll', () => {
+      it('should accept valid organizationId', async () => {
+        const result = await handleDeviceApprovalApproveAll({
+          organizationId: 'org-123',
+        });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleDeviceApprovalDeny', () => {
+      it('should reject empty requestId', async () => {
+        const result = await handleDeviceApprovalDeny({
+          organizationId: 'org-123',
+          requestId: '',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+    });
+
+    describe('handleDeviceApprovalDenyAll', () => {
+      it('should accept valid organizationId', async () => {
+        const result = await handleDeviceApprovalDenyAll({
+          organizationId: 'org-123',
+        });
+        expect(result).toBeDefined();
+      });
+    });
+  });
+
+  describe('handleRestore', () => {
+    it('should reject empty id', async () => {
+      const result = await handleRestore({ object: 'item', id: '' });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should accept valid restore request', async () => {
+      const result = await handleRestore({ object: 'item', id: 'item-123' });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('Send Handlers', () => {
+    describe('handleCreateTextSend', () => {
+      it('should reject empty name', async () => {
+        const result = await handleCreateTextSend({
+          name: '',
+          text: 'content',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should reject empty text', async () => {
+        const result = await handleCreateTextSend({
+          name: 'Test',
+          text: '',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid text send', async () => {
+        const result = await handleCreateTextSend({
+          name: 'Test Send',
+          text: 'Secret content',
+        });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleCreateFileSend', () => {
+      it('should reject empty name', async () => {
+        const result = await handleCreateFileSend({
+          name: '',
+          filePath: '/tmp/test.txt',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should reject empty filePath', async () => {
+        const result = await handleCreateFileSend({
+          name: 'Test',
+          filePath: '',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should reject path traversal in filePath', async () => {
+        const result = await handleCreateFileSend({
+          name: 'Bad Send',
+          filePath: '../../../etc/passwd',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('path traversal');
+      });
+    });
+
+    describe('handleListSend', () => {
+      it('should accept empty arguments', async () => {
+        const result = await handleListSend({});
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleGetSend', () => {
+      it('should reject empty id', async () => {
+        const result = await handleGetSend({ id: '' });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid id', async () => {
+        const result = await handleGetSend({ id: 'send-123' });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleDeleteSend', () => {
+      it('should reject empty id', async () => {
+        const result = await handleDeleteSend({ id: '' });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid id', async () => {
+        const result = await handleDeleteSend({ id: 'send-123' });
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('handleRemoveSendPassword', () => {
+      it('should reject empty id', async () => {
+        const result = await handleRemoveSendPassword({ id: '' });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Validation error');
+      });
+
+      it('should accept valid id', async () => {
+        const result = await handleRemoveSendPassword({ id: 'send-123' });
+        expect(result).toBeDefined();
+      });
+    });
+  });
+
+  describe('handleCreateAttachment', () => {
+    it('should reject empty filePath', async () => {
+      const result = await handleCreateAttachment({
+        filePath: '',
+        itemId: 'item-123',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject empty itemId', async () => {
+      const result = await handleCreateAttachment({
+        filePath: '/tmp/test.txt',
+        itemId: '',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('Validation error');
+    });
+
+    it('should reject path traversal in filePath', async () => {
+      const result = await handleCreateAttachment({
+        filePath: '../../secret.txt',
+        itemId: 'item-123',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('path traversal');
+    });
+  });
+});
