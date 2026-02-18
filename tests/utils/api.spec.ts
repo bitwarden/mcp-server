@@ -152,7 +152,7 @@ describe('API Utilities', () => {
         headers: {
           Authorization: 'Bearer auth-token',
           'Content-Type': 'application/json',
-          'User-Agent': 'Bitwarden-MCP-Server/2026.1.0',
+          'User-Agent': 'Bitwarden-MCP-Server/2026.2.0',
         },
       });
     });
