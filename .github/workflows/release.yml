@@ -44,18 +44,19 @@ jobs:
     env:
       _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
     permissions:
+      actions: read
       contents: write
       packages: read
-      actions: read
 
     steps:
-      - name: Download all release artifacts
+      - name: Download release artifact
         uses: bitwarden/gh-actions/download-artifacts@main
         with:
-          workflow: build.yml
-          workflow_conclusion: success
           artifacts: "mcp-server-${{ env._PKG_VERSION }}"
           branch: ${{ github.ref_name }}
+          skip_unpack: true
+          workflow: build.yml
+          workflow_conclusion: success
 
       - name: Create release
         uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
@@ -77,7 +78,6 @@ jobs:
       _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
     permissions:
       packages: write
-
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
