@@ -123,7 +123,7 @@ export const handleGet = withValidation(getSchema, async (validatedArgs) => {
   if (itemid) {
     params.push('--itemid', itemid);
   }
-  if (output) {
+  if (output && object === 'attachment') {
     params.push('--output', output);
   }
   const response = await executeCliCommand('get', params);
@@ -584,7 +584,7 @@ export const handleMove = withValidation(
       organizationId,
       encodedJson,
     ]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
@@ -690,7 +690,7 @@ export const handleRestore = withValidation(
   async (validatedArgs) => {
     const { object, id } = validatedArgs;
     const response = await executeCliCommand('restore', [object, id]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
