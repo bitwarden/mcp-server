@@ -96,8 +96,6 @@ export const getTool: Tool = {
           'item',
           'username',
           'uri',
-          'totp',
-          'notes',
           'exposed',
           'attachment',
           'folder',

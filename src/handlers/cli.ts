@@ -3,7 +3,7 @@
  */
 
 import { executeCliCommand } from '../utils/cli.js';
-import { redactPasswords } from '../utils/security.js';
+import { redactSensitiveFields } from '../utils/security.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
@@ -98,7 +98,7 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
   }
   const response = await executeCliCommand('list', params);
   if (type === 'items' && response.output) {
-    response.output = redactPasswords(response.output);
+    response.output = redactSensitiveFields(response.output);
   }
   return toMcpFormat(response);
 });
@@ -117,7 +117,7 @@ export const handleGet = withValidation(getSchema, async (validatedArgs) => {
   }
   const response = await executeCliCommand('get', params);
   if (object === 'item' && response.output) {
-    response.output = redactPasswords(response.output);
+    response.output = redactSensitiveFields(response.output);
   }
   return toMcpFormat(response);
 });
@@ -246,7 +246,7 @@ export const handleCreateItem = withValidation(
     const encodedItem = Buffer.from(itemJson).toString('base64');
     const response = await executeCliCommand('create', ['item', encodedItem]);
     if (response.output) {
-      response.output = redactPasswords(response.output);
+      response.output = redactSensitiveFields(response.output);
     }
     return toMcpFormat(response);
   },
@@ -385,7 +385,7 @@ export const handleEditItem = withValidation(
         encodedUpdates,
       ]);
       if (response.output) {
-        response.output = redactPasswords(response.output);
+        response.output = redactSensitiveFields(response.output);
       }
       return toMcpFormat(response);
     } catch (error) {

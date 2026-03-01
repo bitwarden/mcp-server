@@ -20,8 +20,6 @@ describe('CLI Commands', () => {
         'item',
         'username',
         'uri',
-        'totp',
-        'notes',
         'exposed',
         'attachment',
         'folder',
@@ -199,6 +197,36 @@ describe('CLI Commands', () => {
       expect(isValid).toBe(true);
       if (isValid) {
         expect(result).toEqual(validInput);
+      }
+    });
+
+    it('should reject "password" as object type', () => {
+      const invalidInput = { object: 'password', id: 'test-id' };
+      const [isValid, result] = validateInput(getSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject "notes" as object type', () => {
+      const invalidInput = { object: 'notes', id: 'test-id' };
+      const [isValid, result] = validateInput(getSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
+      }
+    });
+
+    it('should reject "totp" as object type', () => {
+      const invalidInput = { object: 'totp', id: 'test-id' };
+      const [isValid, result] = validateInput(getSchema, invalidInput);
+
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain('Validation error');
       }
     });
 
@@ -457,8 +485,6 @@ describe('CLI Commands', () => {
           'item',
           'username',
           'uri',
-          'totp',
-          'notes',
           'exposed',
           'attachment',
           'folder',

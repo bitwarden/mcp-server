@@ -5,7 +5,7 @@ import {
   buildSafeCommand,
   isValidBitwardenCommand,
   validateFilePath,
-  redactPasswords,
+  redactSensitiveFields,
 } from '../src/utils/security.js';
 
 describe('Security - Command Injection Protection', () => {
@@ -319,46 +319,101 @@ describe('Security - Command Injection Protection', () => {
     });
   });
 
-  describe('redactPasswords', () => {
+  describe('redactSensitiveFields', () => {
     it('should redact login.password from a single item', () => {
       const input = JSON.stringify({
         name: 'Test',
         login: { username: 'user', password: 'secret123' },
       });
-      const result = JSON.parse(redactPasswords(input));
+      const result = JSON.parse(redactSensitiveFields(input));
       expect(result.login.password).toBe('<REDACTED>');
       expect(result.login.username).toBe('user');
       expect(result.name).toBe('Test');
     });
 
-    it('should redact login.password from an array of items', () => {
-      const input = JSON.stringify([
-        { name: 'A', login: { username: 'u1', password: 'p1' } },
-        { name: 'B', login: { username: 'u2', password: 'p2' } },
-      ]);
-      const result = JSON.parse(redactPasswords(input));
-      expect(result[0].login.password).toBe('<REDACTED>');
-      expect(result[1].login.password).toBe('<REDACTED>');
-      expect(result[0].login.username).toBe('u1');
+    it('should redact login.totp from a single item', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        login: { username: 'user', totp: 'JBSWY3DPEHPK3PXP' },
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.login.totp).toBe('<REDACTED>');
+      expect(result.login.username).toBe('user');
     });
 
-    it('should not modify items without login.password', () => {
+    it('should redact card.number and card.code', () => {
+      const input = JSON.stringify({
+        name: 'My Card',
+        card: {
+          cardholderName: 'John',
+          number: '4111111111111111',
+          code: '123',
+          brand: 'Visa',
+        },
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.card.number).toBe('<REDACTED>');
+      expect(result.card.code).toBe('<REDACTED>');
+      expect(result.card.cardholderName).toBe('John');
+      expect(result.card.brand).toBe('Visa');
+    });
+
+    it('should redact identity.ssn, passportNumber, and licenseNumber', () => {
+      const input = JSON.stringify({
+        name: 'My Identity',
+        identity: {
+          firstName: 'John',
+          ssn: '123-45-6789',
+          passportNumber: 'AB1234567',
+          licenseNumber: 'DL-9876543',
+        },
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.identity.ssn).toBe('<REDACTED>');
+      expect(result.identity.passportNumber).toBe('<REDACTED>');
+      expect(result.identity.licenseNumber).toBe('<REDACTED>');
+      expect(result.identity.firstName).toBe('John');
+    });
+
+    it('should redact all sensitive fields from an array of items', () => {
+      const input = JSON.stringify([
+        { name: 'A', login: { username: 'u1', password: 'p1', totp: 't1' } },
+        {
+          name: 'B',
+          card: { number: '4111', code: '999' },
+        },
+        {
+          name: 'C',
+          identity: { ssn: '111-22-3333', firstName: 'Jane' },
+        },
+      ]);
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result[0].login.password).toBe('<REDACTED>');
+      expect(result[0].login.totp).toBe('<REDACTED>');
+      expect(result[0].login.username).toBe('u1');
+      expect(result[1].card.number).toBe('<REDACTED>');
+      expect(result[1].card.code).toBe('<REDACTED>');
+      expect(result[2].identity.ssn).toBe('<REDACTED>');
+      expect(result[2].identity.firstName).toBe('Jane');
+    });
+
+    it('should not modify items without sensitive fields', () => {
       const input = JSON.stringify({
         name: 'Note',
         type: 2,
         secureNote: { type: 0 },
       });
-      const result = redactPasswords(input);
+      const result = redactSensitiveFields(input);
       expect(result).toBe(input);
     });
 
     it('should return non-JSON strings unchanged', () => {
       const input = 'not json at all';
-      expect(redactPasswords(input)).toBe(input);
+      expect(redactSensitiveFields(input)).toBe(input);
     });
 
     it('should return empty string unchanged', () => {
-      expect(redactPasswords('')).toBe('');
+      expect(redactSensitiveFields('')).toBe('');
     });
 
     it('should handle login without password field', () => {
@@ -366,15 +421,29 @@ describe('Security - Command Injection Protection', () => {
         name: 'Test',
         login: { username: 'user' },
       });
-      const result = JSON.parse(redactPasswords(input));
+      const result = JSON.parse(redactSensitiveFields(input));
       expect(result.login.username).toBe('user');
       expect(result.login.password).toBeUndefined();
     });
 
     it('should handle null login value', () => {
       const input = JSON.stringify({ name: 'Test', login: null });
-      const result = JSON.parse(redactPasswords(input));
+      const result = JSON.parse(redactSensitiveFields(input));
       expect(result.login).toBeNull();
+    });
+
+    it('should recurse into nested objects within sensitive parents', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        login: {
+          username: 'user',
+          password: 'secret',
+          uris: [{ uri: 'https://example.com' }],
+        },
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.login.password).toBe('<REDACTED>');
+      expect(result.login.uris[0].uri).toBe('https://example.com');
     });
   });
 

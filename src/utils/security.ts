@@ -188,18 +188,30 @@ export function sanitizeApiParameters(params: unknown): unknown {
 }
 
 /**
- * Redacts password fields from Bitwarden CLI JSON output.
- * Replaces `login.password` values with `"<REDACTED>"` in both single objects and arrays.
+ * Map of parent object keys to the sensitive fields they contain.
+ * Any field listed here will be replaced with "<REDACTED>" in output.
+ */
+const SENSITIVE_FIELDS: Record<string, string[]> = {
+  login: ['password', 'totp'],
+  card: ['number', 'code'],
+  identity: ['ssn', 'passportNumber', 'licenseNumber'],
+};
+
+/**
+ * Redacts sensitive fields from Bitwarden CLI JSON output.
+ * Replaces login.password, login.totp, card.number, card.code,
+ * identity.ssn, identity.passportNumber, and identity.licenseNumber
+ * with "<REDACTED>" in both single objects and arrays.
  * Returns non-JSON strings unchanged.
  */
-export function redactPasswords(output: string): string {
+export function redactSensitiveFields(output: string): string {
   if (!output) {
     return output;
   }
 
   try {
     const parsed: unknown = JSON.parse(output);
-    const redacted = redactPasswordsFromParsed(parsed);
+    const redacted = redactSensitiveFromParsed(parsed);
     return JSON.stringify(redacted);
   } catch {
     // Not valid JSON — return as-is
@@ -207,9 +219,9 @@ export function redactPasswords(output: string): string {
   }
 }
 
-function redactPasswordsFromParsed(data: unknown): unknown {
+function redactSensitiveFromParsed(data: unknown): unknown {
   if (Array.isArray(data)) {
-    return data.map(redactPasswordsFromParsed);
+    return data.map(redactSensitiveFromParsed);
   }
 
   if (data !== null && typeof data === 'object') {
@@ -217,18 +229,28 @@ function redactPasswordsFromParsed(data: unknown): unknown {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
+      const fieldsToRedact = SENSITIVE_FIELDS[key];
+
       if (
-        key === 'login' &&
+        fieldsToRedact &&
         value !== null &&
         typeof value === 'object' &&
-        'password' in (value as Record<string, unknown>)
+        !Array.isArray(value)
       ) {
-        result[key] = {
-          ...(value as Record<string, unknown>),
-          password: '<REDACTED>',
-        };
+        const nested = value as Record<string, unknown>;
+        const redactedNested: Record<string, unknown> = {};
+
+        for (const [nestedKey, nestedValue] of Object.entries(nested)) {
+          if (fieldsToRedact.includes(nestedKey)) {
+            redactedNested[nestedKey] = '<REDACTED>';
+          } else {
+            redactedNested[nestedKey] = redactSensitiveFromParsed(nestedValue);
+          }
+        }
+
+        result[key] = redactedNested;
       } else {
-        result[key] = redactPasswordsFromParsed(value);
+        result[key] = redactSensitiveFromParsed(value);
       }
     }
 

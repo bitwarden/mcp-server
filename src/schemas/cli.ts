@@ -71,8 +71,6 @@ export const getSchema = z
       'item',
       'username',
       'uri',
-      'totp',
-      'notes',
       'exposed',
       'attachment',
       'folder',
