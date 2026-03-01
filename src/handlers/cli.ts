@@ -397,7 +397,7 @@ export const handleEditItem = withValidation(
       const errorResponse: CliResponse = {
         errorOutput: `Failed to parse existing item: ${error instanceof Error ? error.message : String(error)}`,
       };
-      return toMcpFormat(errorResponse);
+      return toMcpFormatRedacted(errorResponse);
     }
   },
 );
@@ -838,7 +838,7 @@ export const handleEditSend = withValidation(
       const errorResponse: CliResponse = {
         errorOutput: `Failed to parse existing Send: ${error instanceof Error ? error.message : String(error)}`,
       };
-      return toMcpFormat(errorResponse);
+      return toMcpFormatRedacted(errorResponse);
     }
   },
 );
