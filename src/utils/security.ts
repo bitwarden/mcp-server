@@ -198,11 +198,25 @@ const SENSITIVE_FIELDS: Record<string, string[]> = {
 };
 
 /**
+ * Top-level fields that are always redacted regardless of parent object.
+ * Note: `notes` is intentionally excluded — it is a free-text field often
+ * containing non-sensitive reference information. Direct access via
+ * `bw get notes <id>` is blocked at the schema level instead.
+ */
+const TOP_LEVEL_SENSITIVE_FIELDS = ['password'];
+
+/**
  * Redacts sensitive fields from Bitwarden CLI JSON output.
- * Replaces login.password, login.totp, card.number, card.code,
- * identity.ssn, identity.passportNumber, and identity.licenseNumber
- * with "<REDACTED>" in both single objects and arrays.
- * Returns non-JSON strings unchanged.
+ *
+ * Covers:
+ * - Top-level: notes, password (Send access passwords)
+ * - login.password, login.totp
+ * - card.number, card.code
+ * - identity.ssn, identity.passportNumber, identity.licenseNumber
+ * - passwordHistory[].password
+ * - fields[] entries with type === 1 (hidden custom fields)
+ *
+ * Works on single objects and arrays. Returns non-JSON strings unchanged.
  */
 export function redactSensitiveFields(output: string): string {
   if (!output) {
@@ -229,6 +243,12 @@ function redactSensitiveFromParsed(data: unknown): unknown {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
+      // Redact top-level sensitive fields (notes, password)
+      if (TOP_LEVEL_SENSITIVE_FIELDS.includes(key) && value !== null) {
+        result[key] = '<REDACTED>';
+        continue;
+      }
+
       const fieldsToRedact = SENSITIVE_FIELDS[key];
 
       if (
@@ -237,6 +257,7 @@ function redactSensitiveFromParsed(data: unknown): unknown {
         typeof value === 'object' &&
         !Array.isArray(value)
       ) {
+        // Redact known sensitive fields within login/card/identity
         const nested = value as Record<string, unknown>;
         const redactedNested: Record<string, unknown> = {};
 
@@ -249,6 +270,32 @@ function redactSensitiveFromParsed(data: unknown): unknown {
         }
 
         result[key] = redactedNested;
+      } else if (key === 'passwordHistory' && Array.isArray(value)) {
+        // Redact previous passwords in passwordHistory array
+        result[key] = value.map((entry) => {
+          if (entry !== null && typeof entry === 'object') {
+            return {
+              ...(entry as Record<string, unknown>),
+              password: '<REDACTED>',
+            };
+          }
+          return entry;
+        });
+      } else if (key === 'fields' && Array.isArray(value)) {
+        // Redact hidden custom fields (type === 1)
+        result[key] = value.map((field) => {
+          if (
+            field !== null &&
+            typeof field === 'object' &&
+            (field as Record<string, unknown>)['type'] === 1
+          ) {
+            return {
+              ...(field as Record<string, unknown>),
+              value: '<REDACTED>',
+            };
+          }
+          return redactSensitiveFromParsed(field);
+        });
       } else {
         result[key] = redactSensitiveFromParsed(value);
       }

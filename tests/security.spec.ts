@@ -397,6 +397,28 @@ describe('Security - Command Injection Protection', () => {
       expect(result[2].identity.firstName).toBe('Jane');
     });
 
+    it('should NOT redact top-level notes field (non-credential free text)', () => {
+      const input = JSON.stringify({
+        name: 'My Login',
+        notes: 'Use this for the dev environment',
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.notes).toBe('Use this for the dev environment');
+    });
+
+    it('should redact top-level password (Send access passwords)', () => {
+      const input = JSON.stringify({
+        name: 'My Send',
+        type: 0,
+        password: 'send-access-pass',
+        text: { text: 'shared content' },
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.password).toBe('<REDACTED>');
+      expect(result.name).toBe('My Send');
+      expect(result.text.text).toBe('shared content');
+    });
+
     it('should not modify items without sensitive fields', () => {
       const input = JSON.stringify({
         name: 'Note',
@@ -430,6 +452,61 @@ describe('Security - Command Injection Protection', () => {
       const input = JSON.stringify({ name: 'Test', login: null });
       const result = JSON.parse(redactSensitiveFields(input));
       expect(result.login).toBeNull();
+    });
+
+    it('should redact passwordHistory entries', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        login: { username: 'user', password: 'current' },
+        passwordHistory: [
+          { lastUsedDate: '2025-01-01', password: 'oldpass1' },
+          { lastUsedDate: '2024-06-01', password: 'oldpass2' },
+        ],
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.passwordHistory[0].password).toBe('<REDACTED>');
+      expect(result.passwordHistory[1].password).toBe('<REDACTED>');
+      expect(result.passwordHistory[0].lastUsedDate).toBe('2025-01-01');
+      expect(result.login.password).toBe('<REDACTED>');
+    });
+
+    it('should redact hidden custom fields (type === 1)', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        fields: [
+          { name: 'API Key', value: 'secret-key-123', type: 1 },
+          { name: 'Website', value: 'https://example.com', type: 0 },
+        ],
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.fields[0].value).toBe('<REDACTED>');
+      expect(result.fields[0].name).toBe('API Key');
+      expect(result.fields[1].value).toBe('https://example.com');
+      expect(result.fields[1].name).toBe('Website');
+    });
+
+    it('should not redact visible custom fields (type === 0)', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        fields: [
+          { name: 'Notes', value: 'visible text', type: 0 },
+          { name: 'Label', value: 'also visible', type: 2 },
+        ],
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.fields[0].value).toBe('visible text');
+      expect(result.fields[1].value).toBe('also visible');
+    });
+
+    it('should handle empty passwordHistory and fields arrays', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        passwordHistory: [],
+        fields: [],
+      });
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result.passwordHistory).toEqual([]);
+      expect(result.fields).toEqual([]);
     });
 
     it('should recurse into nested objects within sensitive parents', () => {

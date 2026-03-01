@@ -59,6 +59,16 @@ function toMcpFormat(response: CliResponse) {
   };
 }
 
+function toMcpFormatRedacted(response: CliResponse) {
+  if (response.output) {
+    response.output = redactSensitiveFields(response.output);
+  }
+  if (response.errorOutput) {
+    response.errorOutput = redactSensitiveFields(response.errorOutput);
+  }
+  return toMcpFormat(response);
+}
+
 export const handleLock = withValidation(lockSchema, async () => {
   const response = await executeCliCommand('lock', []);
   return toMcpFormat(response);
@@ -97,8 +107,8 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
     params.push('--trash');
   }
   const response = await executeCliCommand('list', params);
-  if (type === 'items' && response.output) {
-    response.output = redactSensitiveFields(response.output);
+  if (type === 'items') {
+    return toMcpFormatRedacted(response);
   }
   return toMcpFormat(response);
 });
@@ -116,8 +126,8 @@ export const handleGet = withValidation(getSchema, async (validatedArgs) => {
     params.push('--output', output);
   }
   const response = await executeCliCommand('get', params);
-  if (object === 'item' && response.output) {
-    response.output = redactSensitiveFields(response.output);
+  if (object === 'item') {
+    return toMcpFormatRedacted(response);
   }
   return toMcpFormat(response);
 });
@@ -245,10 +255,7 @@ export const handleCreateItem = withValidation(
     const itemJson = JSON.stringify(item);
     const encodedItem = Buffer.from(itemJson).toString('base64');
     const response = await executeCliCommand('create', ['item', encodedItem]);
-    if (response.output) {
-      response.output = redactSensitiveFields(response.output);
-    }
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
@@ -384,10 +391,7 @@ export const handleEditItem = withValidation(
         id,
         encodedUpdates,
       ]);
-      if (response.output) {
-        response.output = redactSensitiveFields(response.output);
-      }
-      return toMcpFormat(response);
+      return toMcpFormatRedacted(response);
     } catch (error) {
       const errorResponse: CliResponse = {
         errorOutput: `Failed to parse existing item: ${error instanceof Error ? error.message : String(error)}`,
@@ -727,7 +731,7 @@ export const handleCreateTextSend = withValidation(
     const sendJson = JSON.stringify(send);
     const encodedSend = Buffer.from(sendJson).toString('base64');
     const response = await executeCliCommand('send', ['create', encodedSend]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
@@ -766,13 +770,13 @@ export const handleCreateFileSend = withValidation(
       '--file',
       filePath,
     ]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
 export const handleListSend = withValidation(listSendSchema, async () => {
   const response = await executeCliCommand('send', ['list']);
-  return toMcpFormat(response);
+  return toMcpFormatRedacted(response);
 });
 
 export const handleGetSend = withValidation(
@@ -780,7 +784,7 @@ export const handleGetSend = withValidation(
   async (validatedArgs) => {
     const { id } = validatedArgs;
     const response = await executeCliCommand('send', ['get', id]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
 
@@ -828,7 +832,7 @@ export const handleEditSend = withValidation(
         'edit',
         encodedUpdates,
       ]);
-      return toMcpFormat(response);
+      return toMcpFormatRedacted(response);
     } catch (error) {
       const errorResponse: CliResponse = {
         errorOutput: `Failed to parse existing Send: ${error instanceof Error ? error.message : String(error)}`,
