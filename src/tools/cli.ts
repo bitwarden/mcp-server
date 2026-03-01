@@ -95,7 +95,6 @@ export const getTool: Tool = {
         enum: [
           'item',
           'username',
-          'password',
           'uri',
           'totp',
           'notes',

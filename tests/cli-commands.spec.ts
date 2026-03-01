@@ -19,7 +19,6 @@ describe('CLI Commands', () => {
       object: z.enum([
         'item',
         'username',
-        'password',
         'uri',
         'totp',
         'notes',
@@ -457,7 +456,6 @@ describe('CLI Commands', () => {
         object: z.enum([
           'item',
           'username',
-          'password',
           'uri',
           'totp',
           'notes',

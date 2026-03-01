@@ -70,7 +70,6 @@ export const getSchema = z
     object: z.enum([
       'item',
       'username',
-      'password',
       'uri',
       'totp',
       'notes',

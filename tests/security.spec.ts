@@ -5,6 +5,7 @@ import {
   buildSafeCommand,
   isValidBitwardenCommand,
   validateFilePath,
+  redactPasswords,
 } from '../src/utils/security.js';
 
 describe('Security - Command Injection Protection', () => {
@@ -315,6 +316,65 @@ describe('Security - Command Injection Protection', () => {
         expect(command).toEqual(['get', 'item', input]);
         expect(isValidBitwardenCommand('get')).toBe(true);
       });
+    });
+  });
+
+  describe('redactPasswords', () => {
+    it('should redact login.password from a single item', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        login: { username: 'user', password: 'secret123' },
+      });
+      const result = JSON.parse(redactPasswords(input));
+      expect(result.login.password).toBe('<REDACTED>');
+      expect(result.login.username).toBe('user');
+      expect(result.name).toBe('Test');
+    });
+
+    it('should redact login.password from an array of items', () => {
+      const input = JSON.stringify([
+        { name: 'A', login: { username: 'u1', password: 'p1' } },
+        { name: 'B', login: { username: 'u2', password: 'p2' } },
+      ]);
+      const result = JSON.parse(redactPasswords(input));
+      expect(result[0].login.password).toBe('<REDACTED>');
+      expect(result[1].login.password).toBe('<REDACTED>');
+      expect(result[0].login.username).toBe('u1');
+    });
+
+    it('should not modify items without login.password', () => {
+      const input = JSON.stringify({
+        name: 'Note',
+        type: 2,
+        secureNote: { type: 0 },
+      });
+      const result = redactPasswords(input);
+      expect(result).toBe(input);
+    });
+
+    it('should return non-JSON strings unchanged', () => {
+      const input = 'not json at all';
+      expect(redactPasswords(input)).toBe(input);
+    });
+
+    it('should return empty string unchanged', () => {
+      expect(redactPasswords('')).toBe('');
+    });
+
+    it('should handle login without password field', () => {
+      const input = JSON.stringify({
+        name: 'Test',
+        login: { username: 'user' },
+      });
+      const result = JSON.parse(redactPasswords(input));
+      expect(result.login.username).toBe('user');
+      expect(result.login.password).toBeUndefined();
+    });
+
+    it('should handle null login value', () => {
+      const input = JSON.stringify({ name: 'Test', login: null });
+      const result = JSON.parse(redactPasswords(input));
+      expect(result.login).toBeNull();
     });
   });
 

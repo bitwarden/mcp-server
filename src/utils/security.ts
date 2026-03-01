@@ -188,6 +188,57 @@ export function sanitizeApiParameters(params: unknown): unknown {
 }
 
 /**
+ * Redacts password fields from Bitwarden CLI JSON output.
+ * Replaces `login.password` values with `"<REDACTED>"` in both single objects and arrays.
+ * Returns non-JSON strings unchanged.
+ */
+export function redactPasswords(output: string): string {
+  if (!output) {
+    return output;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(output);
+    const redacted = redactPasswordsFromParsed(parsed);
+    return JSON.stringify(redacted);
+  } catch {
+    // Not valid JSON — return as-is
+    return output;
+  }
+}
+
+function redactPasswordsFromParsed(data: unknown): unknown {
+  if (Array.isArray(data)) {
+    return data.map(redactPasswordsFromParsed);
+  }
+
+  if (data !== null && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (
+        key === 'login' &&
+        value !== null &&
+        typeof value === 'object' &&
+        'password' in (value as Record<string, unknown>)
+      ) {
+        result[key] = {
+          ...(value as Record<string, unknown>),
+          password: '<REDACTED>',
+        };
+      } else {
+        result[key] = redactPasswordsFromParsed(value);
+      }
+    }
+
+    return result;
+  }
+
+  return data;
+}
+
+/**
  * Validates file paths to prevent path traversal attacks
  * Uses allowlist-based validation with comprehensive security checks
  *

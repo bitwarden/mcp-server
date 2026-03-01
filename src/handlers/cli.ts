@@ -3,6 +3,7 @@
  */
 
 import { executeCliCommand } from '../utils/cli.js';
+import { redactPasswords } from '../utils/security.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
@@ -96,6 +97,9 @@ export const handleList = withValidation(listSchema, async (validatedArgs) => {
     params.push('--trash');
   }
   const response = await executeCliCommand('list', params);
+  if (type === 'items' && response.output) {
+    response.output = redactPasswords(response.output);
+  }
   return toMcpFormat(response);
 });
 
@@ -112,6 +116,9 @@ export const handleGet = withValidation(getSchema, async (validatedArgs) => {
     params.push('--output', output);
   }
   const response = await executeCliCommand('get', params);
+  if (object === 'item' && response.output) {
+    response.output = redactPasswords(response.output);
+  }
   return toMcpFormat(response);
 });
 
@@ -238,6 +245,9 @@ export const handleCreateItem = withValidation(
     const itemJson = JSON.stringify(item);
     const encodedItem = Buffer.from(itemJson).toString('base64');
     const response = await executeCliCommand('create', ['item', encodedItem]);
+    if (response.output) {
+      response.output = redactPasswords(response.output);
+    }
     return toMcpFormat(response);
   },
 );
@@ -374,6 +384,9 @@ export const handleEditItem = withValidation(
         id,
         encodedUpdates,
       ]);
+      if (response.output) {
+        response.output = redactPasswords(response.output);
+      }
       return toMcpFormat(response);
     } catch (error) {
       const errorResponse: CliResponse = {
