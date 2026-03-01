@@ -397,13 +397,27 @@ describe('Security - Command Injection Protection', () => {
       expect(result[2].identity.firstName).toBe('Jane');
     });
 
-    it('should NOT redact top-level notes field (non-credential free text)', () => {
+    it('should redact top-level notes field', () => {
       const input = JSON.stringify({
-        name: 'My Login',
-        notes: 'Use this for the dev environment',
+        name: 'Secure Note',
+        type: 2,
+        notes: 'my secret API key is abc123',
       });
       const result = JSON.parse(redactSensitiveFields(input));
-      expect(result.notes).toBe('Use this for the dev environment');
+      expect(result.notes).toBe('<REDACTED>');
+      expect(result.name).toBe('Secure Note');
+    });
+
+    it('should redact notes from items in an array', () => {
+      const input = JSON.stringify([
+        { name: 'A', notes: 'secret stuff' },
+        { name: 'B', notes: null },
+        { name: 'C' },
+      ]);
+      const result = JSON.parse(redactSensitiveFields(input));
+      expect(result[0].notes).toBe('<REDACTED>');
+      expect(result[1].notes).toBeNull();
+      expect(result[2].notes).toBeUndefined();
     });
 
     it('should redact top-level password (Send access passwords)', () => {

@@ -199,11 +199,10 @@ const SENSITIVE_FIELDS: Record<string, string[]> = {
 
 /**
  * Top-level fields that are always redacted regardless of parent object.
- * Note: `notes` is intentionally excluded — it is a free-text field often
- * containing non-sensitive reference information. Direct access via
- * `bw get notes <id>` is blocked at the schema level instead.
+ * - notes: users commonly store passwords and API keys in notes fields
+ * - password: Send access passwords
  */
-const TOP_LEVEL_SENSITIVE_FIELDS = ['password'];
+const TOP_LEVEL_SENSITIVE_FIELDS = ['notes', 'password'];
 
 /**
  * Redacts sensitive fields from Bitwarden CLI JSON output.
@@ -215,6 +214,9 @@ const TOP_LEVEL_SENSITIVE_FIELDS = ['password'];
  * - identity.ssn, identity.passportNumber, identity.licenseNumber
  * - passwordHistory[].password
  * - fields[] entries with type === 1 (hidden custom fields)
+ *
+ * Design note: `bw generate` intentionally returns plaintext — the
+ * generated password must be visible to pass it to `create_item`.
  *
  * Works on single objects and arrays. Returns non-JSON strings unchanged.
  */

@@ -60,13 +60,14 @@ function toMcpFormat(response: CliResponse) {
 }
 
 function toMcpFormatRedacted(response: CliResponse) {
-  if (response.output) {
-    response.output = redactSensitiveFields(response.output);
+  const redacted = { ...response };
+  if (redacted.output) {
+    redacted.output = redactSensitiveFields(redacted.output);
   }
-  if (response.errorOutput) {
-    response.errorOutput = redactSensitiveFields(response.errorOutput);
+  if (redacted.errorOutput) {
+    redacted.errorOutput = redactSensitiveFields(redacted.errorOutput);
   }
-  return toMcpFormat(response);
+  return toMcpFormat(redacted);
 }
 
 export const handleLock = withValidation(lockSchema, async () => {
@@ -282,7 +283,7 @@ export const handleEditItem = withValidation(
     const getResponse = await executeCliCommand('get', ['item', id]);
 
     if (getResponse.errorOutput) {
-      return toMcpFormat(getResponse);
+      return toMcpFormatRedacted(getResponse);
     }
 
     try {
@@ -806,7 +807,7 @@ export const handleEditSend = withValidation(
     const getResponse = await executeCliCommand('send', ['get', id]);
 
     if (getResponse.errorOutput) {
-      return toMcpFormat(getResponse);
+      return toMcpFormatRedacted(getResponse);
     }
 
     try {
@@ -871,6 +872,6 @@ export const handleCreateAttachment = withValidation(
       '--itemid',
       itemId,
     ]);
-    return toMcpFormat(response);
+    return toMcpFormatRedacted(response);
   },
 );
