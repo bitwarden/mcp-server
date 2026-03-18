@@ -1,0 +1,16 @@
+{
+  "upstreams": [
+    {
+      "name": "tamresearch1-squad",
+      "type": "git",
+      "source": "https://github.com/tamirdresher_microsoft/tamresearch1.git",
+      "ref": "main"
+    }
+  ],
+  "origin": {
+    "name": "bitwarden-mcp-server",
+    "type": "git",
+    "source": "https://github.com/bitwarden/mcp-server.git",
+    "ref": "main"
+  }
+}
