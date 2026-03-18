@@ -21,7 +21,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // Import tool definitions
-import { cliTools, organizationApiTools } from './tools/index.js';
+import { cliTools, organizationApiTools, squadTools } from './tools/index.js';
 
 // Import handlers
 import {
@@ -87,6 +87,13 @@ import {
   handleUpdateOrgSubscription,
   handleImportOrgUsersAndGroups,
 } from './handlers/api.js';
+
+import {
+  handleSquadStore,
+  handleSquadGet,
+  handleSquadList,
+  handleSquadAudit,
+} from './handlers/squad.js';
 
 /**
  * Main server setup and execution
@@ -246,6 +253,16 @@ async function runServer(): Promise<void> {
           case 'import_org_users_and_groups':
             return await handleImportOrgUsersAndGroups(args);
 
+          // Squad Tools (AI Agent Credential Management)
+          case 'squad_store':
+            return await handleSquadStore(args);
+          case 'squad_get':
+            return await handleSquadGet(args);
+          case 'squad_list':
+            return await handleSquadList(args);
+          case 'squad_audit':
+            return await handleSquadAudit(args);
+
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -266,7 +283,7 @@ async function runServer(): Promise<void> {
   // Set up tools list handler
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      tools: [...cliTools, ...organizationApiTools],
+      tools: [...cliTools, ...organizationApiTools, ...squadTools],
     };
   });
 
