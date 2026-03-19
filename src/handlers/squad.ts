@@ -41,17 +41,22 @@ function logAudit(entry: Omit<AuditEntry, 'timestamp'>): void {
   );
 }
 
-function ensureSquadPrefix(name: string): string {
-  return name.startsWith('squad/') ? name : `squad/${name}`;
+/**
+ * Resolve the squad name. Uses the explicit parameter, falls back to
+ * BW_SQUAD_DEFAULT_NAME env var, then "squad" as final default.
+ */
+function resolveSquadName(explicitSquad?: string): string {
+  return explicitSquad || process.env['BW_SQUAD_DEFAULT_NAME'] || 'squad';
 }
 
 /**
- * Get the Squad Secrets folder ID from environment.
- * This ensures all operations are scoped to the dedicated folder,
- * keeping the owner's personal vault items completely inaccessible.
+ * Ensure the item name is prefixed with the squad namespace.
+ * e.g., "github-key" with squad "tamresearch1" → "tamresearch1/github-key"
  */
-function getSquadFolderId(): string | undefined {
-  return process.env['BW_SQUAD_FOLDER_ID'];
+function ensureSquadPrefix(name: string, squadName: string): string {
+  // Already has any known prefix pattern (contains /)
+  if (name.includes('/')) return name;
+  return `${squadName}/${name}`;
 }
 
 /**
@@ -64,20 +69,39 @@ function getSquadOrgId(): string | undefined {
 }
 
 /**
- * Get the Collection ID within the Organization.
- * Items are stored in this collection for Organization-level access control.
+ * Get the Collection ID for a squad. Supports per-squad collections via
+ * BW_SQUAD_COLLECTION_{SQUAD_NAME} env vars, falling back to
+ * BW_SQUAD_COLLECTION_ID as the default.
+ *
+ * Example env vars:
+ *   BW_SQUAD_COLLECTION_ID=default-collection-id
+ *   BW_SQUAD_COLLECTION_TAMRESEARCH1=collection-for-tamresearch1
+ *   BW_SQUAD_COLLECTION_RESEARCH=collection-for-research
  */
-function getSquadCollectionId(): string | undefined {
-  return process.env['BW_SQUAD_COLLECTION_ID'];
+function getSquadCollectionId(squadName: string): string | undefined {
+  const perSquadKey = `BW_SQUAD_COLLECTION_${squadName.toUpperCase().replace(/-/g, '_')}`;
+  return process.env[perSquadKey] || process.env['BW_SQUAD_COLLECTION_ID'];
+}
+
+/**
+ * Get the folder ID for a squad. Supports per-squad folders via
+ * BW_SQUAD_FOLDER_{SQUAD_NAME} env vars, falling back to
+ * BW_SQUAD_FOLDER_ID as the default.
+ */
+function getSquadFolderId(squadName: string): string | undefined {
+  const perSquadKey = `BW_SQUAD_FOLDER_${squadName.toUpperCase().replace(/-/g, '_')}`;
+  return process.env[perSquadKey] || process.env['BW_SQUAD_FOLDER_ID'];
 }
 
 export const handleSquadStore = withValidation(
   squadStoreSchema,
   async (args) => {
-    const itemName = ensureSquadPrefix(args.name);
+    const squadName = resolveSquadName(args.squad);
+    const itemName = ensureSquadPrefix(args.name, squadName);
     const notes = [
       args.notes ?? '',
       `\n---\nSquad metadata:`,
+      `Squad: ${squadName}`,
       `Created by: ${args.agent}`,
       `Issue: ${args.issue ?? 'N/A'}`,
       `Timestamp: ${new Date().toISOString()}`,
@@ -85,8 +109,8 @@ export const handleSquadStore = withValidation(
 
     // Build the item JSON for bw create
     const orgId = getSquadOrgId();
-    const collectionId = getSquadCollectionId();
-    const folderId = getSquadFolderId();
+    const collectionId = getSquadCollectionId(squadName);
+    const folderId = getSquadFolderId(squadName);
 
     const item: Record<string, unknown> = {
       type: 1, // Login type
@@ -106,7 +130,7 @@ export const handleSquadStore = withValidation(
         item['collectionIds'] = [collectionId];
       }
     } else if (folderId) {
-      // Soft isolation fallback: store in Squad Secrets folder
+      // Soft isolation fallback: store in squad folder
       item['folderId'] = folderId;
     }
 
@@ -146,7 +170,8 @@ export const handleSquadStore = withValidation(
 );
 
 export const handleSquadGet = withValidation(squadGetSchema, async (args) => {
-  const itemName = ensureSquadPrefix(args.name);
+  const squadName = resolveSquadName(args.squad);
+  const itemName = ensureSquadPrefix(args.name, squadName);
   const orgId = getSquadOrgId();
 
   // Scope get to Organization if configured
@@ -187,9 +212,12 @@ export const handleSquadGet = withValidation(squadGetSchema, async (args) => {
 });
 
 export const handleSquadList = withValidation(squadListSchema, async (args) => {
-  const searchTerm = args.search ? `squad/${args.search}` : 'squad/';
+  const squadName = resolveSquadName(args.squad);
+  const searchTerm = args.search
+    ? `${squadName}/${args.search}`
+    : `${squadName}/`;
   const orgId = getSquadOrgId();
-  const folderId = getSquadFolderId();
+  const folderId = getSquadFolderId(squadName);
 
   // Build CLI args — prefer Organization scope (hard isolation) over folder (soft)
   const cliArgs = ['items', '--search', searchTerm];
@@ -272,16 +300,21 @@ export const handleSquadList = withValidation(squadListSchema, async (args) => {
 export const handleSquadAudit = withValidation(
   squadAuditSchema,
   async (args) => {
+    const squadName = args.squad ? resolveSquadName(args.squad) : undefined;
     let filtered = [...auditLog];
 
     if (args.item) {
-      const itemSearch = ensureSquadPrefix(args.item);
+      const sn = resolveSquadName(args.squad);
+      const itemSearch = ensureSquadPrefix(args.item, sn);
       filtered = filtered.filter((e) => e.item?.includes(itemSearch));
     }
     if (args.agent) {
       filtered = filtered.filter((e) =>
         e.agent.toLowerCase().includes(args.agent!.toLowerCase()),
       );
+    }
+    if (squadName) {
+      filtered = filtered.filter((e) => e.item?.startsWith(`${squadName}/`));
     }
 
     // Most recent first, limited
