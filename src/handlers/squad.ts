@@ -54,6 +54,23 @@ function getSquadFolderId(): string | undefined {
   return process.env['BW_SQUAD_FOLDER_ID'];
 }
 
+/**
+ * Get the Organization ID for hard isolation.
+ * When set, all operations are scoped to the Organization —
+ * Bitwarden server enforces that personal vault items are never returned.
+ */
+function getSquadOrgId(): string | undefined {
+  return process.env['BW_SQUAD_ORG_ID'];
+}
+
+/**
+ * Get the Collection ID within the Organization.
+ * Items are stored in this collection for Organization-level access control.
+ */
+function getSquadCollectionId(): string | undefined {
+  return process.env['BW_SQUAD_COLLECTION_ID'];
+}
+
 export const handleSquadStore = withValidation(
   squadStoreSchema,
   async (args) => {
@@ -67,11 +84,13 @@ export const handleSquadStore = withValidation(
     ].join('\n');
 
     // Build the item JSON for bw create
+    const orgId = getSquadOrgId();
+    const collectionId = getSquadCollectionId();
     const folderId = getSquadFolderId();
-    const item = {
+
+    const item: Record<string, unknown> = {
       type: 1, // Login type
       name: itemName,
-      folderId: folderId ?? null, // Scope to Squad Secrets folder
       notes: notes,
       login: {
         username: args.username ?? null,
@@ -79,6 +98,17 @@ export const handleSquadStore = withValidation(
         uris: args.uri ? [{ match: null, uri: args.uri }] : [],
       },
     };
+
+    // Hard isolation: store in Organization + Collection (server-enforced)
+    if (orgId) {
+      item['organizationId'] = orgId;
+      if (collectionId) {
+        item['collectionIds'] = [collectionId];
+      }
+    } else if (folderId) {
+      // Soft isolation fallback: store in Squad Secrets folder
+      item['folderId'] = folderId;
+    }
 
     const itemJson = JSON.stringify(item);
     const encoded = Buffer.from(itemJson).toString('base64');
@@ -117,8 +147,15 @@ export const handleSquadStore = withValidation(
 
 export const handleSquadGet = withValidation(squadGetSchema, async (args) => {
   const itemName = ensureSquadPrefix(args.name);
+  const orgId = getSquadOrgId();
 
-  const response = await executeCliCommand('get', ['item', itemName]);
+  // Scope get to Organization if configured
+  const cliArgs = ['item', itemName];
+  if (orgId) {
+    cliArgs.push('--organizationid', orgId);
+  }
+
+  const response = await executeCliCommand('get', cliArgs);
 
   logAudit({
     action: 'GET',
@@ -151,11 +188,14 @@ export const handleSquadGet = withValidation(squadGetSchema, async (args) => {
 
 export const handleSquadList = withValidation(squadListSchema, async (args) => {
   const searchTerm = args.search ? `squad/${args.search}` : 'squad/';
+  const orgId = getSquadOrgId();
   const folderId = getSquadFolderId();
 
-  // Build CLI args — scope to Squad Secrets folder if configured
+  // Build CLI args — prefer Organization scope (hard isolation) over folder (soft)
   const cliArgs = ['items', '--search', searchTerm];
-  if (folderId) {
+  if (orgId) {
+    cliArgs.push('--organizationid', orgId);
+  } else if (folderId) {
     cliArgs.push('--folderid', folderId);
   }
 
