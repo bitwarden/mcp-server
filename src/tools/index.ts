@@ -57,3 +57,12 @@ export {
   importOrgUsersAndGroupsTool,
   organizationApiTools,
 } from './api.js';
+
+// Import Squad tools (AI Agent Credential Management)
+export {
+  squadStoreTool,
+  squadGetTool,
+  squadListTool,
+  squadAuditTool,
+  squadTools,
+} from './squad.js';
