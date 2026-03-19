@@ -45,6 +45,15 @@ function ensureSquadPrefix(name: string): string {
   return name.startsWith('squad/') ? name : `squad/${name}`;
 }
 
+/**
+ * Get the Squad Secrets folder ID from environment.
+ * This ensures all operations are scoped to the dedicated folder,
+ * keeping the owner's personal vault items completely inaccessible.
+ */
+function getSquadFolderId(): string | undefined {
+  return process.env['BW_SQUAD_FOLDER_ID'];
+}
+
 export const handleSquadStore = withValidation(
   squadStoreSchema,
   async (args) => {
@@ -58,9 +67,11 @@ export const handleSquadStore = withValidation(
     ].join('\n');
 
     // Build the item JSON for bw create
+    const folderId = getSquadFolderId();
     const item = {
       type: 1, // Login type
       name: itemName,
+      folderId: folderId ?? null, // Scope to Squad Secrets folder
       notes: notes,
       login: {
         username: args.username ?? null,
@@ -140,12 +151,15 @@ export const handleSquadGet = withValidation(squadGetSchema, async (args) => {
 
 export const handleSquadList = withValidation(squadListSchema, async (args) => {
   const searchTerm = args.search ? `squad/${args.search}` : 'squad/';
+  const folderId = getSquadFolderId();
 
-  const response = await executeCliCommand('list', [
-    'items',
-    '--search',
-    searchTerm,
-  ]);
+  // Build CLI args — scope to Squad Secrets folder if configured
+  const cliArgs = ['items', '--search', searchTerm];
+  if (folderId) {
+    cliArgs.push('--folderid', folderId);
+  }
+
+  const response = await executeCliCommand('list', cliArgs);
 
   logAudit({
     action: 'LIST',
