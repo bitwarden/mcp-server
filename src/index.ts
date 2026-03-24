@@ -12,6 +12,7 @@
  * - Comprehensive error handling
  */
 
+import { fileURLToPath } from 'url';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -278,7 +279,7 @@ async function runServer(): Promise<void> {
 
 // Only run the server if this file is executed directly
 // Check if this is the main module by comparing file paths
-const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMainModule) {
   runServer().catch((error) => {
     console.error('Fatal error running server:', error);
