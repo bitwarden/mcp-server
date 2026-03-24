@@ -13,6 +13,7 @@
  */
 
 import { fileURLToPath } from 'url';
+import { realpathSync } from 'fs';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -278,8 +279,10 @@ async function runServer(): Promise<void> {
 }
 
 // Only run the server if this file is executed directly
-// Check if this is the main module by comparing file paths
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+// Resolve symlinks so the check works when invoked via npm bin wrapper
+const isMainModule =
+  process.argv[1] != null &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMainModule) {
   runServer().catch((error) => {
     console.error('Fatal error running server:', error);
