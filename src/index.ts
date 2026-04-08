@@ -277,8 +277,16 @@ async function runServer(): Promise<void> {
 }
 
 // Only run the server if this file is executed directly
-// Check if this is the main module by comparing file paths
-const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
+// Check if this is the main module by comparing real paths (resolving symlinks)
+// This ensures it works when invoked via npx, where process.argv[1] is a symlink
+// like "mcp-server-bitwarden" that doesn't end with "index.js"
+import { realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const currentFile = fileURLToPath(import.meta.url);
+const isMainModule =
+  process.argv[1] &&
+  realpathSync(process.argv[1]) === realpathSync(currentFile);
 if (isMainModule) {
   runServer().catch((error) => {
     console.error('Fatal error running server:', error);
