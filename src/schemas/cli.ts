@@ -15,6 +15,11 @@ import { validateFilePath } from '../utils/security.js';
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
 
+// Schema for validating 'unlock' command parameters.
+// Takes no parameters — the master password is collected out-of-band
+// via a native OS dialog (see src/utils/unlock.ts).
+export const unlockSchema = z.object({});
+
 // Schema for validating 'sync' command parameters (no parameters required)
 export const syncSchema = z.object({});
 

@@ -80,6 +80,7 @@ export function buildSafeCommand(
 export function isValidBitwardenCommand(command: string): boolean {
   const allowedCommands = [
     'lock',
+    'unlock',
     'sync',
     'status',
     'list',
