@@ -181,6 +181,8 @@ Any MCP-compatible client can connect to this server via stdio transport. Refer 
 
 **Note:** For self-hosted Bitwarden instances, set `BW_API_BASE_URL` and `BW_IDENTITY_URL` to your server URLs.
 
+**Note:** `BW_CLIENT_ID` and `BW_CLIENT_SECRET` are the environment variable names read by the MCP server. If you are using `bw login --apikey` in a startup script, the Bitwarden CLI reads `BW_CLIENTID` and `BW_CLIENTSECRET` (no underscores between words) for the same credentials. See the [Bitwarden CLI documentation](https://bitwarden.com/help/cli/#using-an-api-key).
+
 ## Usage Examples
 
 Once configured, you can interact with Bitwarden through your AI assistant:
