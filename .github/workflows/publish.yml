@@ -51,7 +51,7 @@ jobs:
           fi
 
       - name: Create GitHub deployment
-        uses: chrnorm/deployment-action@55729fcebec3d284f60f5bcabbd8376437d696b1 # v2.0.7
+        uses: chrnorm/deployment-action@500aa6a23c81ffa1acf71072aee3cfa2cc2e556a # v2.0.8
         id: deployment
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
@@ -86,7 +86,7 @@ jobs:
           echo "node_version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
           registry-url: "https://registry.npmjs.org/"
@@ -154,7 +154,7 @@ jobs:
 
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -185,7 +185,7 @@ jobs:
 
       - name: Update deployment status to Success
         if: ${{ success() }}
-        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
+        uses: chrnorm/deployment-status@6df8d036fd2fee9eb82936733953da1f8382b41e # v2.0.4
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
           state: "success"
@@ -193,7 +193,7 @@ jobs:
 
       - name: Update deployment status to Failure
         if: ${{ failure() }}
-        uses: chrnorm/deployment-status@9a72af4586197112e0491ea843682b5dc280d806 # v2.0.3
+        uses: chrnorm/deployment-status@6df8d036fd2fee9eb82936733953da1f8382b41e # v2.0.4
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
           state: "failure"
