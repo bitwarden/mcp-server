@@ -1,9 +1,29 @@
-import { describe, it, expect, afterEach, beforeEach } from '@jest/globals';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  afterAll,
+} from '@jest/globals';
 import { z } from 'zod';
-import { scrubUnlockStderr, isLinuxHeadless } from '../src/utils/unlock.js';
+import { EventEmitter } from 'events';
+
+import {
+  runUnlockFlow,
+  scrubUnlockStderr,
+  isLinuxHeadless,
+  _resetUnlockStateForTests,
+  __testable,
+} from '../src/utils/unlock.js';
 import { unlockSchema } from '../src/schemas/cli.js';
-import { handleLock } from '../src/handlers/cli.js';
+import { handleLock, handleUnlock } from '../src/handlers/cli.js';
 import { validateInput } from '../src/utils/validation.js';
+
+// ---------------------------------------------------------------------
+// Pure / unmocked tests
+// ---------------------------------------------------------------------
 
 describe('unlock helper', () => {
   describe('scrubUnlockStderr', () => {
@@ -113,5 +133,765 @@ describe('handleLock', () => {
     // in the test environment.
     await handleLock({});
     expect(process.env['BW_SESSION']).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Spawn-injected tests — drive the unlock flow without invoking real
+// `bw`, `osascript`, `zenity`, `kdialog`, or `powershell.exe`.
+// ---------------------------------------------------------------------
+
+describe('unlock flow (spawn-injected)', () => {
+  const realSpawn = __testable.spawn;
+  const spawnMock = jest.fn();
+
+  interface FakeChild extends EventEmitter {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+    kill: jest.Mock;
+  }
+
+  function fakeChild(): FakeChild {
+    const child = new EventEmitter() as FakeChild;
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = jest.fn();
+    return child;
+  }
+
+  type Scenario = (child: FakeChild) => void;
+
+  function dialogCommand(): string {
+    switch (process.platform) {
+      case 'darwin':
+        return 'osascript';
+      case 'linux':
+        return 'zenity';
+      case 'win32':
+        return 'powershell.exe';
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Routes spawn calls to scenario handlers. Unmatched calls emit
+   * ENOENT so tests fail loudly rather than silently hanging.
+   *
+   * Linux note: `collectPasswordLinux` probes `zenity --version` (and
+   * falls back to `kdialog --version`) before invoking the actual
+   * password dialog. We short-circuit those probes to "available" so
+   * the `dialog` scenario is reached; tests that specifically exercise
+   * the "neither tool is available" path set their own inline mock.
+   */
+  function route(scenarios: {
+    status?: Scenario;
+    dialog?: Scenario;
+    unlock?: Scenario;
+  }): void {
+    const dialogCmd = dialogCommand();
+    spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+      const command = mockArgs[0] as string;
+      const args = (mockArgs[1] as readonly string[]) ?? [];
+      const child = fakeChild();
+
+      // Linux availability probes — always succeed.
+      if (
+        (command === 'zenity' || command === 'kdialog') &&
+        args[0] === '--version'
+      ) {
+        process.nextTick(() => child.emit('close', 0));
+        return child;
+      }
+
+      let handler: Scenario | undefined;
+      if (command === 'bw' && args[0] === 'status') handler = scenarios.status;
+      else if (command === 'bw' && args[0] === 'unlock')
+        handler = scenarios.unlock;
+      else if (command === dialogCmd) handler = scenarios.dialog;
+
+      if (!handler) {
+        process.nextTick(() => {
+          child.emit(
+            'error',
+            Object.assign(new Error(`No scenario for '${command}'`), {
+              code: 'ENOENT',
+            }),
+          );
+        });
+        return child;
+      }
+
+      process.nextTick(() => handler!(child));
+      return child;
+    }) as never);
+  }
+
+  const statusUnlocked: Scenario = (child) => {
+    child.stdout.emit(
+      'data',
+      Buffer.from(JSON.stringify({ status: 'unlocked' })),
+    );
+    child.emit('close', 0);
+  };
+
+  const statusLocked: Scenario = (child) => {
+    child.stdout.emit(
+      'data',
+      Buffer.from(JSON.stringify({ status: 'locked' })),
+    );
+    child.emit('close', 0);
+  };
+
+  function dialogReturns(password: string): Scenario {
+    return (child) => {
+      child.stdout.emit('data', Buffer.from(`${password}\n`));
+      child.emit('close', 0);
+    };
+  }
+
+  const dialogCancelled: Scenario = (child) => {
+    child.emit('close', 1);
+  };
+
+  const dialogEnoent: Scenario = (child) => {
+    child.emit(
+      'error',
+      Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }),
+    );
+  };
+
+  function bwUnlockReturns(token: string): Scenario {
+    return (child) => {
+      child.stdout.emit('data', Buffer.from(`${token}\n`));
+      child.emit('close', 0);
+    };
+  }
+
+  function bwUnlockFails(stderr: string, code = 1): Scenario {
+    return (child) => {
+      child.stderr.emit('data', Buffer.from(stderr));
+      child.emit('close', code);
+    };
+  }
+
+  async function flushAsync(): Promise<void> {
+    for (let i = 0; i < 5; i++) {
+      await Promise.resolve();
+    }
+  }
+
+  const originalSession = process.env['BW_SESSION'];
+  const originalDisplay = process.env['DISPLAY'];
+
+  beforeEach(() => {
+    __testable.spawn = spawnMock as unknown as typeof realSpawn;
+    _resetUnlockStateForTests();
+    spawnMock.mockReset();
+    delete process.env['BW_SESSION'];
+    // zenity/kdialog availability checks on Linux require DISPLAY.
+    if (process.platform === 'linux') {
+      process.env['DISPLAY'] = ':0';
+    }
+  });
+
+  afterEach(() => {
+    __testable.spawn = realSpawn;
+    if (originalDisplay !== undefined) {
+      process.env['DISPLAY'] = originalDisplay;
+    } else {
+      delete process.env['DISPLAY'];
+    }
+  });
+
+  afterAll(() => {
+    if (originalSession !== undefined) {
+      process.env['BW_SESSION'] = originalSession;
+    } else {
+      delete process.env['BW_SESSION'];
+    }
+  });
+
+  describe('runUnlockFlow — happy paths', () => {
+    it('returns early when bw status reports unlocked (no dialog shown)', async () => {
+      route({ status: statusUnlocked });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(true);
+      expect(spawnMock).toHaveBeenCalledTimes(1);
+      const firstCall = spawnMock.mock.calls[0] as [string, string[]];
+      expect(firstCall[0]).toBe('bw');
+      expect(firstCall[1][0]).toBe('status');
+      expect(process.env['BW_SESSION']).toBeUndefined();
+    });
+
+    it('collects password via dialog and sets BW_SESSION on unlock success', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('hunter2'),
+        unlock: bwUnlockReturns('the-session-token'),
+      });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.message).toBe('Vault unlocked successfully.');
+      }
+      expect(process.env['BW_SESSION']).toBe('the-session-token');
+
+      // Verify `bw unlock` used `--passwordenv` (password off argv) and
+      // a per-invocation random env var name scoped to the child's env.
+      const unlockCall = spawnMock.mock.calls.find(
+        (c) => c[0] === 'bw' && (c[1] as string[])[0] === 'unlock',
+      );
+      expect(unlockCall).toBeDefined();
+      const unlockArgs = unlockCall?.[1] as string[];
+      expect(unlockArgs).toContain('--raw');
+      expect(unlockArgs).toContain('--passwordenv');
+      expect(unlockArgs).not.toContain('hunter2');
+
+      const envVarName = unlockArgs[
+        unlockArgs.indexOf('--passwordenv') + 1
+      ] as string;
+      expect(envVarName).toMatch(/^BW_MCP_PW_[0-9A-F]{32}$/);
+      expect(process.env[envVarName]).toBeUndefined();
+
+      const unlockEnv = (unlockCall?.[2] as { env: Record<string, string> })
+        ?.env;
+      expect(unlockEnv?.[envVarName]).toBe('hunter2');
+    });
+  });
+
+  describe('runUnlockFlow — failure classification', () => {
+    it('reports invalid master password with a sanitized message', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('wrong'),
+        unlock: bwUnlockFails('Invalid master password.\n'),
+      });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success)
+        expect(result.error).toBe('Invalid master password.');
+      expect(process.env['BW_SESSION']).toBeUndefined();
+    });
+
+    it('reports "not logged in" with a login hint', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('pw'),
+        unlock: bwUnlockFails('You are not logged in.\n'),
+      });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('not logged in');
+        expect(result.error).toContain('bw login');
+      }
+    });
+
+    it('returns a generic failure for other stderr without leaking it', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('pw'),
+        unlock: bwUnlockFails('some internal bw diagnostic with token=abc'),
+      });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe('Unlock failed.');
+        expect(result.error).not.toContain('abc');
+      }
+    });
+
+    it('reports cancellation when the dialog exits non-zero', async () => {
+      route({ status: statusLocked, dialog: dialogCancelled });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toBe('Unlock cancelled.');
+    });
+
+    it('reports "No password entered" when the dialog closes with empty stdout', async () => {
+      route({
+        status: statusLocked,
+        dialog: (child) => {
+          child.emit('close', 0);
+        },
+      });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toContain('No password');
+    });
+
+    it('returns headless error when the dialog command is missing (ENOENT)', async () => {
+      route({ status: statusLocked, dialog: dialogEnoent });
+
+      const result = await runUnlockFlow();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('Interactive unlock is not supported');
+      }
+    });
+  });
+
+  describe('runUnlockFlow — serialization and rate limits', () => {
+    it('rejects a concurrent call while another is already in progress', async () => {
+      const dialogCmd = dialogCommand();
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else if (command === dialogCmd) {
+          // Hold the dialog open so the second call observes the mutex.
+          setTimeout(() => {
+            child.stdout.emit('data', Buffer.from('pw\n'));
+            child.emit('close', 0);
+          }, 0);
+        } else if (command === 'bw' && args[0] === 'unlock') {
+          process.nextTick(() => bwUnlockReturns('tok')(child));
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const p1 = runUnlockFlow();
+      await flushAsync();
+      const p2Result = await runUnlockFlow();
+
+      expect(p2Result.success).toBe(false);
+      if (!p2Result.success) {
+        expect(p2Result.error).toContain('already in progress');
+      }
+
+      const p1Result = await p1;
+      expect(p1Result.success).toBe(true);
+    });
+
+    it('rate-limits a second attempt within the minimum interval', async () => {
+      route({ status: statusLocked, dialog: dialogCancelled });
+
+      const first = await runUnlockFlow();
+      expect(first.success).toBe(false);
+
+      const second = await runUnlockFlow();
+      expect(second.success).toBe(false);
+      if (!second.success) expect(second.error.toLowerCase()).toContain('wait');
+    });
+
+    it('enters a cooldown after MAX_CONSECUTIVE_FAILURES consecutive failures', async () => {
+      route({ status: statusLocked, dialog: dialogCancelled });
+
+      const dateSpy = jest.spyOn(Date, 'now');
+      let fakeNow = 0;
+      dateSpy.mockImplementation(() => fakeNow);
+
+      try {
+        for (let i = 0; i < 5; i++) {
+          fakeNow += 3000; // past the 2s rate-limit window
+          const r = await runUnlockFlow();
+          expect(r.success).toBe(false);
+        }
+
+        fakeNow += 3000;
+        const cooled = await runUnlockFlow();
+        expect(cooled.success).toBe(false);
+        if (!cooled.success) expect(cooled.error).toContain('Too many failed');
+      } finally {
+        dateSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('runUnlockFlow — filtered child environment', () => {
+    it('does NOT inherit arbitrary process.env entries into the bw unlock child', async () => {
+      process.env['SOME_OTHER_SECRET'] = 'shhhh';
+
+      try {
+        route({
+          status: statusLocked,
+          dialog: dialogReturns('pw'),
+          unlock: bwUnlockReturns('tok'),
+        });
+
+        await runUnlockFlow();
+
+        const unlockCall = spawnMock.mock.calls.find(
+          (c) => c[0] === 'bw' && (c[1] as string[])[0] === 'unlock',
+        );
+        const env = (unlockCall?.[2] as { env: Record<string, string> })?.env;
+        expect(env).toBeDefined();
+        expect(env?.['SOME_OTHER_SECRET']).toBeUndefined();
+        expect(env?.['PATH']).toBeDefined();
+      } finally {
+        delete process.env['SOME_OTHER_SECRET'];
+      }
+    });
+  });
+
+  describe('runUnlockFlow — platform-specific dialog paths', () => {
+    const originalPlatform = process.platform;
+    const originalWayland = process.env['WAYLAND_DISPLAY'];
+
+    function setPlatform(platform: NodeJS.Platform): void {
+      Object.defineProperty(process, 'platform', {
+        value: platform,
+        configurable: true,
+      });
+    }
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
+      if (originalWayland !== undefined) {
+        process.env['WAYLAND_DISPLAY'] = originalWayland;
+      } else {
+        delete process.env['WAYLAND_DISPLAY'];
+      }
+    });
+
+    it('Linux: spawns zenity when DISPLAY is set and zenity is available', async () => {
+      setPlatform('linux');
+      process.env['DISPLAY'] = ':0';
+
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else if (command === 'zenity' && args[0] === '--version') {
+          process.nextTick(() => child.emit('close', 0));
+        } else if (command === 'zenity' && args[0] === '--password') {
+          process.nextTick(() => dialogReturns('pw')(child));
+        } else if (command === 'bw' && args[0] === 'unlock') {
+          process.nextTick(() => bwUnlockReturns('tok')(child));
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(true);
+
+      const zenityCall = spawnMock.mock.calls.find((c) => c[0] === 'zenity');
+      expect(zenityCall).toBeDefined();
+    });
+
+    it('Linux: falls back to kdialog when zenity is not available', async () => {
+      setPlatform('linux');
+      process.env['DISPLAY'] = ':0';
+
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else if (command === 'zenity' && args[0] === '--version') {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        } else if (command === 'kdialog' && args[0] === '--version') {
+          process.nextTick(() => child.emit('close', 0));
+        } else if (command === 'kdialog' && args[0] === '--password') {
+          process.nextTick(() => dialogReturns('pw')(child));
+        } else if (command === 'bw' && args[0] === 'unlock') {
+          process.nextTick(() => bwUnlockReturns('tok')(child));
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(true);
+
+      const kdialogCall = spawnMock.mock.calls.find(
+        (c) => c[0] === 'kdialog' && (c[1] as string[])[0] === '--password',
+      );
+      expect(kdialogCall).toBeDefined();
+    });
+
+    it('Linux: returns a fixed error when neither zenity nor kdialog is available', async () => {
+      setPlatform('linux');
+      process.env['DISPLAY'] = ':0';
+
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else {
+          // Every tool --version check returns ENOENT.
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('zenity or kdialog');
+      }
+    });
+
+    it('Linux: refuses when DISPLAY and WAYLAND_DISPLAY are both unset (headless)', async () => {
+      setPlatform('linux');
+      delete process.env['DISPLAY'];
+      delete process.env['WAYLAND_DISPLAY'];
+
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('Interactive unlock is not supported');
+      }
+      // zenity must not have been probed when already known to be headless.
+      expect(
+        spawnMock.mock.calls.find((c) => c[0] === 'zenity'),
+      ).toBeUndefined();
+    });
+
+    it('Windows: invokes powershell.exe with -EncodedCommand', async () => {
+      setPlatform('win32');
+
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else if (command === 'powershell.exe') {
+          process.nextTick(() => dialogReturns('pw')(child));
+        } else if (command === 'bw' && args[0] === 'unlock') {
+          process.nextTick(() => bwUnlockReturns('tok')(child));
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(true);
+
+      const psCall = spawnMock.mock.calls.find(
+        (c) => c[0] === 'powershell.exe',
+      );
+      expect(psCall).toBeDefined();
+      const psArgs = psCall?.[1] as string[];
+      expect(psArgs).toContain('-NoProfile');
+      expect(psArgs).toContain('-EncodedCommand');
+      // The encoded command must be base64 of the UTF-16LE script, not
+      // plaintext — verify it doesn't contain the prompt in UTF-8.
+      const encoded = psArgs[psArgs.indexOf('-EncodedCommand') + 1] as string;
+      expect(encoded).not.toContain('Enter your Bitwarden');
+    });
+
+    it('Unsupported platform: returns the fixed headless error', async () => {
+      setPlatform('freebsd' as NodeJS.Platform);
+
+      route({ status: statusLocked });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('Interactive unlock is not supported');
+      }
+    });
+  });
+
+  describe('runUnlockFlow — miscellaneous error paths', () => {
+    it('returns "Failed to launch password dialog" on non-ENOENT spawn error', async () => {
+      route({
+        status: statusLocked,
+        dialog: (child) => {
+          child.emit(
+            'error',
+            Object.assign(new Error('EACCES'), { code: 'EACCES' }),
+          );
+        },
+      });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe('Failed to launch password dialog.');
+      }
+    });
+
+    it('checkAlreadyUnlocked returns false when bw status JSON is malformed', async () => {
+      // Malformed status JSON → check returns false, flow proceeds to
+      // dialog. We cancel the dialog to keep the test short.
+      route({
+        status: (child) => {
+          child.stdout.emit('data', Buffer.from('not-json'));
+          child.emit('close', 0);
+        },
+        dialog: dialogCancelled,
+      });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toBe('Unlock cancelled.');
+      // Both status and dialog were invoked — the malformed JSON path
+      // fell through to the dialog.
+      expect(
+        spawnMock.mock.calls.some(
+          (c) => c[0] === 'bw' && (c[1] as string[])[0] === 'status',
+        ),
+      ).toBe(true);
+    });
+
+    it('checkAlreadyUnlocked returns false when bw status errors (ENOENT)', async () => {
+      route({
+        status: (child) => {
+          child.emit(
+            'error',
+            Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+          );
+        },
+        dialog: dialogCancelled,
+      });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toBe('Unlock cancelled.');
+    });
+
+    it('executeBwUnlock returns a generic error when the bw unlock child fails to spawn', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('pw'),
+        unlock: (child) => {
+          child.emit(
+            'error',
+            Object.assign(new Error('spawn failed'), { code: 'EACCES' }),
+          );
+        },
+      });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe('Failed to execute bw unlock.');
+      }
+    });
+
+    it('executeBwUnlock returns a failure when bw unlock exits 0 with no token', async () => {
+      route({
+        status: statusLocked,
+        dialog: dialogReturns('pw'),
+        unlock: (child) => {
+          // Exit 0 with empty stdout — defensive branch.
+          child.emit('close', 0);
+        },
+      });
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toBe('Unlock failed.');
+      expect(process.env['BW_SESSION']).toBeUndefined();
+    });
+
+    it('runUnlockFlow top-level catch maps unexpected throws to "Unlock failed."', async () => {
+      // Force the very first spawn (bw status) to throw synchronously;
+      // the Promise constructor converts the throw to a rejection, which
+      // the outer try/catch in runUnlockFlow converts to "Unlock failed.".
+      spawnMock.mockImplementation((() => {
+        throw new Error('unexpected');
+      }) as never);
+
+      const result = await runUnlockFlow();
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error).toBe('Unlock failed.');
+    });
+  });
+
+  describe('handleUnlock — MCP response formatting', () => {
+    it('returns a non-error MCP response on success', async () => {
+      route({ status: statusUnlocked });
+
+      const result = await handleUnlock({});
+
+      expect(result.isError).toBe(false);
+      const first = result.content[0] as { type: string; text: string };
+      expect(first.type).toBe('text');
+      expect(first.text).toMatch(/already unlocked|unlocked successfully/i);
+    });
+
+    it('returns an error MCP response when the unlock flow fails', async () => {
+      route({ status: statusLocked, dialog: dialogCancelled });
+
+      const result = await handleUnlock({});
+
+      expect(result.isError).toBe(true);
+      const first = result.content[0] as { text: string };
+      expect(first.text).toBe('Unlock cancelled.');
+    });
   });
 });

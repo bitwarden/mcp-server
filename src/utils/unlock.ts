@@ -10,6 +10,18 @@
 import { spawn } from 'child_process';
 import crypto from 'crypto';
 
+/**
+ * Module-local indirection for `child_process.spawn` so tests can
+ * substitute a mock without depending on `jest.unstable_mockModule`,
+ * which is unreliable under ts-jest ESM.
+ *
+ * Production code MUST use `__testable.spawn(...)` instead of calling
+ * the imported `spawn` directly.
+ *
+ * @internal
+ */
+export const __testable: { spawn: typeof spawn } = { spawn };
+
 export type UnlockResult =
   | { readonly success: true; readonly message: string }
   | { readonly success: false; readonly error: string };
@@ -160,7 +172,7 @@ function checkAlreadyUnlocked(): Promise<boolean> {
         : undefined,
     );
 
-    const child = spawn('bw', ['status'], { shell: false, env });
+    const child = __testable.spawn('bw', ['status'], { shell: false, env });
 
     let stdout = '';
     let settled = false;
@@ -269,7 +281,7 @@ function collectPasswordWindows(): Promise<PasswordResult> {
 
 function isCommandAvailable(command: string): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
-    const child = spawn(command, ['--version'], { shell: false });
+    const child = __testable.spawn(command, ['--version'], { shell: false });
     child.on('error', () => resolve(false));
     child.on('close', (code) => resolve(code === 0));
     child.stdout.on('data', () => {});
@@ -284,7 +296,7 @@ function spawnDialog(
   return new Promise<PasswordResult>((resolve) => {
     let settled = false;
     let stdout = '';
-    const child = spawn(command, [...args], { shell: false });
+    const child = __testable.spawn(command, [...args], { shell: false });
 
     const timeout = setTimeout(() => {
       if (settled) return;
@@ -346,7 +358,7 @@ function executeBwUnlock(password: string): Promise<UnlockResult> {
     let settled = false;
     let stdout = '';
     let stderr = '';
-    const child = spawn(
+    const child = __testable.spawn(
       'bw',
       ['unlock', '--raw', '--passwordenv', envVarName],
       { shell: false, env: childEnv },
@@ -405,4 +417,18 @@ export function scrubUnlockStderr(stderr: string): string {
     return 'You are not logged in. Run "bw login" first.';
   }
   return 'Unlock failed.';
+}
+
+/**
+ * Resets the module-level mutex, rate-limit, and cooldown state.
+ * Exported for tests only — do not call from production code. The
+ * mutex is released in a `finally` by `runUnlockFlow`, and the rate-
+ * limit / cooldown counters are only resettable via a successful
+ * unlock in normal operation.
+ */
+export function _resetUnlockStateForTests(): void {
+  unlockInProgress = false;
+  lastAttemptAt = 0;
+  consecutiveFailures = 0;
+  cooldownUntil = 0;
 }
