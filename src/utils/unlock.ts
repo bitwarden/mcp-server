@@ -40,6 +40,7 @@ const COOLDOWN_AFTER_MAX_FAILURES_MS = 60_000;
 const DIALOG_TIMEOUT_MS = 60_000;
 const BW_COMMAND_TIMEOUT_MS = 30_000;
 const BW_STATUS_TIMEOUT_MS = 5_000;
+const COMMAND_PROBE_TIMEOUT_MS = 2_000;
 
 // Dialog prompt text MUST remain compile-time constants. The AppleScript
 // / PowerShell string contexts below are code-execution surfaces; a
@@ -282,8 +283,36 @@ function collectPasswordWindows(): Promise<PasswordResult> {
 function isCommandAvailable(command: string): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     const child = __testable.spawn(command, ['--version'], { shell: false });
-    child.on('error', () => resolve(false));
-    child.on('close', (code) => resolve(code === 0));
+    let settled = false;
+
+    // Fail-closed on a hung probe: a hang here would wedge the unlock
+    // mutex because this is called from inside `runUnlockFlow`'s
+    // `unlockInProgress = true` region. `--version` normally exits in
+    // milliseconds; anything slower is broken enough that we should
+    // treat the tool as unavailable.
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // ignore
+      }
+      resolve(false);
+    }, COMMAND_PROBE_TIMEOUT_MS);
+
+    child.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(false);
+    });
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(code === 0);
+    });
     child.stdout.on('data', () => {});
     child.stderr.on('data', () => {});
   });

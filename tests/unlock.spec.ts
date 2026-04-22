@@ -679,6 +679,69 @@ describe('unlock flow (spawn-injected)', () => {
       }
     });
 
+    it('Linux: isCommandAvailable probe times out and treats the tool as unavailable when zenity --version hangs', async () => {
+      setPlatform('linux');
+      process.env['DISPLAY'] = ':0';
+
+      // Start fake `Date.now()` at a non-zero value so `runUnlockFlow`'s
+      // 2-second rate-limit check doesn't immediately short-circuit.
+      jest.useFakeTimers({
+        doNotFake: ['nextTick', 'queueMicrotask'],
+        now: 100_000,
+      });
+
+      const hungChildren: FakeChild[] = [];
+      spawnMock.mockImplementation(((...mockArgs: unknown[]) => {
+        const command = mockArgs[0] as string;
+        const args = (mockArgs[1] as readonly string[]) ?? [];
+        const child = fakeChild();
+        if (command === 'bw' && args[0] === 'status') {
+          process.nextTick(() => statusLocked(child));
+        } else if (
+          (command === 'zenity' || command === 'kdialog') &&
+          args[0] === '--version'
+        ) {
+          // Hang — never emit close or error. isCommandAvailable must
+          // time out rather than wedge the unlock mutex.
+          hungChildren.push(child);
+        } else {
+          process.nextTick(() =>
+            child.emit(
+              'error',
+              Object.assign(new Error('enoent'), { code: 'ENOENT' }),
+            ),
+          );
+        }
+        return child;
+      }) as never);
+
+      try {
+        const promise = runUnlockFlow();
+
+        // Advance past both probe timeouts (zenity, then kdialog).
+        // `advanceTimersByTimeAsync` yields microtasks between each
+        // fake-timer tick so awaited chains can progress.
+        await jest.advanceTimersByTimeAsync(2_100);
+        await jest.advanceTimersByTimeAsync(2_100);
+
+        const result = await promise;
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toContain('zenity or kdialog');
+        }
+
+        // Both hung children must have been SIGTERMed on timeout so
+        // they can't linger after the probe gives up.
+        expect(hungChildren.length).toBeGreaterThanOrEqual(1);
+        for (const c of hungChildren) {
+          expect(c.kill).toHaveBeenCalledWith('SIGTERM');
+        }
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('Linux: refuses when DISPLAY and WAYLAND_DISPLAY are both unset (headless)', async () => {
       setPlatform('linux');
       delete process.env['DISPLAY'];
