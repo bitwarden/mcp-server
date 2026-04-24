@@ -7,6 +7,43 @@ import { buildSafeCommand, isValidBitwardenCommand } from './security.js';
 import type { CliResponse } from './types.js';
 
 /**
+ * Checks whether the vault is unlocked before running a vault-dependent
+ * command. Calling `bw status` is fast and always succeeds regardless of
+ * vault state, so we use it as a pre-flight check to fail immediately with
+ * a clear, actionable message rather than letting the actual command time-out
+ * or return a cryptic CLI error.
+ *
+ * Returns null when the vault is unlocked and safe to proceed.
+ * Returns a CliResponse with errorOutput when the vault is locked or the
+ * user is not authenticated.
+ */
+export async function ensureVaultUnlocked(): Promise<CliResponse | null> {
+  const statusResponse = await executeCliCommand('status', []);
+  if (!statusResponse.output) {
+    // Cannot determine status — proceed and let the real command surface the error.
+    return null;
+  }
+  try {
+    const { status } = JSON.parse(statusResponse.output) as { status: string };
+    if (status === 'locked') {
+      return {
+        errorOutput:
+          'Vault is locked. Call the "unlock" tool with your master password to unlock it, then retry.',
+      };
+    }
+    if (status === 'unauthenticated') {
+      return {
+        errorOutput:
+          'Not logged in to Bitwarden. Use "bw login" to authenticate first, then retry.',
+      };
+    }
+  } catch {
+    // JSON parse failed — proceed and let the vault command surface the real error.
+  }
+  return null;
+}
+
+/**
  * Executes a Bitwarden CLI command safely using spawn() to prevent command injection
  * Internally calls buildSafeCommand() to validate and sanitize inputs
  * @param baseCommand - The base Bitwarden command (e.g., 'list', 'get', 'create')

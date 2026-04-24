@@ -58,6 +58,7 @@ import {
   handleRemoveSendPassword,
   handleCreateAttachment,
 } from './handlers/cli.js';
+import { ensureVaultUnlocked } from './utils/cli.js';
 
 import {
   handleListOrgCollections,
@@ -112,7 +113,56 @@ async function runServer(): Promise<void> {
     async (request: CallToolRequest) => {
       const { name, arguments: args } = request.params;
 
+      // CLI tools that access the personal vault require it to be unlocked.
+      // We check upfront using `bw status` (fast, always works) so the LLM
+      // receives a clear, immediate error instead of a cryptic CLI timeout.
+      // Excluded from the check:
+      //   status / lock / generate  — work without an unlocked vault
+      //   All org_* tools           — use the Bitwarden REST API with their
+      //                               own OAuth2 credentials, not the local vault
+      const VAULT_REQUIRED_CLI_TOOLS = new Set([
+        'sync',
+        'list',
+        'get',
+        'create_item',
+        'create_folder',
+        'edit_item',
+        'edit_folder',
+        'delete',
+        'confirm',
+        'create_org_collection',
+        'edit_org_collection',
+        'edit_item_collections',
+        'move',
+        'device_approval_list',
+        'device_approval_approve',
+        'device_approval_approve_all',
+        'device_approval_deny',
+        'device_approval_deny_all',
+        'restore',
+        'create_text_send',
+        'create_file_send',
+        'list_send',
+        'get_send',
+        'edit_send',
+        'delete_send',
+        'remove_send_password',
+        'create_attachment',
+      ]);
+
       try {
+        if (VAULT_REQUIRED_CLI_TOOLS.has(name)) {
+          const vaultCheck = await ensureVaultUnlocked();
+          if (vaultCheck?.errorOutput) {
+            return {
+              content: [
+                { type: 'text' as const, text: vaultCheck.errorOutput },
+              ],
+              isError: true as const,
+            };
+          }
+        }
+
         switch (name) {
           // CLI Tools (Personal Vault Operations)
           case 'lock':
