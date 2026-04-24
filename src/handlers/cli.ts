@@ -80,12 +80,23 @@ export const handleUnlock = withValidation(
       process.env['BW_SESSION'] = response.output;
       return {
         content: [
-          { type: 'text' as const, text: 'Vault unlocked successfully.' },
+          {
+            type: 'text' as const,
+            text: 'Vault unlocked successfully. You can now retry the operation.',
+          },
         ],
         isError: false,
       };
     }
-    return toMcpFormat(response);
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: 'Unlock failed: incorrect master password or vault not found. Ask the user to confirm the password and call this tool again.',
+        },
+      ],
+      isError: true,
+    };
   },
 );
 

@@ -16,7 +16,7 @@ export const lockTool: Tool = {
 export const unlockTool: Tool = {
   name: 'unlock',
   description:
-    'Unlock the vault with the master password. Call this when the vault is locked before retrying any vault operation.',
+    'Unlock the vault with the master password. Call this when the vault is locked before retrying any vault operation. On success, the session is persisted automatically — no restart needed. On failure, ask the user to confirm the password and retry.',
   inputSchema: {
     type: 'object',
     properties: {
