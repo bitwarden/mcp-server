@@ -72,9 +72,11 @@ export const handleUnlock = withValidation(
       ['--passwordenv', 'BW_UNLOCK_PASSWORD', '--raw'],
       { BW_UNLOCK_PASSWORD: validatedArgs.password },
     );
-    if (response.output && !response.errorOutput) {
-      // Update the session key in the current process so subsequent CLI
-      // commands use the newly obtained session without requiring a restart.
+    // Use output (the raw session key) as the success signal rather than
+    // absence of errorOutput: bw often writes Node.js deprecation warnings
+    // to stderr even on a successful unlock, which would set errorOutput and
+    // prevent the session key from being saved.
+    if (response.output) {
       process.env['BW_SESSION'] = response.output;
       return {
         content: [
