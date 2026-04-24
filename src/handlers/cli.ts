@@ -6,6 +6,7 @@ import { executeCliCommand } from '../utils/cli.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
+  unlockSchema,
   syncSchema,
   statusSchema,
   listSchema,
@@ -62,6 +63,29 @@ export const handleLock = withValidation(lockSchema, async () => {
   const response = await executeCliCommand('lock', []);
   return toMcpFormat(response);
 });
+
+export const handleUnlock = withValidation(
+  unlockSchema,
+  async (validatedArgs) => {
+    const response = await executeCliCommand(
+      'unlock',
+      ['--passwordenv', 'BW_UNLOCK_PASSWORD', '--raw'],
+      { BW_UNLOCK_PASSWORD: validatedArgs.password },
+    );
+    if (response.output && !response.errorOutput) {
+      // Update the session key in the current process so subsequent CLI
+      // commands use the newly obtained session without requiring a restart.
+      process.env['BW_SESSION'] = response.output;
+      return {
+        content: [
+          { type: 'text' as const, text: 'Vault unlocked successfully.' },
+        ],
+        isError: false,
+      };
+    }
+    return toMcpFormat(response);
+  },
+);
 
 export const handleSync = withValidation(syncSchema, async () => {
   const response = await executeCliCommand('sync', []);

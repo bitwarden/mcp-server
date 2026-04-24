@@ -13,6 +13,22 @@ export const lockTool: Tool = {
   },
 };
 
+export const unlockTool: Tool = {
+  name: 'unlock',
+  description:
+    'Unlock the vault with the master password. Call this when the vault is locked before retrying any vault operation.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      password: {
+        type: 'string',
+        description: 'The master password used to unlock the vault',
+      },
+    },
+    required: ['password'],
+  },
+};
+
 export const syncTool: Tool = {
   name: 'sync',
   description: 'Sync vault data from the Bitwarden server',
@@ -1148,6 +1164,7 @@ export const createAttachmentTool: Tool = {
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
+  unlockTool,
   syncTool,
   statusTool,
   listTool,

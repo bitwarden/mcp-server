@@ -53,6 +53,7 @@ export async function ensureVaultUnlocked(): Promise<CliResponse | null> {
 export async function executeCliCommand(
   baseCommand: string,
   parameters: readonly string[] = [],
+  extraEnv?: Record<string, string>,
 ): Promise<CliResponse> {
   try {
     // Build safe command array (validates and sanitizes inputs)
@@ -69,7 +70,7 @@ export async function executeCliCommand(
     // Use spawn with array of arguments to avoid shell interpretation
     return new Promise<CliResponse>((resolve) => {
       const child = spawn('bw', [command, ...args], {
-        env: process.env,
+        env: { ...process.env, ...extraEnv },
         shell: false, // Explicitly disable shell to prevent injection
       });
 
