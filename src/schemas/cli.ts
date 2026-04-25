@@ -15,9 +15,11 @@ import { validateFilePath } from '../utils/security.js';
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
 
-// Schema for validating 'unlock' command parameters
+// Schema for validating 'unlock' command parameters.
+// password is optional: omit it to use a native OS dialog (requires a
+// graphical environment); provide it for headless/server environments.
 export const unlockSchema = z.object({
-  password: z.string().min(1, 'Master password is required'),
+  password: z.string().min(1, 'Master password is required').optional(),
 });
 
 // Schema for validating 'sync' command parameters (no parameters required)

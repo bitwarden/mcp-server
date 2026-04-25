@@ -16,16 +16,19 @@ export const lockTool: Tool = {
 export const unlockTool: Tool = {
   name: 'unlock',
   description:
-    'Unlock the vault with the master password. Call this when the vault is locked before retrying any vault operation. On success, the session is persisted automatically — no restart needed. On failure, ask the user to confirm the password and retry.',
+    'Unlock the vault. Call this when the vault is locked before retrying any vault operation. ' +
+    'If the environment has a graphical interface (desktop), omit the password — a native OS dialog will appear. ' +
+    'In headless/server environments (no GUI), pass the master password directly. ' +
+    'On success, the session is persisted automatically — no restart needed.',
   inputSchema: {
     type: 'object',
     properties: {
       password: {
         type: 'string',
-        description: 'The master password used to unlock the vault',
+        description:
+          'Master password (only needed in headless/server environments without a graphical interface)',
       },
     },
-    required: ['password'],
   },
 };
 

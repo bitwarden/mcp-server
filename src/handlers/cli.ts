@@ -3,6 +3,7 @@
  */
 
 import { executeCliCommand } from '../utils/cli.js';
+import { runUnlockFlow } from '../utils/unlock.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
@@ -67,15 +68,43 @@ export const handleLock = withValidation(lockSchema, async () => {
 export const handleUnlock = withValidation(
   unlockSchema,
   async (validatedArgs) => {
+    if (validatedArgs.password === undefined) {
+      // GUI path: no password provided — use native OS dialog (upstream approach).
+      // This never exposes the password to the LLM or MCP protocol.
+      const result = await runUnlockFlow();
+      if (result.success) {
+        return {
+          content: [{ type: 'text' as const, text: result.message }],
+          isError: false,
+        };
+      }
+      // If the GUI dialog failed because the environment is headless, tell
+      // the LLM to retry with the password parameter instead.
+      const isHeadless =
+        result.error.includes('not supported') ||
+        result.error.includes('zenity') ||
+        result.error.includes('kdialog');
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: isHeadless
+              ? `No graphical interface available. Call this tool again with the master password as the 'password' parameter.`
+              : result.error,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Headless path: password provided — pass via env var, never as a shell
+    // argument. bw often writes Node.js deprecation warnings to stderr even
+    // on success, so use stdout (the raw session key) as the success signal.
     const response = await executeCliCommand(
       'unlock',
       ['--passwordenv', 'BW_UNLOCK_PASSWORD', '--raw'],
       { BW_UNLOCK_PASSWORD: validatedArgs.password },
     );
-    // Use output (the raw session key) as the success signal rather than
-    // absence of errorOutput: bw often writes Node.js deprecation warnings
-    // to stderr even on a successful unlock, which would set errorOutput and
-    // prevent the session key from being saved.
     if (response.output) {
       process.env['BW_SESSION'] = response.output;
       return {
