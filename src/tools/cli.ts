@@ -363,6 +363,38 @@ export const createItemTool: Tool = {
         type: 'string',
         description: 'Folder ID to assign the item to',
       },
+      organizationId: {
+        type: 'string',
+        description:
+          'Organization ID. Required when the item should be shared with an organization/collection.',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'Collection IDs within the organization. Must be used together with organizationId.',
+        items: { type: 'string' },
+      },
+      fields: {
+        type: 'array',
+        description: 'Custom fields attached to the item',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Name of the custom field' },
+            value: {
+              type: 'string',
+              description: 'Value of the custom field',
+            },
+            type: {
+              type: 'number',
+              description:
+                'Field type (0: Text, 1: Hidden, 2: Boolean, 3: Linked)',
+              enum: [0, 1, 2, 3],
+            },
+          },
+          required: ['name'],
+        },
+      },
     },
     required: ['name', 'type'],
   },
@@ -562,6 +594,39 @@ export const editItemTool: Tool = {
       folderId: {
         type: 'string',
         description: 'New folder ID to assign the item to',
+      },
+      organizationId: {
+        type: 'string',
+        description:
+          'New organization ID (to move the item to/between organizations)',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'New collection IDs; replaces the existing assignment when provided',
+        items: { type: 'string' },
+      },
+      fields: {
+        type: 'array',
+        description:
+          'Custom fields; when provided, replaces the existing custom fields array entirely',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Name of the custom field' },
+            value: {
+              type: 'string',
+              description: 'Value of the custom field',
+            },
+            type: {
+              type: 'number',
+              description:
+                'Field type (0: Text, 1: Hidden, 2: Boolean, 3: Linked)',
+              enum: [0, 1, 2, 3],
+            },
+          },
+          required: ['name'],
+        },
       },
     },
     required: ['id'],
