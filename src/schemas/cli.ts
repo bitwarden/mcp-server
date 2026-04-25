@@ -15,6 +15,13 @@ import { validateFilePath } from '../utils/security.js';
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
 
+// Schema for validating 'unlock' command parameters.
+// password is optional: omit it to use a native OS dialog (requires a
+// graphical environment); provide it for headless/server environments.
+export const unlockSchema = z.object({
+  password: z.string().min(1, 'Master password is required').optional(),
+});
+
 // Schema for validating 'sync' command parameters (no parameters required)
 export const syncSchema = z.object({});
 
@@ -249,6 +256,19 @@ export const secureNoteSchema = z.object({
   type: z.literal(0).optional(),
 });
 
+// Schema for a single custom field on a vault item
+export const customFieldSchema = z.object({
+  // Name of the custom field
+  name: z.string().min(1, 'Field name is required'),
+  // Value of the custom field (null is allowed for empty)
+  value: z.string().nullable().optional(),
+  // Type of custom field (0: Text, 1: Hidden, 2: Boolean, 3: Linked)
+  type: z
+    .union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)])
+    .optional()
+    .default(0),
+});
+
 // Schema for validating 'create item' command parameters
 export const createItemSchema = z
   .object({
@@ -268,6 +288,12 @@ export const createItemSchema = z
     secureNote: secureNoteSchema.optional(),
     // Folder ID to assign the item to
     folderId: z.string().optional(),
+    // Organization ID (required to create items shared with an organization)
+    organizationId: z.string().optional(),
+    // Collection IDs (used with organizationId to place the item in one or more shared collections)
+    collectionIds: z.array(z.string()).optional(),
+    // Custom fields attached to the item
+    fields: z.array(customFieldSchema).optional(),
   })
   .refine(
     (data) => {
@@ -396,6 +422,12 @@ export const editItemSchema = z.object({
   secureNote: editSecureNoteSchema.optional(),
   // New folder ID to assign the item to
   folderId: z.string().optional(),
+  // New organization ID (to move the item to/between organizations)
+  organizationId: z.string().optional(),
+  // New collection IDs; replaces the existing assignment when provided
+  collectionIds: z.array(z.string()).optional(),
+  // Custom fields; when provided, replaces the existing custom fields array entirely
+  fields: z.array(customFieldSchema).optional(),
 });
 
 // Schema for validating 'edit folder' command parameters

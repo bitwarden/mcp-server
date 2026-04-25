@@ -13,6 +13,25 @@ export const lockTool: Tool = {
   },
 };
 
+export const unlockTool: Tool = {
+  name: 'unlock',
+  description:
+    'Unlock the vault. Call this when the vault is locked before retrying any vault operation. ' +
+    'If the environment has a graphical interface (desktop), omit the password — a native OS dialog will appear. ' +
+    'In headless/server environments (no GUI), pass the master password directly. ' +
+    'On success, the session is persisted automatically — no restart needed.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      password: {
+        type: 'string',
+        description:
+          'Master password (only needed in headless/server environments without a graphical interface)',
+      },
+    },
+  },
+};
+
 export const syncTool: Tool = {
   name: 'sync',
   description: 'Sync vault data from the Bitwarden server',
@@ -363,6 +382,38 @@ export const createItemTool: Tool = {
         type: 'string',
         description: 'Folder ID to assign the item to',
       },
+      organizationId: {
+        type: 'string',
+        description:
+          'Organization ID. Required when the item should be shared with an organization/collection.',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'Collection IDs within the organization. Must be used together with organizationId.',
+        items: { type: 'string' },
+      },
+      fields: {
+        type: 'array',
+        description: 'Custom fields attached to the item',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Name of the custom field' },
+            value: {
+              type: 'string',
+              description: 'Value of the custom field',
+            },
+            type: {
+              type: 'number',
+              description:
+                'Field type (0: Text, 1: Hidden, 2: Boolean, 3: Linked)',
+              enum: [0, 1, 2, 3],
+            },
+          },
+          required: ['name'],
+        },
+      },
     },
     required: ['name', 'type'],
   },
@@ -562,6 +613,39 @@ export const editItemTool: Tool = {
       folderId: {
         type: 'string',
         description: 'New folder ID to assign the item to',
+      },
+      organizationId: {
+        type: 'string',
+        description:
+          'New organization ID (to move the item to/between organizations)',
+      },
+      collectionIds: {
+        type: 'array',
+        description:
+          'New collection IDs; replaces the existing assignment when provided',
+        items: { type: 'string' },
+      },
+      fields: {
+        type: 'array',
+        description:
+          'Custom fields; when provided, replaces the existing custom fields array entirely',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Name of the custom field' },
+            value: {
+              type: 'string',
+              description: 'Value of the custom field',
+            },
+            type: {
+              type: 'number',
+              description:
+                'Field type (0: Text, 1: Hidden, 2: Boolean, 3: Linked)',
+              enum: [0, 1, 2, 3],
+            },
+          },
+          required: ['name'],
+        },
       },
     },
     required: ['id'],
@@ -1083,6 +1167,7 @@ export const createAttachmentTool: Tool = {
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
+  unlockTool,
   syncTool,
   statusTool,
   listTool,
