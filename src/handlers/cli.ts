@@ -3,9 +3,11 @@
  */
 
 import { executeCliCommand } from '../utils/cli.js';
+import { runUnlockFlow } from '../utils/unlock.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
+  unlockSchema,
   syncSchema,
   statusSchema,
   listSchema,
@@ -62,6 +64,70 @@ export const handleLock = withValidation(lockSchema, async () => {
   const response = await executeCliCommand('lock', []);
   return toMcpFormat(response);
 });
+
+export const handleUnlock = withValidation(
+  unlockSchema,
+  async (validatedArgs) => {
+    if (validatedArgs.password === undefined) {
+      // GUI path: no password provided — use native OS dialog (upstream approach).
+      // This never exposes the password to the LLM or MCP protocol.
+      const result = await runUnlockFlow();
+      if (result.success) {
+        return {
+          content: [{ type: 'text' as const, text: result.message }],
+          isError: false,
+        };
+      }
+      // If the GUI dialog failed because the environment is headless, tell
+      // the LLM to retry with the password parameter instead.
+      const isHeadless =
+        result.error.includes('not supported') ||
+        result.error.includes('zenity') ||
+        result.error.includes('kdialog');
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: isHeadless
+              ? `No graphical interface available. Call this tool again with the master password as the 'password' parameter.`
+              : result.error,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Headless path: password provided — pass via env var, never as a shell
+    // argument. bw often writes Node.js deprecation warnings to stderr even
+    // on success, so use stdout (the raw session key) as the success signal.
+    const response = await executeCliCommand(
+      'unlock',
+      ['--passwordenv', 'BW_UNLOCK_PASSWORD', '--raw'],
+      { BW_UNLOCK_PASSWORD: validatedArgs.password },
+    );
+    if (response.output) {
+      process.env['BW_SESSION'] = response.output;
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Vault unlocked successfully. You can now retry the operation.',
+          },
+        ],
+        isError: false,
+      };
+    }
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: 'Unlock failed: incorrect master password or vault not found. Ask the user to confirm the password and call this tool again.',
+        },
+      ],
+      isError: true,
+    };
+  },
+);
 
 export const handleSync = withValidation(syncSchema, async () => {
   const response = await executeCliCommand('sync', []);
@@ -157,8 +223,19 @@ export const handleGenerate = withValidation(
 export const handleCreateItem = withValidation(
   createItemSchema,
   async (validatedArgs) => {
-    const { name, type, notes, login, card, identity, secureNote, folderId } =
-      validatedArgs;
+    const {
+      name,
+      type,
+      notes,
+      login,
+      card,
+      identity,
+      secureNote,
+      folderId,
+      organizationId,
+      collectionIds,
+      fields,
+    } = validatedArgs;
 
     // Creating an item with the specified type
     const item: BitwardenItem = {
@@ -172,6 +249,22 @@ export const handleCreateItem = withValidation(
 
     if (folderId !== undefined) {
       item.folderId = folderId;
+    }
+
+    if (organizationId !== undefined) {
+      item.organizationId = organizationId;
+    }
+
+    if (collectionIds !== undefined) {
+      item.collectionIds = collectionIds;
+    }
+
+    if (fields !== undefined) {
+      item.fields = fields.map((f) => ({
+        name: f.name,
+        value: f.value ?? null,
+        type: f.type ?? 0,
+      }));
     }
 
     // Set type-specific data based on item type
@@ -237,7 +330,13 @@ export const handleCreateItem = withValidation(
 
     const itemJson = JSON.stringify(item);
     const encodedItem = Buffer.from(itemJson).toString('base64');
-    const response = await executeCliCommand('create', ['item', encodedItem]);
+    // When the item belongs to an organization, bw CLI requires the
+    // --organizationid flag in addition to the ID inside the JSON.
+    const cliArgs = ['item', encodedItem];
+    if (organizationId !== undefined) {
+      cliArgs.push('--organizationid', organizationId);
+    }
+    const response = await executeCliCommand('create', cliArgs);
     return toMcpFormat(response);
   },
 );
@@ -258,8 +357,19 @@ export const handleCreateFolder = withValidation(
 export const handleEditItem = withValidation(
   editItemSchema,
   async (validatedArgs) => {
-    const { id, name, notes, login, card, identity, secureNote, folderId } =
-      validatedArgs;
+    const {
+      id,
+      name,
+      notes,
+      login,
+      card,
+      identity,
+      secureNote,
+      folderId,
+      organizationId,
+      collectionIds,
+      fields,
+    } = validatedArgs;
 
     // First, get the existing item
     const getResponse = await executeCliCommand('get', ['item', id]);
@@ -278,6 +388,19 @@ export const handleEditItem = withValidation(
       if (name !== undefined) existingItem.name = name;
       if (notes !== undefined) existingItem.notes = notes;
       if (folderId !== undefined) existingItem.folderId = folderId;
+      if (organizationId !== undefined)
+        existingItem.organizationId = organizationId;
+      if (collectionIds !== undefined)
+        existingItem.collectionIds = collectionIds;
+      // Custom fields: when provided, replace the array entirely. Callers that
+      // want to preserve existing fields should read the item first and merge.
+      if (fields !== undefined) {
+        existingItem.fields = fields.map((f) => ({
+          name: f.name,
+          value: f.value ?? null,
+          type: f.type ?? 0,
+        }));
+      }
 
       // Update type-specific data
       if (login !== undefined) {
