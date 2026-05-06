@@ -182,7 +182,7 @@ export BW_ALLOWED_DIRECTORIES="/home/user/downloads,/tmp/bitwarden-files"
 set BW_ALLOWED_DIRECTORIES=C:/Users/YourName/Documents,C:/Temp/Bitwarden
 ```
 
-**Default Behavior**: If not configured, defaults to system temp directory (`os.tmpdir()/bitwarden-files`)
+**Default Behavior**: If `BW_ALLOWED_DIRECTORIES` is unset or empty, `validateFilePath()` rejects every path (fail-closed). File-based tools require explicit opt-in via the env var.
 
 **Protects Against**:
 

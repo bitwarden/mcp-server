@@ -3,7 +3,6 @@
  */
 
 import path from 'path';
-import os from 'os';
 
 /**
  * Sanitizes a string to prevent command injection by removing dangerous characters
@@ -201,7 +200,8 @@ export function sanitizeApiParameters(params: unknown): unknown {
  *
  * Configuration:
  * Set BW_ALLOWED_DIRECTORIES environment variable to a comma-separated list
- * of allowed directories. If not set, defaults to system temp directory.
+ * of allowed directories. If not set (or empty), file operations are
+ * rejected — explicit opt-in is required.
  *
  * Example: BW_ALLOWED_DIRECTORIES=/tmp/bitwarden,/home/user/downloads
  */
@@ -287,20 +287,23 @@ export function validateFilePath(filePath: string): boolean {
     const resolvedPath = path.resolve(normalizedPath);
 
     // Step 9: Get allowed directories from environment variable
+    // Fail closed: if BW_ALLOWED_DIRECTORIES is unset, reject all file operations.
+    // Defaulting to a world-writable location (e.g. /tmp on Linux/macOS) would
+    // allow other local users or services to stage files for the AI agent to
+    // read or send, so explicit opt-in is required.
     const allowedDirsEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+    if (!allowedDirsEnv || !allowedDirsEnv.trim()) {
+      return false;
+    }
 
-    let allowedDirectories: string[];
-    if (allowedDirsEnv && allowedDirsEnv.trim()) {
-      // Parse comma-separated list and resolve each to absolute path
-      allowedDirectories = allowedDirsEnv
-        .split(',')
-        .map((dir) => dir.trim())
-        .filter((dir) => dir.length > 0)
-        .map((dir) => path.resolve(dir));
-    } else {
-      // Default to system temp directory if no whitelist configured
-      const defaultDir = path.join(os.tmpdir(), 'bitwarden-files');
-      allowedDirectories = [defaultDir];
+    const allowedDirectories = allowedDirsEnv
+      .split(',')
+      .map((dir) => dir.trim())
+      .filter((dir) => dir.length > 0)
+      .map((dir) => path.resolve(dir));
+
+    if (allowedDirectories.length === 0) {
+      return false;
     }
 
     // Step 10: Verify resolved path starts with one of the allowed directories

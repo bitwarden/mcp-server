@@ -699,6 +699,31 @@ describe('Security - Command Injection Protection', () => {
         // We just verify the function doesn't crash
         expect(typeof result).toBe('boolean');
       });
+
+      it('should reject all paths when BW_ALLOWED_DIRECTORIES is unset', () => {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+
+        const candidatePaths = [
+          '/tmp/bitwarden-files/file.txt',
+          '/tmp/file.txt',
+          'document.pdf',
+          'C:/Users/me/file.txt',
+        ];
+
+        candidatePaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should reject all paths when BW_ALLOWED_DIRECTORIES is empty or whitespace', () => {
+        const emptyValues = ['', '   ', ',', ' , , '];
+
+        emptyValues.forEach((value) => {
+          process.env['BW_ALLOWED_DIRECTORIES'] = value;
+          expect(validateFilePath('/tmp/bitwarden-files/file.txt')).toBe(false);
+          expect(validateFilePath('document.pdf')).toBe(false);
+        });
+      });
     });
 
     describe('Edge Cases and Error Handling', () => {
