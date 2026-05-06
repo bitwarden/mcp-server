@@ -13,6 +13,16 @@ export const lockTool: Tool = {
   },
 };
 
+export const unlockTool: Tool = {
+  name: 'unlock',
+  description:
+    'Unlock the Bitwarden vault. Takes no parameters. Prompts the user for their master password through a native OS dialog; the password is never exposed to the MCP protocol or the LLM. Not supported in headless or non-interactive environments — run "bw unlock --raw" manually and set BW_SESSION in that case.',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
 export const syncTool: Tool = {
   name: 'sync',
   description: 'Sync vault data from the Bitwarden server',
@@ -1083,6 +1093,7 @@ export const createAttachmentTool: Tool = {
 // Export all CLI tools as an array
 export const cliTools = [
   lockTool,
+  unlockTool,
   syncTool,
   statusTool,
   listTool,

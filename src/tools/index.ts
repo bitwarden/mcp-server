@@ -5,6 +5,7 @@
 // Import CLI tools (Personal Vault Operations)
 export {
   lockTool,
+  unlockTool,
   syncTool,
   statusTool,
   listTool,

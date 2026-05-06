@@ -28,6 +28,7 @@ import { cliTools, organizationApiTools } from './tools/index.js';
 // Import handlers
 import {
   handleLock,
+  handleUnlock,
   handleSync,
   handleStatus,
   handleList,
@@ -117,6 +118,8 @@ async function runServer(): Promise<void> {
           // CLI Tools (Personal Vault Operations)
           case 'lock':
             return await handleLock(args);
+          case 'unlock':
+            return await handleUnlock(args);
           case 'sync':
             return await handleSync(args);
           case 'status':

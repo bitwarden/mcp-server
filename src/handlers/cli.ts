@@ -3,9 +3,11 @@
  */
 
 import { executeCliCommand } from '../utils/cli.js';
+import { runUnlockFlow } from '../utils/unlock.js';
 import { withValidation } from '../utils/validation.js';
 import {
   lockSchema,
+  unlockSchema,
   syncSchema,
   statusSchema,
   listSchema,
@@ -59,8 +61,27 @@ function toMcpFormat(response: CliResponse) {
 }
 
 export const handleLock = withValidation(lockSchema, async () => {
+  // Clear the in-memory session before running `bw lock`. The intent of
+  // calling `lock` is "I want the session gone" — clearing up-front
+  // means we never leave a stale BW_SESSION in process.env if `bw lock`
+  // writes benign stderr on success (which would have looked like a
+  // failure to the previous conditional-clear).
+  delete process.env['BW_SESSION'];
   const response = await executeCliCommand('lock', []);
   return toMcpFormat(response);
+});
+
+export const handleUnlock = withValidation(unlockSchema, async () => {
+  const result = await runUnlockFlow();
+  return {
+    isError: !result.success,
+    content: [
+      {
+        type: 'text' as const,
+        text: result.success ? result.message : result.error,
+      },
+    ],
+  };
 });
 
 export const handleSync = withValidation(syncSchema, async () => {

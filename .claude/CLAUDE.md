@@ -11,7 +11,7 @@ The MCP server exposes two distinct operational interfaces:
 **1. CLI Interface (Vault Management and CLI Tools)**
 
 - Wraps Bitwarden CLI (`bw`) commands for personal vault operations
-- Requires `BW_SESSION` environment variable
+- Requires `BW_SESSION` environment variable, or an interactive user who can supply it via the `unlock` tool (see "Unlock tool" below)
 - Executes shell commands with security hardening
 - Returns plain text or JSON responses from CLI
 
@@ -48,6 +48,40 @@ index.ts (tool routing)
 2. **Type Safety**: End-to-end TypeScript with Zod runtime validation
 3. **Security First**: All inputs validated and sanitized before execution
 4. **Consistent Patterns**: Same structure for CLI and API tools
+
+## Unlock tool
+
+The `unlock` tool reuses the CLI interface but has a custom security model
+because it must collect a master password without exposing it to the LLM.
+
+- **Empty schema** — the tool takes no parameters. This is enforced at the
+  Zod level (`unlockSchema = z.object({})`) so the password cannot be
+  smuggled in as an argument.
+- **Out-of-band password collection** — `src/utils/unlock.ts` spawns a
+  native OS password dialog (`osascript` on macOS, `zenity`/`kdialog` on
+  Linux, PowerShell `PromptForCredential` on Windows). Dialog prompt text
+  MUST remain a compile-time constant — no interpolation of dynamic
+  values.
+- **Password never touches argv** — the password is handed to
+  `bw unlock --raw --passwordenv <RANDOM_NAME>`. The env var is scoped to
+  a **filtered child environment** (PATH/HOME/APPDATA + the password var
+  only) and never written to `process.env`.
+- **Stderr is scrubbed** — `scrubUnlockStderr` maps known `bw` error
+  strings to a fixed whitelist. Raw stderr is never returned to the LLM.
+- **Hard fail in non-interactive environments** — if no GUI is available,
+  the tool returns a fixed error directing the user to `bw unlock --raw`
+  manually. It NEVER falls back to prompting through MCP.
+- **Serialization + rate limit** — a module-level mutex prevents
+  concurrent unlock attempts; a minimum inter-attempt interval prevents
+  dialog-spam from a misbehaving LLM.
+- **Already-unlocked short-circuit** — the flow pre-checks `bw status` and
+  returns without showing a dialog if the vault is already unlocked.
+- **`handleLock` clears `BW_SESSION`** — on successful lock, the server
+  removes `BW_SESSION` from `process.env` so subsequent CLI calls fail
+  until the next unlock.
+
+Any future change to the unlock flow must preserve all of these
+invariants.
 
 ## Security Architecture
 
