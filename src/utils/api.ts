@@ -13,19 +13,9 @@ import type { ApiResponse, TokenResponse } from './types.js';
 
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
+let inFlightTokenRequest: Promise<string> | null = null;
 
-/**
- * Obtains an OAuth2 access token using client credentials flow
- * Caches tokens and automatically refreshes when expired
- */
-export async function getAccessToken(): Promise<string> {
-  const now = Date.now();
-
-  // Return cached token if still valid (with 5 minute buffer)
-  if (cachedToken && now < tokenExpiry - 300000) {
-    return cachedToken;
-  }
-
+async function fetchNewAccessToken(): Promise<string> {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     throw new Error(
       'BW_CLIENT_ID and BW_CLIENT_SECRET environment variables are required for API operations',
@@ -55,7 +45,7 @@ export async function getAccessToken(): Promise<string> {
     const tokenData: TokenResponse = (await response.json()) as TokenResponse;
 
     cachedToken = tokenData.access_token;
-    tokenExpiry = now + tokenData.expires_in * 1000; // Convert seconds to milliseconds
+    tokenExpiry = Date.now() + tokenData.expires_in * 1000; // Convert seconds to milliseconds
 
     return cachedToken;
   } catch (error) {
@@ -63,6 +53,32 @@ export async function getAccessToken(): Promise<string> {
       `Failed to obtain access token: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+}
+
+/**
+ * Obtains an OAuth2 access token using client credentials flow.
+ * Caches tokens and automatically refreshes when expired.
+ * Deduplicates concurrent callers so only one network request is in flight
+ * at a time when the cache is cold or expired.
+ */
+export async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+
+  // Return cached token if still valid (with 5 minute buffer)
+  if (cachedToken && now < tokenExpiry - 300000) {
+    return cachedToken;
+  }
+
+  // If a refresh is already in flight, wait for it instead of starting another.
+  if (inFlightTokenRequest) {
+    return inFlightTokenRequest;
+  }
+
+  inFlightTokenRequest = fetchNewAccessToken().finally(() => {
+    inFlightTokenRequest = null;
+  });
+
+  return inFlightTokenRequest;
 }
 
 /**
