@@ -49,7 +49,7 @@ jobs:
           node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
 
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build

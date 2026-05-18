@@ -129,6 +129,48 @@ describe('API Utilities', () => {
         'Failed to obtain access token: Network error',
       );
     });
+
+    it('should deduplicate concurrent token requests when the cache is cold', async () => {
+      const { getAccessToken } = await import('../../src/utils/api.js');
+
+      // Hold the single fetch open so several callers can pile up behind it.
+      let resolveFetch: ((value: Response) => void) | undefined;
+      const pendingFetch = new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      });
+      mockFetch.mockReturnValueOnce(pendingFetch);
+
+      const concurrentCallers = Promise.all([
+        getAccessToken(),
+        getAccessToken(),
+        getAccessToken(),
+        getAccessToken(),
+        getAccessToken(),
+      ]);
+
+      resolveFetch!({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () =>
+          Promise.resolve({
+            access_token: 'concurrent-test-token',
+            token_type: 'Bearer',
+            expires_in: 3600,
+          }),
+      } as Response);
+
+      const tokens = await concurrentCallers;
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(tokens).toEqual([
+        'concurrent-test-token',
+        'concurrent-test-token',
+        'concurrent-test-token',
+        'concurrent-test-token',
+        'concurrent-test-token',
+      ]);
+    });
   });
 
   describe('buildSafeApiRequest', () => {
