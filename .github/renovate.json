@@ -1,7 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>bitwarden/renovate-config"],
-  "enabledManagers": ["dockerfile", "github-actions", "npm"],
+  "enabledManagers": ["dockerfile", "github-actions", "npm", "custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": ["@bitwarden/cli@(?<currentValue>[^\\s'\"]+)"],
+      "depNameTemplate": "@bitwarden/cli",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "loose"
+    }
+  ],
   "packageRules": [
     {
       "groupName": "dockerfile minor",
