@@ -16,7 +16,7 @@ export const getCollectionRequestSchema = z.object({
 });
 
 export const updateCollectionRequestSchema = z.object({
-  collectionId: z.string().min(1, 'Collection ID is required'),
+  collectionId: z.string().uuid('Collection ID must be a valid UUID'),
   externalId: z
     .string()
     .max(300, 'External ID must be 300 characters or less')
