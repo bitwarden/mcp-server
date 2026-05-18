@@ -5,7 +5,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "managerFilePatterns": ["**/Dockerfile"],
       "matchStrings": ["@bitwarden/cli@(?<currentValue>[^\\s'\"]+)"],
       "depNameTemplate": "@bitwarden/cli",
       "datasourceTemplate": "npm",
