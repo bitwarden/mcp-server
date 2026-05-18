@@ -12,7 +12,7 @@ import { z } from 'zod';
 export const listCollectionsRequestSchema = z.object({});
 
 export const getCollectionRequestSchema = z.object({
-  collectionId: z.string().min(1, 'Collection ID is required'),
+  collectionId: z.string().uuid('Collection ID must be a valid UUID'),
 });
 
 export const updateCollectionRequestSchema = z.object({
@@ -39,7 +39,7 @@ export const deleteCollectionRequestSchema = getCollectionRequestSchema;
 export const listMembersRequestSchema = z.object({});
 
 export const getMemberRequestSchema = z.object({
-  memberId: z.string().min(1, 'Member ID is required'),
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
 });
 
 export const inviteMemberRequestSchema = z.object({
@@ -185,8 +185,8 @@ export const updateMemberGroupsRequestSchema = z.object({
 });
 
 export const updateGroupMembersRequestSchema = z.object({
-  groupId: z.string().min(1, 'Group ID is required'),
-  memberIds: z.array(z.string().min(1, 'Member ID is required')),
+  groupId: z.string().uuid('Group ID must be a valid UUID'),
+  memberIds: z.array(z.string().uuid('Member ID must be a valid UUID')),
 });
 
 export const reinviteMemberRequestSchema = z.object({
@@ -208,14 +208,16 @@ export const getPolicyRequestSchema = z.object({
   policyType: z
     .number()
     .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value'),
+    .min(0, 'Policy type must be a valid enum value')
+    .max(15, 'Policy type must be a valid enum value'),
 });
 
 export const updatePolicyRequestSchema = z.object({
   policyType: z
     .number()
     .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value'),
+    .min(0, 'Policy type must be a valid enum value')
+    .max(15, 'Policy type must be a valid enum value'),
   enabled: z.boolean(),
   data: z.record(z.string(), z.unknown()).optional(),
 });

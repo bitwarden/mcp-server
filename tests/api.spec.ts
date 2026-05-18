@@ -676,9 +676,8 @@ describe('API Handlers', () => {
 
   describe('toMcpFormat (via handlers)', () => {
     it('should format successful response with data', async () => {
-      const { handleListOrgCollections } = await import(
-        '../src/handlers/api.js'
-      );
+      const { handleListOrgCollections } =
+        await import('../src/handlers/api.js');
 
       mockTokenAndApiResponse({ data: [{ id: '123', name: 'Test' }] });
 
@@ -690,9 +689,8 @@ describe('API Handlers', () => {
     });
 
     it('should format error response', async () => {
-      const { handleListOrgCollections } = await import(
-        '../src/handlers/api.js'
-      );
+      const { handleListOrgCollections } =
+        await import('../src/handlers/api.js');
 
       // Mock token
       mockFetch.mockResolvedValueOnce({
@@ -723,9 +721,8 @@ describe('API Handlers', () => {
   describe('Collections Handlers', () => {
     describe('handleListOrgCollections', () => {
       it('should call correct endpoint', async () => {
-        const { handleListOrgCollections } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleListOrgCollections } =
+          await import('../src/handlers/api.js');
 
         mockTokenAndApiResponse({ data: [] });
 
@@ -740,53 +737,54 @@ describe('API Handlers', () => {
 
     describe('handleGetOrgCollection', () => {
       it('should call correct endpoint with collectionId', async () => {
-        const { handleGetOrgCollection } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleGetOrgCollection } =
+          await import('../src/handlers/api.js');
 
-        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+        mockTokenAndApiResponse({ id: '550e8400-e29b-41d4-a716-446655440000' });
 
         await handleGetOrgCollection({
-          collectionId: '12345678-1234-1234-1234-123456789012',
+          collectionId: '550e8400-e29b-41d4-a716-446655440000',
         });
 
         expect(mockFetch.mock.calls[1]![0]).toBe(
-          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+          'https://api.bitwarden.test/public/collections/550e8400-e29b-41d4-a716-446655440000',
         );
       });
 
       it('should return error for invalid UUID format', async () => {
-        const { handleGetOrgCollection } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleGetOrgCollection } =
+          await import('../src/handlers/api.js');
 
         const result = await handleGetOrgCollection({
           collectionId: 'invalid',
         });
 
         expect(result.isError).toBe(true);
-        // The endpoint validation rejects invalid UUIDs because the pattern requires UUID format
-        expect(result.content[0]!.text).toContain('Invalid API endpoint');
+        // Schema-level UUID validation runs before the endpoint regex,
+        // so we get a clean Zod validation error rather than the
+        // generic "Invalid API endpoint" message.
+        expect(result.content[0]!.text).toContain(
+          'Collection ID must be a valid UUID',
+        );
       });
     });
 
     describe('handleUpdateOrgCollection', () => {
       it('should call correct endpoint with PUT method', async () => {
-        const { handleUpdateOrgCollection } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleUpdateOrgCollection } =
+          await import('../src/handlers/api.js');
 
-        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+        mockTokenAndApiResponse({ id: '550e8400-e29b-41d4-a716-446655440000' });
 
         await handleUpdateOrgCollection({
-          collectionId: '12345678-1234-1234-1234-123456789012',
+          collectionId: '550e8400-e29b-41d4-a716-446655440000',
           externalId: 'ext-123',
           groups: [],
         });
 
         const apiCall = mockFetch.mock.calls[1];
         expect(apiCall![0]).toBe(
-          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+          'https://api.bitwarden.test/public/collections/550e8400-e29b-41d4-a716-446655440000',
         );
         expect((apiCall![1] as RequestInit).method).toBe('PUT');
       });
@@ -794,9 +792,8 @@ describe('API Handlers', () => {
 
     describe('handleDeleteOrgCollection', () => {
       it('should call correct endpoint with DELETE method', async () => {
-        const { handleDeleteOrgCollection } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleDeleteOrgCollection } =
+          await import('../src/handlers/api.js');
 
         // Mock token
         mockFetch.mockResolvedValueOnce({
@@ -817,12 +814,12 @@ describe('API Handlers', () => {
         } as Response);
 
         await handleDeleteOrgCollection({
-          collectionId: '12345678-1234-1234-1234-123456789012',
+          collectionId: '550e8400-e29b-41d4-a716-446655440000',
         });
 
         const apiCall = mockFetch.mock.calls[1];
         expect(apiCall![0]).toBe(
-          'https://api.bitwarden.test/public/collections/12345678-1234-1234-1234-123456789012',
+          'https://api.bitwarden.test/public/collections/550e8400-e29b-41d4-a716-446655440000',
         );
         expect((apiCall![1] as RequestInit).method).toBe('DELETE');
       });
@@ -848,23 +845,22 @@ describe('API Handlers', () => {
       it('should call correct endpoint with memberId', async () => {
         const { handleGetOrgMember } = await import('../src/handlers/api.js');
 
-        mockTokenAndApiResponse({ id: '12345678-1234-1234-1234-123456789012' });
+        mockTokenAndApiResponse({ id: '550e8400-e29b-41d4-a716-446655440000' });
 
         await handleGetOrgMember({
-          memberId: '12345678-1234-1234-1234-123456789012',
+          memberId: '550e8400-e29b-41d4-a716-446655440000',
         });
 
         expect(mockFetch.mock.calls[1]![0]).toBe(
-          'https://api.bitwarden.test/public/members/12345678-1234-1234-1234-123456789012',
+          'https://api.bitwarden.test/public/members/550e8400-e29b-41d4-a716-446655440000',
         );
       });
     });
 
     describe('handleInviteOrgMember', () => {
       it('should call correct endpoint with POST method', async () => {
-        const { handleInviteOrgMember } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleInviteOrgMember } =
+          await import('../src/handlers/api.js');
 
         mockTokenAndApiResponse({ id: 'new-member-id' }, 201);
 
@@ -885,9 +881,8 @@ describe('API Handlers', () => {
       });
 
       it('should return validation error for invalid email', async () => {
-        const { handleInviteOrgMember } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleInviteOrgMember } =
+          await import('../src/handlers/api.js');
 
         const result = await handleInviteOrgMember({
           email: 'invalid-email',
@@ -903,9 +898,8 @@ describe('API Handlers', () => {
 
     describe('handleRemoveOrgMember', () => {
       it('should call correct endpoint with DELETE method', async () => {
-        const { handleRemoveOrgMember } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleRemoveOrgMember } =
+          await import('../src/handlers/api.js');
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
@@ -924,7 +918,7 @@ describe('API Handlers', () => {
         } as Response);
 
         await handleRemoveOrgMember({
-          memberId: '12345678-1234-1234-1234-123456789012',
+          memberId: '550e8400-e29b-41d4-a716-446655440000',
         });
 
         const apiCall = mockFetch.mock.calls[1];
@@ -1025,9 +1019,8 @@ describe('API Handlers', () => {
   describe('Policies Handlers', () => {
     describe('handleListOrgPolicies', () => {
       it('should call correct endpoint', async () => {
-        const { handleListOrgPolicies } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleListOrgPolicies } =
+          await import('../src/handlers/api.js');
 
         mockTokenAndApiResponse({ data: [] });
 
@@ -1102,9 +1095,8 @@ describe('API Handlers', () => {
   describe('Billing Handlers', () => {
     describe('handleGetOrgSubscription', () => {
       it('should call correct endpoint', async () => {
-        const { handleGetOrgSubscription } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleGetOrgSubscription } =
+          await import('../src/handlers/api.js');
 
         mockTokenAndApiResponse({ passwordManager: { seats: 10 } });
 
@@ -1120,9 +1112,8 @@ describe('API Handlers', () => {
   describe('Import Handlers', () => {
     describe('handleImportOrgUsersAndGroups', () => {
       it('should call correct endpoint with POST method', async () => {
-        const { handleImportOrgUsersAndGroups } = await import(
-          '../src/handlers/api.js'
-        );
+        const { handleImportOrgUsersAndGroups } =
+          await import('../src/handlers/api.js');
 
         mockFetch.mockResolvedValueOnce({
           ok: true,
@@ -1158,9 +1149,8 @@ describe('API Handlers', () => {
 
   describe('Validation Errors', () => {
     it('should return validation error for missing required fields', async () => {
-      const { handleUpdateOrgCollection } = await import(
-        '../src/handlers/api.js'
-      );
+      const { handleUpdateOrgCollection } =
+        await import('../src/handlers/api.js');
 
       // Missing required collectionId
       const result = await handleUpdateOrgCollection({} as never);

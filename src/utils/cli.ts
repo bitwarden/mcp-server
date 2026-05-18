@@ -3,6 +3,7 @@
  */
 
 import { spawn } from 'child_process';
+import { buildBwChildEnv } from './bw-env.js';
 import { buildSafeCommand, isValidBitwardenCommand } from './security.js';
 import type { CliResponse } from './types.js';
 
@@ -29,10 +30,20 @@ export async function executeCliCommand(
       } as const;
     }
 
+    // Build a filtered child env. `bw` only needs PATH/HOME/APPDATA-style
+    // vars plus BW_SESSION when set — it must not inherit the API client
+    // credentials or any other host env the operator set on the MCP
+    // server process. See bw-env.ts for the full rationale.
+    const childEnv = buildBwChildEnv(
+      process.env['BW_SESSION']
+        ? { BW_SESSION: process.env['BW_SESSION'] }
+        : undefined,
+    );
+
     // Use spawn with array of arguments to avoid shell interpretation
     return new Promise<CliResponse>((resolve) => {
       const child = spawn('bw', [command, ...args], {
-        env: process.env,
+        env: childEnv,
         shell: false, // Explicitly disable shell to prevent injection
       });
 
