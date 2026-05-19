@@ -16,12 +16,26 @@
 export function buildBwChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   const passthrough = [
+    // Filesystem / data dir
     'PATH',
     'HOME',
     'USERPROFILE',
     'APPDATA',
     'LOCALAPPDATA',
     'BITWARDENCLI_APPDATA_DIR',
+    // Corporate-network plumbing: `bw` is a Node.js process and honors
+    // these for proxy and additional-CA support. Without them the CLI
+    // fails behind common enterprise setups (HTTP_PROXY-style egress,
+    // self-signed roots from ZScaler / Burp Suite / corporate MITM).
+    // Both casings are passed through because Node and downstream
+    // libraries differ on which they read.
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'NO_PROXY',
+    'http_proxy',
+    'https_proxy',
+    'no_proxy',
+    'NODE_EXTRA_CA_CERTS',
   ] as const;
   for (const key of passthrough) {
     const v = process.env[key];

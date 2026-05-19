@@ -204,20 +204,25 @@ export const restoreMemberRequestSchema = z.object({
 // Policies Schemas
 export const listPoliciesRequestSchema = z.object({});
 
+// Server-side PolicyType is declared as `byte` (see
+// bitwarden/server src/Core/AdminConsole/Enums/PolicyType.cs), so 0–255
+// is the authoritative storage range. We deliberately do not pin a
+// tighter ceiling here: the enum grows as new policies ship (currently
+// up to 21), and a tight client-side cap would silently reject valid
+// values until this schema is updated. The server remains the source
+// of truth for which specific enum values are accepted.
+const policyTypeSchema = z
+  .number()
+  .int('Policy type must be an integer')
+  .min(0, 'Policy type must be a valid enum value')
+  .max(255, 'Policy type must be a valid enum value');
+
 export const getPolicyRequestSchema = z.object({
-  policyType: z
-    .number()
-    .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value')
-    .max(15, 'Policy type must be a valid enum value'),
+  policyType: policyTypeSchema,
 });
 
 export const updatePolicyRequestSchema = z.object({
-  policyType: z
-    .number()
-    .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value')
-    .max(15, 'Policy type must be a valid enum value'),
+  policyType: policyTypeSchema,
   enabled: z.boolean(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
