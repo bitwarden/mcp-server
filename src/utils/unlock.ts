@@ -9,6 +9,7 @@
 
 import { spawn } from 'child_process';
 import crypto from 'crypto';
+import { buildBwChildEnv } from './bw-env.js';
 
 /**
  * Module-local indirection for `child_process.spawn` so tests can
@@ -68,35 +69,6 @@ for (const [name, value] of [
 const HEADLESS_ERROR =
   'Interactive unlock is not supported in this environment. ' +
   'Run "bw unlock --raw" manually and set BW_SESSION.';
-
-/**
- * Env vars inherited by every `bw` child process we spawn. `bw` needs
- * HOME/APPDATA/etc. to locate its data directory; without them it would
- * read/write the wrong files or fail. The password env var is added
- * per-invocation on top of this allowlist — no other `process.env`
- * entries are passed to the child.
- */
-function buildBwChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {};
-  const passthrough = [
-    'PATH',
-    'HOME',
-    'USERPROFILE',
-    'APPDATA',
-    'LOCALAPPDATA',
-    'BITWARDENCLI_APPDATA_DIR',
-  ] as const;
-  for (const key of passthrough) {
-    const v = process.env[key];
-    if (v !== undefined) env[key] = v;
-  }
-  if (extra) {
-    for (const [k, v] of Object.entries(extra)) {
-      if (v !== undefined) env[k] = v;
-    }
-  }
-  return env;
-}
 
 export function isLinuxHeadless(): boolean {
   return !process.env['DISPLAY'] && !process.env['WAYLAND_DISPLAY'];

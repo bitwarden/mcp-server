@@ -12,11 +12,11 @@ import { z } from 'zod';
 export const listCollectionsRequestSchema = z.object({});
 
 export const getCollectionRequestSchema = z.object({
-  collectionId: z.string().min(1, 'Collection ID is required'),
+  collectionId: z.string().uuid('Collection ID must be a valid UUID'),
 });
 
 export const updateCollectionRequestSchema = z.object({
-  collectionId: z.string().min(1, 'Collection ID is required'),
+  collectionId: z.string().uuid('Collection ID must be a valid UUID'),
   externalId: z
     .string()
     .max(300, 'External ID must be 300 characters or less')
@@ -39,7 +39,7 @@ export const deleteCollectionRequestSchema = getCollectionRequestSchema;
 export const listMembersRequestSchema = z.object({});
 
 export const getMemberRequestSchema = z.object({
-  memberId: z.string().min(1, 'Member ID is required'),
+  memberId: z.string().uuid('Member ID must be a valid UUID'),
 });
 
 export const inviteMemberRequestSchema = z.object({
@@ -185,8 +185,8 @@ export const updateMemberGroupsRequestSchema = z.object({
 });
 
 export const updateGroupMembersRequestSchema = z.object({
-  groupId: z.string().min(1, 'Group ID is required'),
-  memberIds: z.array(z.string().min(1, 'Member ID is required')),
+  groupId: z.string().uuid('Group ID must be a valid UUID'),
+  memberIds: z.array(z.string().uuid('Member ID must be a valid UUID')),
 });
 
 export const reinviteMemberRequestSchema = z.object({
@@ -204,18 +204,25 @@ export const restoreMemberRequestSchema = z.object({
 // Policies Schemas
 export const listPoliciesRequestSchema = z.object({});
 
+// Server-side PolicyType is declared as `byte` (see
+// bitwarden/server src/Core/AdminConsole/Enums/PolicyType.cs), so 0–255
+// is the authoritative storage range. We deliberately do not pin a
+// tighter ceiling here: the enum grows as new policies ship (currently
+// up to 21), and a tight client-side cap would silently reject valid
+// values until this schema is updated. The server remains the source
+// of truth for which specific enum values are accepted.
+const policyTypeSchema = z
+  .number()
+  .int('Policy type must be an integer')
+  .min(0, 'Policy type must be a valid enum value')
+  .max(255, 'Policy type must be a valid enum value');
+
 export const getPolicyRequestSchema = z.object({
-  policyType: z
-    .number()
-    .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value'),
+  policyType: policyTypeSchema,
 });
 
 export const updatePolicyRequestSchema = z.object({
-  policyType: z
-    .number()
-    .int('Policy type must be an integer')
-    .min(0, 'Policy type must be a valid enum value'),
+  policyType: policyTypeSchema,
   enabled: z.boolean(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
