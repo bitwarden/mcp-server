@@ -2,7 +2,29 @@
  * Security utilities for input sanitization and validation
  */
 
+import fs from 'fs';
 import path from 'path';
+
+/**
+ * Canonicalize a filesystem path by resolving symbolic links.
+ *
+ * Uses fs.realpathSync.native() when the path exists. If the path does not
+ * exist (e.g. a not-yet-created download target), we recursively canonicalize
+ * the longest existing ancestor and re-attach the missing tail. This ensures
+ * a partially-existing path cannot smuggle in a symlinked ancestor that
+ * silently redirects outside the allowlist.
+ */
+function canonicalizePath(filePath: string): string {
+  try {
+    return fs.realpathSync.native(filePath);
+  } catch {
+    const parent = path.dirname(filePath);
+    if (parent === filePath) {
+      return filePath;
+    }
+    return path.join(canonicalizePath(parent), path.basename(filePath));
+  }
+}
 
 /**
  * Sanitizes a string to prevent command injection by removing dangerous characters
@@ -194,7 +216,7 @@ export function sanitizeApiParameters(params: unknown): unknown {
  * Security measures:
  * - URL decoding (iterative to handle double encoding)
  * - Unicode normalization (NFC form)
- * - Path resolution to canonical form
+ * - Path resolution to canonical form (with symlink resolution via realpath)
  * - Allowlist-based directory validation
  * - Protection against all known bypass techniques
  *
@@ -283,8 +305,13 @@ export function validateFilePath(filePath: string): boolean {
       return false;
     }
 
-    // Step 8: Resolve to absolute canonical path
-    const resolvedPath = path.resolve(normalizedPath);
+    // Step 8: Resolve to absolute canonical path, including symlink resolution.
+    // Lexical resolution alone (path.resolve) only collapses ./ and ../; it does
+    // not follow symlinks. Without realpath, a symlink inside an allowed
+    // directory could target a file outside the allowlist and pass the prefix
+    // check below. canonicalizePath() resolves symlinks via realpath and falls
+    // back to lexical resolution for non-existent path segments.
+    const resolvedPath = canonicalizePath(path.resolve(normalizedPath));
 
     // Step 9: Get allowed directories from environment variable
     // Fail closed: if BW_ALLOWED_DIRECTORIES is unset, reject all file operations.
@@ -296,11 +323,14 @@ export function validateFilePath(filePath: string): boolean {
       return false;
     }
 
+    // Allowed directories are canonicalized too, so that a symlinked allow-list
+    // entry (e.g. /tmp on macOS → /private/tmp) compares consistently with
+    // candidates that have been canonicalized through the symlink.
     const allowedDirectories = allowedDirsEnv
       .split(',')
       .map((dir) => dir.trim())
       .filter((dir) => dir.length > 0)
-      .map((dir) => path.resolve(dir));
+      .map((dir) => canonicalizePath(path.resolve(dir)));
 
     if (allowedDirectories.length === 0) {
       return false;

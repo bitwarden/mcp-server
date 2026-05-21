@@ -1,4 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
   sanitizeInput,
   validateParameter,
@@ -773,6 +776,78 @@ describe('Security - Command Injection Protection', () => {
           const result = validateFilePath(path);
           expect(typeof result).toBe('boolean');
         });
+      });
+    });
+
+    describe('Symlink Resolution (VULN-585)', () => {
+      // Regression coverage for the lexical-prefix bypass: a symlink inside
+      // an allowed directory whose target lives outside the allowlist must
+      // be rejected once the candidate path is canonicalized.
+      const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-symlink-'));
+      const allowedDir = fs.realpathSync.native(
+        fs.mkdtempSync(path.join(tmpRoot, 'allowed-')),
+      );
+      const outsideDir = fs.realpathSync.native(
+        fs.mkdtempSync(path.join(tmpRoot, 'outside-')),
+      );
+      const outsideFile = path.join(outsideDir, 'secret.txt');
+      const insideFile = path.join(allowedDir, 'inside.txt');
+      const symlinkToOutsideFile = path.join(allowedDir, 'link-to-secret.txt');
+      const symlinkToOutsideDir = path.join(allowedDir, 'link-to-outside');
+
+      const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+
+      beforeAll(() => {
+        fs.writeFileSync(outsideFile, 'outside-allowlist-secret\n');
+        fs.writeFileSync(insideFile, 'inside-allowlist\n');
+        fs.symlinkSync(outsideFile, symlinkToOutsideFile);
+        fs.symlinkSync(outsideDir, symlinkToOutsideDir);
+      });
+
+      afterAll(() => {
+        fs.rmSync(tmpRoot, { recursive: true, force: true });
+        if (originalEnv) {
+          process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+        } else {
+          delete process.env['BW_ALLOWED_DIRECTORIES'];
+        }
+      });
+
+      beforeEach(() => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = allowedDir;
+      });
+
+      it('should reject a symlink inside the allowlist that targets a file outside', () => {
+        expect(validateFilePath(symlinkToOutsideFile)).toBe(false);
+      });
+
+      it('should reject a path that traverses through a symlinked directory to a file outside', () => {
+        const traversed = path.join(symlinkToOutsideDir, 'secret.txt');
+        expect(validateFilePath(traversed)).toBe(false);
+      });
+
+      it('should still accept a real file inside the allowlist', () => {
+        expect(validateFilePath(insideFile)).toBe(true);
+      });
+
+      it('should accept a not-yet-created file inside the allowlist', () => {
+        const newFile = path.join(allowedDir, 'does-not-exist-yet.txt');
+        expect(validateFilePath(newFile)).toBe(true);
+      });
+
+      it('should accept paths under an allowlist entry that is itself a symlink', () => {
+        // Configure the allowlist via a symlink pointing at the real allowed
+        // directory. After canonicalization both sides must resolve to the
+        // same real path so legitimate files are still accepted.
+        const symlinkedAllowEntry = path.join(tmpRoot, 'allow-link');
+        fs.symlinkSync(allowedDir, symlinkedAllowEntry);
+        try {
+          process.env['BW_ALLOWED_DIRECTORIES'] = symlinkedAllowEntry;
+          expect(validateFilePath(insideFile)).toBe(true);
+          expect(validateFilePath(symlinkToOutsideFile)).toBe(false);
+        } finally {
+          fs.unlinkSync(symlinkedAllowEntry);
+        }
       });
     });
   });
