@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
 
 RUN npm ci --ignore-scripts --omit-dev
-RUN npm install --ignore-scripts @bitwarden/cli@2026.4.1
+RUN npm install --ignore-scripts @bitwarden/cli@2026.4.2
 
 FROM dependencies AS builder
 
