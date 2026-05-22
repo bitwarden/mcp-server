@@ -723,11 +723,18 @@ npm run build
 
 ### Publishing
 
-```bash
-npm version patch|minor|major
-npm run build
-npm publish
-```
+`release.yml` and `publish.yml` in this repo are **pure trigger workflows** — they emit a deployment event via `bitwarden/gh-actions/trigger-actions@main` and do no release/publish work themselves. The deployment event names a task (`release-mcp-server`, `publish-mcp-server`) which is handled downstream by the central release automation. The build artifact produced by this repo's `build.yml` is what the downstream consumes.
+
+Flow:
+
+1. Human dispatches `release.yml` from `main`.
+2. `trigger-actions` composite captures the source run context and creates a `task: release-mcp-server` deployment event. Reviewer policy / branch gating live with the downstream handler, not in this repo.
+3. The downstream handler validates the source run, reads the version from `package.json` on `main` via a cross-repo GitHub App token, downloads the artifact this repo's `build.yml` produced, creates a draft GitHub release on this repo (tag `v<version>`, asset `mcp-server-<version>.zip`), and retags `ghcr.io/bitwarden/mcp-server:dev` → `:<version>`.
+4. A human reviews the draft release and clicks Publish — drafts are intentionally never auto-published.
+5. Human dispatches `publish.yml` here with `version` (default `latest`).
+6. Same trigger chain (task `publish-mcp-server`) routes to the downstream publish handler: npm (OIDC trusted publisher), GitHub Package Registry, and retag `ghcr.io/bitwarden/mcp-server:<version>` → `:latest`. Each target is independently gated by a boolean input for partial re-runs.
+
+Local `npm publish` is not used. Do not add release/publish business logic to the workflows in this repo — they remain pure triggers. To change what release/publish does, change the downstream handler.
 
 ### Versioning
 

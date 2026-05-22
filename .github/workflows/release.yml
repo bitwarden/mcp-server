@@ -6,91 +6,27 @@ on:
 permissions: {}
 
 jobs:
-  setup:
-    name: Setup
+  trigger:
+    name: Trigger release in bitwarden/deploy
     runs-on: ubuntu-24.04
-    outputs:
-      release_version: ${{ steps.version.outputs.version }}
     permissions:
       contents: read
-
+      deployments: write
+      id-token: write
     steps:
-      - name: Check out repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
       - name: Check branch
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "==================================="
-            echo "[!] Can only release from the 'main' branch"
-            echo "==================================="
+            echo "==================================================="
+            echo "[!] Can only trigger release from the 'main' branch"
+            echo "==================================================="
             exit 1
           fi
 
-      - name: Check release version
-        id: version
-        uses: bitwarden/gh-actions/release-version-check@main
+      - name: Trigger release in bitwarden/deploy
+        uses: bitwarden/gh-actions/trigger-actions@main
         with:
-          release-type: Initial Release
-          project-type: ts
-          file: ./package.json
-
-  release:
-    name: Release
-    runs-on: ubuntu-24.04
-    needs: setup
-    env:
-      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
-    permissions:
-      actions: read
-      contents: write
-      packages: read
-
-    steps:
-      - name: Download release artifact
-        uses: bitwarden/gh-actions/download-artifacts@main
-        with:
-          artifacts: "mcp-server-${{ env._PKG_VERSION }}"
-          branch: ${{ github.ref_name }}
-          skip_unpack: true
-          workflow: build.yml
-          workflow_conclusion: success
-
-      - name: Create release
-        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
-        with:
-          artifacts: "./mcp-server-${{ env._PKG_VERSION }}.zip"
-          commit: ${{ github.sha }}
-          tag: v${{ env._PKG_VERSION }}
-          name: v${{ env._PKG_VERSION }}
-          body: "<insert release notes here>"
-          token: ${{ secrets.GITHUB_TOKEN }}
-          draft: true
-
-  release-ghcr:
-    name: Push Release to GitHub Container Registry
-    runs-on: ubuntu-24.04
-    needs: setup
-    env:
-      _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
-      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
-    permissions:
-      packages: write
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull, tag, and push release
-        run: |
-          docker pull "${_IMAGE_NAME}:dev"
-          docker tag "${_IMAGE_NAME}:dev" "${_IMAGE_NAME}:${_RELEASE_TAG}"
-          docker push "${_IMAGE_NAME}:${_RELEASE_TAG}"
-
-      - name: Log out of Docker
-        run: docker logout ghcr.io
+          azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          azure_client_id: ${{ secrets.AZURE_CLIENT_ID }}
+          task: release-mcp-server
