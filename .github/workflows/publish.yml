@@ -9,192 +9,30 @@ on:
         type: string
         default: latest
 
-defaults:
-  run:
-    working-directory: .
-
 permissions: {}
 
 jobs:
-  setup:
-    name: Setup
+  trigger:
+    name: Trigger publish in bitwarden/deploy
     runs-on: ubuntu-24.04
-    outputs:
-      release_version: ${{ steps.version-output.outputs.version }}
-      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
     permissions:
       contents: read
       deployments: write
-
+      id-token: write
     steps:
       - name: Check branch
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "==================================="
-            echo "[!] Can only publish from the 'main' branch"
-            echo "==================================="
+            echo "==================================================="
+            echo "[!] Can only trigger publish from the 'main' branch"
+            echo "==================================================="
             exit 1
           fi
 
-      - name: Output version
-        id: version-output
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-        run: |
-          if [[ "${_INPUT_VERSION}" == "latest" || "${_INPUT_VERSION}" == "" ]]; then
-            VERSION=$(curl  "https://api.github.com/repos/bitwarden/mcp-server/releases" | jq -c '.[] | select(.tag_name | contains("v")) | .tag_name' | head -1 | grep -ohE '20[0-9]{2}\.([1-9]|1[0-2])\.[0-9]+')
-            echo "Latest Released Version: $VERSION"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "Release Version: ${_INPUT_VERSION}"
-            echo "version=${_INPUT_VERSION}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create GitHub deployment
-        uses: chrnorm/deployment-action@500aa6a23c81ffa1acf71072aee3cfa2cc2e556a # v2.0.8
-        id: deployment
+      - name: Trigger publish in bitwarden/deploy
+        uses: bitwarden/gh-actions/trigger-actions@main
         with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          initial-status: "in_progress"
-          environment: "NPM"
-          description: "Deployment ${{ steps.version-output.outputs.version }} from branch ${{ github.ref_name }}"
-          task: release
-
-  publish-npm:
-    name: Publish to NPM
-    environment: NPM
-    runs-on: ubuntu-24.04
-    needs: setup
-    permissions:
-      packages: read
-      id-token: write
-    env:
-      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
-
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: refs/tags/v${{ env._PKG_VERSION }}
-          persist-credentials: false
-
-      - name: Get Node version
-        id: retrieve-node-version
-        run: |
-          NODE_NVMRC=$(cat .nvmrc)
-          NODE_VERSION=${NODE_NVMRC/v/''}
-          echo "node_version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
-          registry-url: "https://registry.npmjs.org/"
-
-      - name: Install Husky
-        run: npm install -g husky
-
-      - name: Install NPM
-        run: |
-          npm install -g npm@latest # npm 11.5.1 or later is required to publish w/ OIDC
-          npm --version
-
-      - name: Download and set up artifact
-        run: |
-          wget "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${_PKG_VERSION}/mcp-server-${_PKG_VERSION}.zip"
-          unzip "mcp-server-${_PKG_VERSION}.zip"
-
-      - name: Publish to NPM
-        run: npm publish --access public
-
-  publish-ghpr:
-    name: Publish to GitHub Package Registry
-    runs-on: ubuntu-24.04
-    needs: setup
-    env:
-      _PKG_VERSION: ${{ needs.setup.outputs.release_version }}
-    permissions:
-      packages: write
-
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: refs/tags/v${{ env._PKG_VERSION }}
-          persist-credentials: false
-
-      - name: Download and set up artifact
-        run: |
-          wget "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${_PKG_VERSION}/mcp-server-${_PKG_VERSION}.zip"
-          unzip "mcp-server-${_PKG_VERSION}.zip"
-
-      - name: Set up GHPR
-        run: |
-          echo 'registry="https://npm.pkg.github.com/"' > ./.npmrc
-          echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Husky
-        run: npm install -g husky
-
-      - name: Publish to GHPR
-        run: npm publish --access public --registry=https://npm.pkg.github.com/  --userconfig=./.npmrc
-
-  publish-ghcr:
-    name: Publish release as latest
-    runs-on: ubuntu-24.04
-    needs: setup
-    env:
-      _RELEASE_TAG: ${{ needs.setup.outputs.release_version }}
-      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull, tag, and push release as latest
-        run: |
-          docker pull "${_IMAGE_NAME}:${_RELEASE_TAG}"
-          docker tag "${_IMAGE_NAME}:${_RELEASE_TAG}" "${_IMAGE_NAME}:latest"
-          docker push "${_IMAGE_NAME}:latest"
-
-  update-deployment:
-    name: Update deployment status
-    runs-on: ubuntu-24.04
-    needs:
-      - setup
-      - publish-npm
-      - publish-ghpr
-    permissions:
-      contents: read
-      deployments: write
-    if: ${{ always() }}
-
-    steps:
-      - name: Check if any job failed
-        if: contains(needs.*.result, 'failure')
-        run: exit 1
-
-      - name: Update deployment status to Success
-        if: ${{ success() }}
-        uses: chrnorm/deployment-status@6df8d036fd2fee9eb82936733953da1f8382b41e # v2.0.4
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          state: "success"
-          deployment-id: ${{ needs.setup.outputs.deployment_id }}
-
-      - name: Update deployment status to Failure
-        if: ${{ failure() }}
-        uses: chrnorm/deployment-status@6df8d036fd2fee9eb82936733953da1f8382b41e # v2.0.4
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          state: "failure"
-          deployment-id: ${{ needs.setup.outputs.deployment_id }}
+          azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          azure_client_id: ${{ secrets.AZURE_CLIENT_ID }}
+          task: publish-mcp-server
