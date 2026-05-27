@@ -169,7 +169,7 @@ The `validateFilePath()` function provides defense-in-depth protection against p
 5. **Unicode normalization** - Converts fullwidth characters and variants to canonical form (NFC)
 6. **Pattern matching** - Detects traversal sequences (../, ..\, etc.)
 7. **Unicode lookalike detection** - Blocks alternative slash characters (U+2215, U+FF0F, etc.)
-8. **Path canonicalization** - Resolves to absolute paths
+8. **Path canonicalization** - Resolves to absolute paths and follows symlinks via `fs.realpathSync.native()`. Both the candidate path and every `BW_ALLOWED_DIRECTORIES` entry are canonicalized before the prefix check, so a symlink inside the allowlist cannot smuggle in a file whose real path is outside it. Non-existent path segments fall back to lexical resolution against the longest existing ancestor.
 9. **Allowlist validation** - Only permits files within `BW_ALLOWED_DIRECTORIES`
 
 **Environment Configuration**:
@@ -195,6 +195,7 @@ set BW_ALLOWED_DIRECTORIES=C:/Users/YourName/Documents,C:/Temp/Bitwarden
 - UNC path variants (`\localhost\c$`)
 - Overlong UTF-8 encoding
 - Mixed encoding techniques
+- Symlink-based escapes (a symlink inside the allowlist whose target is outside it)
 
 ### Security Rules
 
