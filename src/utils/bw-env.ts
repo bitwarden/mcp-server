@@ -23,6 +23,14 @@ export function buildBwChildEnv(extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     'APPDATA',
     'LOCALAPPDATA',
     'BITWARDENCLI_APPDATA_DIR',
+    // Windows essentials. `bw` is a Node.js process (we invoke it via the
+    // Node runtime / its npm shim on Windows — see bw-cli.ts), and Node on
+    // Windows needs SystemRoot to initialize crypto, DNS, and other Win32
+    // subsystems. Without it the child fails to start or behaves
+    // erratically. Both casings are passed through because callers and
+    // libraries differ on which they set/read.
+    'SystemRoot',
+    'SYSTEMROOT',
     // Corporate-network plumbing: `bw` is a Node.js process and honors
     // these for proxy and additional-CA support. Without them the CLI
     // fails behind common enterprise setups (HTTP_PROXY-style egress,
