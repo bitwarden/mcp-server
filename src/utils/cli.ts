@@ -3,6 +3,7 @@
  */
 
 import { spawn } from 'child_process';
+import { resolveBwInvocation } from './bw-cli.js';
 import { buildBwChildEnv } from './bw-env.js';
 import { buildSafeCommand, isValidBitwardenCommand } from './security.js';
 import type { CliResponse } from './types.js';
@@ -40,9 +41,13 @@ export async function executeCliCommand(
         : undefined,
     );
 
+    // Resolve how to invoke `bw` (handles the Windows npm-shim case where
+    // a bare `bw` is not directly spawnable). See bw-cli.ts.
+    const { command: bwExecutable, prefixArgs } = resolveBwInvocation();
+
     // Use spawn with array of arguments to avoid shell interpretation
     return new Promise<CliResponse>((resolve) => {
-      const child = spawn('bw', [command, ...args], {
+      const child = spawn(bwExecutable, [...prefixArgs, command, ...args], {
         env: childEnv,
         shell: false, // Explicitly disable shell to prevent injection
       });
