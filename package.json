@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@bitwarden/mcp-server",
-  "version": "2026.5.1",
+  "version": "2026.7.0",
   "description": "Bitwarden MCP Server",
   "repository": {
     "type": "git",
