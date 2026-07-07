@@ -9,6 +9,7 @@
 
 import { spawn } from 'child_process';
 import crypto from 'crypto';
+import { resolveBwInvocation } from './bw-cli.js';
 import { buildBwChildEnv } from './bw-env.js';
 
 /**
@@ -145,7 +146,11 @@ function checkAlreadyUnlocked(): Promise<boolean> {
         : undefined,
     );
 
-    const child = __testable.spawn('bw', ['status'], { shell: false, env });
+    const { command: bwExecutable, prefixArgs } = resolveBwInvocation();
+    const child = __testable.spawn(bwExecutable, [...prefixArgs, 'status'], {
+      shell: false,
+      env,
+    });
 
     let stdout = '';
     let settled = false;
@@ -359,9 +364,10 @@ function executeBwUnlock(password: string): Promise<UnlockResult> {
     let settled = false;
     let stdout = '';
     let stderr = '';
+    const { command: bwExecutable, prefixArgs } = resolveBwInvocation();
     const child = __testable.spawn(
-      'bw',
-      ['unlock', '--raw', '--passwordenv', envVarName],
+      bwExecutable,
+      [...prefixArgs, 'unlock', '--raw', '--passwordenv', envVarName],
       { shell: false, env: childEnv },
     );
 
