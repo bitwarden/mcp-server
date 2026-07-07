@@ -59,7 +59,7 @@ because it must collect a master password without exposing it to the LLM.
   smuggled in as an argument.
 - **Out-of-band password collection** — `src/utils/unlock.ts` spawns a
   native OS password dialog (`osascript` on macOS, `zenity`/`kdialog` on
-  Linux, PowerShell `PromptForCredential` on Windows). Dialog prompt text
+  Linux, a PowerShell WinForms dialog on Windows). Dialog prompt text
   MUST remain a compile-time constant — no interpolation of dynamic
   values.
 - **Password never touches argv** — the password is handed to
