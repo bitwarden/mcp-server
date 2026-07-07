@@ -110,7 +110,7 @@ export async function buildSafeApiRequest(
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Bitwarden-MCP-Server/2026.5.1',
+      'User-Agent': 'Bitwarden-MCP-Server/2026.7.0',
     },
   };
 
