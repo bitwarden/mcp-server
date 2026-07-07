@@ -809,10 +809,21 @@ describe('unlock flow (spawn-injected)', () => {
       const psArgs = psCall?.[1] as string[];
       expect(psArgs).toContain('-NoProfile');
       expect(psArgs).toContain('-EncodedCommand');
+      // WinForms requires a single-threaded apartment.
+      expect(psArgs).toContain('-Sta');
       // The encoded command must be base64 of the UTF-16LE script, not
       // plaintext — verify it doesn't contain the prompt in UTF-8.
       const encoded = psArgs[psArgs.indexOf('-EncodedCommand') + 1] as string;
       expect(encoded).not.toContain('Enter your Bitwarden');
+
+      // Decoding as UTF-16LE recovers the script: it must build a
+      // WinForms dialog (which renders without a console) and must NOT
+      // fall back to PromptForCredential (which does not).
+      const script = Buffer.from(encoded, 'base64').toString('utf16le');
+      expect(script).toContain('System.Windows.Forms.Form');
+      expect(script).toContain('ShowDialog');
+      expect(script).toContain('Enter your Bitwarden master password');
+      expect(script).not.toContain('PromptForCredential');
     });
 
     it('Unsupported platform: returns the fixed headless error', async () => {

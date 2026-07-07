@@ -335,7 +335,7 @@ The `unlock` tool lets your AI assistant prompt you for your master password wit
 - When called, the server launches a **native OS password dialog**:
   - **macOS**: `osascript` secure input dialog
   - **Linux**: `zenity --password` (falls back to `kdialog --password`)
-  - **Windows**: PowerShell `PromptForCredential` secure credential dialog
+  - **Windows**: PowerShell WinForms password dialog (masked input)
 - The password is passed to `bw unlock --raw` via the `--passwordenv` flag with a randomized one-shot environment variable. It never appears in process arguments, in the MCP protocol, or in the LLM's context.
 - The LLM only ever sees `"Vault unlocked successfully."` or a sanitized failure message (e.g. `"Invalid master password."`, `"Unlock cancelled."`).
 - If you are in a non-interactive environment, the tool will refuse to run and return a fixed message directing you to the `bw unlock --raw` manual flow.
