@@ -51,6 +51,7 @@ async function fetchNewAccessToken(): Promise<string> {
   } catch (error) {
     throw new Error(
       `Failed to obtain access token: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 }
