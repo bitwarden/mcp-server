@@ -15,7 +15,7 @@ COPY . .
 
 RUN npm run build
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot AS release
+FROM gcr.io/distroless/nodejs24-debian13:nonroot AS release
 
 WORKDIR /app
 USER nonroot
