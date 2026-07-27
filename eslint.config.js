@@ -13,6 +13,6 @@ export default defineConfig([
     files: ['**/*.ts'],
     languageOptions: { globals: globals.browser },
   },
-  globalIgnores(['dist/']),
+  globalIgnores(['dist/', 'coverage/']),
   tseslint.configs.recommended,
 ]);
