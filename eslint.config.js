@@ -13,6 +13,15 @@ export default defineConfig([
     files: ['**/*.ts'],
     languageOptions: { globals: globals.browser },
   },
-  globalIgnores(['dist/', 'coverage/']),
+  // Nested git worktrees are separate checkouts with their own sources, build
+  // output and coverage; linting them from the parent reports duplicate files.
+  // Covers both common locations: .worktrees/ (git-worktree.nvim) and
+  // .claude/worktrees/ (Claude Code).
+  globalIgnores([
+    '**/dist/',
+    '**/coverage/',
+    '.worktrees/',
+    '.claude/worktrees/',
+  ]),
   tseslint.configs.recommended,
 ]);
