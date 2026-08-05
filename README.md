@@ -1,5 +1,7 @@
 # Bitwarden MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fbitwarden%2Fmcp-server.svg)](https://mcptoplist.com/server/glama%2Fbitwarden%2Fmcp-server)
+
 A Model Context Protocol (MCP) server that provides AI assistants with secure access to Bitwarden password manager functionality through two complementary interfaces:
 
 - **Vault Management and CLI tools** via Bitwarden CLI
