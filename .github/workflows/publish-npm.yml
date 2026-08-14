@@ -1,0 +1,25 @@
+# Inert publish shim for @bitwarden/mcp-server.
+# Do NOT add logic to this file — it is intentionally minimal and managed by BRE.
+#
+# npm's trusted publisher for @bitwarden/mcp-server accepts a publish only from this exact
+# repo + workflow filename + environment, which is what lets npm attribute provenance to
+# bitwarden/mcp-server. bitwarden/deploy validates a blessed checksum of this whole file
+# before dispatching it, so any edit here fails the publish closed until BRE re-blesses it.
+#
+# This is not the release entry point — run "Publish" (publish.yml) for that. Running this
+# workflow by hand fails: the environment issues no OIDC token outside publish-release/*, and
+# the reusable workflow requires the BRE deploy bot as the triggering actor.
+
+name: Publish NPM
+on:
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Stage publish @bitwarden/mcp-server to npm
+    permissions:
+      contents: read
+      id-token: write
+    uses: bitwarden/gh-actions/.github/workflows/_publish-mcp-server-npm.yml@main
