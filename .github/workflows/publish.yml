@@ -15,6 +15,7 @@ jobs:
   trigger:
     name: Trigger publish in bitwarden/deploy
     runs-on: ubuntu-24.04
+    environment: mcp-server-publish
     permissions:
       contents: read
       deployments: write
