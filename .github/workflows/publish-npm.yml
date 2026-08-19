@@ -1,0 +1,16 @@
+# Inert publish shim for @bitwarden/mcp-server.
+# Do NOT add logic to this file — it is intentionally minimal and managed by BRE.
+
+name: Publish NPM
+on:
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Stage publish @bitwarden/mcp-server to npm
+    permissions:
+      contents: read
+      id-token: write
+    uses: bitwarden/gh-actions/.github/workflows/_publish-mcp-server-npm.yml@main

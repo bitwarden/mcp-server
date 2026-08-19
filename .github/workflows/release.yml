@@ -9,6 +9,7 @@ jobs:
   trigger:
     name: Trigger release in bitwarden/deploy
     runs-on: ubuntu-24.04
+    environment: mcp-server-release
     permissions:
       contents: read
       deployments: write
