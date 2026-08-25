@@ -1,4 +1,11 @@
-import { describe, it, expect } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from '@jest/globals';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
 import { validateFilePath } from '../src/utils/security.js';
@@ -2514,6 +2521,7 @@ import {
   handleRemoveSendPassword,
   handleCreateAttachment,
 } from '../src/handlers/cli.js';
+import * as cliUtils from '../src/utils/cli.js';
 
 describe('CLI Handlers - Validation Tests', () => {
   describe('handleLock', () => {
@@ -2635,6 +2643,73 @@ describe('CLI Handlers - Validation Tests', () => {
     it('should accept passphrase options', async () => {
       const result = await handleGenerate({ passphrase: true, words: 5 });
       expect(result).toBeDefined();
+    });
+
+    describe('character class CLI flags', () => {
+      let executeSpy: jest.SpiedFunction<typeof cliUtils.executeCliCommand>;
+
+      beforeEach(() => {
+        executeSpy = jest
+          .spyOn(cliUtils, 'executeCliCommand')
+          .mockResolvedValue({ output: 'generated' });
+      });
+
+      afterEach(() => {
+        executeSpy.mockRestore();
+      });
+
+      it('emits --special when special is true', async () => {
+        await handleGenerate({ special: true });
+        expect(executeSpy).toHaveBeenCalledWith(
+          'generate',
+          expect.arrayContaining(['--special']),
+        );
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--noSpecial');
+      });
+
+      it('does not emit --no* flags when uppercase is false', async () => {
+        await handleGenerate({ uppercase: false });
+        expect(executeSpy).toHaveBeenCalledTimes(1);
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--noUppercase');
+        expect(params.some((flag) => flag.startsWith('--no'))).toBe(false);
+        expect(params).not.toContain('--uppercase');
+      });
+
+      it('emits all four opt-in flags when all character classes are true', async () => {
+        await handleGenerate({
+          uppercase: true,
+          lowercase: true,
+          number: true,
+          special: true,
+        });
+        expect(executeSpy).toHaveBeenCalledWith('generate', [
+          '--uppercase',
+          '--lowercase',
+          '--number',
+          '--special',
+        ]);
+      });
+
+      it('leaves the passphrase branch unchanged', async () => {
+        await handleGenerate({
+          passphrase: true,
+          words: 5,
+          separator: '-',
+          capitalize: true,
+          special: true,
+          uppercase: false,
+        });
+        expect(executeSpy).toHaveBeenCalledWith('generate', [
+          '--passphrase',
+          '--words',
+          '5',
+          '--separator',
+          '-',
+          '--capitalize',
+        ]);
+      });
     });
   });
 
