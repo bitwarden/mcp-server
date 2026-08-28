@@ -156,13 +156,13 @@ export const handleGenerate = withValidation(
       if (validatedArgs.length) {
         params.push('--length', validatedArgs.length.toString());
       }
-      if (validatedArgs.uppercase) {
+      if (validatedArgs.uppercase ?? true) {
         params.push('--uppercase');
       }
-      if (validatedArgs.lowercase) {
+      if (validatedArgs.lowercase ?? true) {
         params.push('--lowercase');
       }
-      if (validatedArgs.number) {
+      if (validatedArgs.number ?? true) {
         params.push('--number');
       }
       if (validatedArgs.special) {

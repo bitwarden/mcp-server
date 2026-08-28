@@ -2668,13 +2668,43 @@ describe('CLI Handlers - Validation Tests', () => {
         expect(params).not.toContain('--noSpecial');
       });
 
-      it('does not emit --no* flags when uppercase is false', async () => {
+      it('does not emit --special when special is omitted', async () => {
+        await handleGenerate({ length: 20 });
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--special');
+      });
+
+      it('does not emit --special when special is false', async () => {
+        await handleGenerate({ special: false });
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--special');
+      });
+
+      it('omits --uppercase when uppercase is false but still emits other default-on flags', async () => {
         await handleGenerate({ uppercase: false });
         expect(executeSpy).toHaveBeenCalledTimes(1);
         const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--uppercase');
+        expect(params).toContain('--lowercase');
+        expect(params).toContain('--number');
         expect(params).not.toContain('--noUppercase');
         expect(params.some((flag) => flag.startsWith('--no'))).toBe(false);
-        expect(params).not.toContain('--uppercase');
+      });
+
+      it('omits --lowercase when lowercase is false but still emits other default-on flags', async () => {
+        await handleGenerate({ lowercase: false });
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--lowercase');
+        expect(params).toContain('--uppercase');
+        expect(params).toContain('--number');
+      });
+
+      it('omits --number when number is false but still emits other default-on flags', async () => {
+        await handleGenerate({ number: false });
+        const params = executeSpy.mock.calls[0]![1] as string[];
+        expect(params).not.toContain('--number');
+        expect(params).toContain('--uppercase');
+        expect(params).toContain('--lowercase');
       });
 
       it('emits all four opt-in flags when all character classes are true', async () => {
