@@ -168,6 +168,21 @@ Then reference the built `dist/index.js` file from Claude desktop:
 
 Any MCP-compatible client can connect to this server via stdio transport. Refer to your client's documentation for configuration details.
 
+For multiple local clients, one server process can expose Streamable HTTP on
+the IPv4 loopback interface:
+
+```bash
+node dist/index.js --http-host 127.0.0.1 --http-port 13420
+```
+
+Connect clients to `http://127.0.0.1:13420/mcp`. The HTTP listener rejects
+non-loopback peers, unexpected `Host` and cross-origin requests. It supports
+sessionless MCP `2026-07-28` requests and bounded legacy Streamable HTTP
+sessions. Omitting the HTTP flags preserves the default stdio transport.
+
+Both HTTP flags are required, and the host must be exactly `127.0.0.1`. Do not
+forward or proxy this port to another interface.
+
 ### Environment Variables
 
 | Variable                 | Required For    | Description                                                                                                                                                                                | Default                          |
