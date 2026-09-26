@@ -146,7 +146,7 @@ export const handleApiCommand = withValidation(
 - **`sanitizeInput(input: string)`**: Strips dangerous characters `[;&|`$(){}[\]<>'"\\]` from base command
 - **`validateParameter(param: string)`**: Validates parameters for null bytes and newlines
 - **`buildSafeCommand(base: string, args: string[])`**: Returns array `[command, ...args]` for spawn() (used internally by `executeCliCommand`)
-- **`executeCliCommand(command: string, parameters: string[])`**: Single entry point for CLI execution - internally calls `buildSafeCommand()` then uses `spawn()` to prevent shell injection
+- **`executeCliCommand(command: string, parameters: string[])`**: Single entry point for CLI execution - internally calls `buildSafeCommand()`, passes the global `--nointeraction` flag, and uses `spawn()` to prevent shell injection and interactive hangs
 - **`isValidBitwardenCommand(cmd: string)`**: Validates against whitelist of allowed Bitwarden commands
 - **`validateFilePath(path: string)`**: Comprehensive path traversal protection (see below)
 
