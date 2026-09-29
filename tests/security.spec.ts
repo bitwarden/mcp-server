@@ -690,6 +690,34 @@ describe('Security - Command Injection Protection', () => {
         });
       });
 
+      // The raw string is what reaches the filesystem, so a path whose decoded
+      // form sits inside the allowlist must still be rejected if the raw form
+      // differs from it.
+      it('should reject paths whose decoded form differs from the raw form', () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden';
+
+        const mismatchedPaths = [
+          '/tmp/bitwarden%2Ffile.txt', // decodes to /tmp/bitwarden/file.txt
+          '/tmp/bitwarden%2Fsub/', // decodes to /tmp/bitwarden/sub/
+          '/tmp/bitwarden%252Ffile.txt', // double-encoded separator
+          '/tmp%2Fbitwarden%2Ffile.txt', // encoded separators in ancestors
+          '/tmp/bitwarden/a%20b.txt', // any decodable sequence
+          '/tmp/bitwarden/café.txt', // NFD; NFC form differs
+        ];
+
+        mismatchedPaths.forEach((path) => {
+          expect(validateFilePath(path)).toBe(false);
+        });
+      });
+
+      it('should still accept plain paths within whitelisted directories', () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden';
+
+        expect(validateFilePath('/tmp/bitwarden/file.txt')).toBe(true);
+        expect(validateFilePath('/tmp/bitwarden/sub/')).toBe(true);
+        expect(validateFilePath('/tmp/bitwarden/café.txt')).toBe(true);
+      });
+
       it('should handle relative paths that resolve within whitelist', () => {
         process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden';
 

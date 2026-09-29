@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, afterEach } from '@jest/globals';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
 import { validateFilePath } from '../src/utils/security.js';
@@ -51,7 +51,11 @@ describe('CLI Commands', () => {
       {
         message: 'itemid is required for attachment',
       },
-    );
+    )
+    .refine((data) => data.object !== 'attachment' || !!data.output, {
+      message:
+        'output is required for attachment and must be within BW_ALLOWED_DIRECTORIES',
+    });
 
   describe('list command validation', () => {
     it('should validate list command with valid type', () => {
@@ -251,17 +255,19 @@ describe('CLI Commands', () => {
       }
     });
 
-    it('should validate get attachment with itemid', () => {
-      const validInput = {
+    it('should reject get attachment without output path', () => {
+      const invalidInput = {
         object: 'attachment' as const,
         id: 'photo.png',
         itemid: 'item-123-uuid',
       };
-      const [isValid, result] = validateInput(getSchema, validInput);
+      const [isValid, result] = validateInput(getSchema, invalidInput);
 
-      expect(isValid).toBe(true);
-      if (isValid) {
-        expect(result).toEqual(validInput);
+      expect(isValid).toBe(false);
+      if (!isValid) {
+        expect(result.content[0].text).toContain(
+          'output is required for attachment',
+        );
       }
     });
 
@@ -2602,13 +2608,117 @@ describe('CLI Handlers - Validation Tests', () => {
       expect(result).toBeDefined();
     });
 
-    it('should accept attachment with itemid', async () => {
+    it('should accept attachment with itemid and allowed output', async () => {
       const result = await handleGet({
         object: 'attachment',
         id: 'file.txt',
         itemid: 'item-123',
+        output: '/tmp/',
       });
-      expect(result).toBeDefined();
+      expect(result.content[0]!.text).not.toContain('Validation error');
+    });
+
+    describe('attachment output allowlist enforcement', () => {
+      const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+
+      afterEach(() => {
+        if (originalEnv !== undefined) {
+          process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+        } else {
+          delete process.env['BW_ALLOWED_DIRECTORIES'];
+        }
+      });
+
+      // Omitting output must not let `bw` fall back to writing the decrypted
+      // attachment into the server's working directory.
+      it('should reject attachment without output when allowlist is set', async () => {
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain(
+          'output is required for attachment',
+        );
+      });
+
+      it('should reject attachment without output when allowlist is unset', async () => {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain(
+          'output is required for attachment',
+        );
+      });
+
+      it('should reject attachment with empty output', async () => {
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+          output: '',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain(
+          'output is required for attachment',
+        );
+      });
+
+      it('should reject attachment with output outside the allowlist', async () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden-allowed';
+
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+          output: '/var/tmp/',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Invalid output path');
+      });
+
+      it('should reject attachment with an encoded output path', async () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden-allowed';
+
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+          output: '/tmp/bitwarden-allowed%2Fsub/',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Invalid output path');
+      });
+
+      it('should reject attachment with any output when allowlist is unset', async () => {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+          output: '/tmp/',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Invalid output path');
+      });
+
+      it('should not require output for non-attachment objects', async () => {
+        const result = await handleGet({ object: 'item', id: 'test-id' });
+        expect(result.content[0]!.text).not.toContain('output is required');
+      });
     });
   });
 
