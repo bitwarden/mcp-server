@@ -204,6 +204,7 @@ set BW_ALLOWED_DIRECTORIES=C:/Users/YourName/Documents,C:/Temp/Bitwarden
 3. **Whitelist allowed commands** - never trust user input
 4. **Pass arguments as array elements** to spawn() which handles them as literal strings
 5. **Validate file paths** using `validateFilePath()` - all file operations MUST go through this function
+   - If a `bw` command writes to disk even when no path is given (e.g. `get attachment` falls back to the server's working directory), the path parameter MUST be required for that operation. An optional path whose absence skips validation bypasses the allowlist.
 6. **Configure `BW_ALLOWED_DIRECTORIES`** - Always set explicit directory allowlist in production
 7. **Use environment variables** for credentials, never hardcode
 8. **Disable shell** - Always use `shell: false` option with spawn()

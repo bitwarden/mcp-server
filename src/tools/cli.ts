@@ -134,7 +134,7 @@ export const getTool: Tool = {
       output: {
         type: 'string',
         description:
-          'Output directory path for downloading attachment (optional, should end with /)',
+          'Output directory path for downloading attachment (required for attachment, should end with /, must be within BW_ALLOWED_DIRECTORIES)',
       },
     },
     required: ['object', 'id'],

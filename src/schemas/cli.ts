@@ -93,7 +93,7 @@ export const getSchema = z
     organizationid: z.string().optional(),
     // Item ID (required for attachment)
     itemid: z.string().optional(),
-    // Output directory for attachment downloads (optional, must end with /)
+    // Output directory for attachment downloads (required for attachment, must end with /)
     output: z
       .string()
       .optional()
@@ -116,6 +116,17 @@ export const getSchema = z
     {
       message:
         'organizationid is required for org-collection, itemid is required for attachment',
+    },
+  )
+  .refine(
+    // `bw get attachment` always writes the decrypted file to disk. Without
+    // --output it falls back to the server's working directory, which is
+    // never checked against BW_ALLOWED_DIRECTORIES. Requiring output forces
+    // every attachment write through validateFilePath().
+    (data) => data.object !== 'attachment' || !!data.output,
+    {
+      message:
+        'output is required for attachment and must be within BW_ALLOWED_DIRECTORIES',
     },
   );
 
