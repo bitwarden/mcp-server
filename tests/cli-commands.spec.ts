@@ -2687,6 +2687,20 @@ describe('CLI Handlers - Validation Tests', () => {
         expect(result.content[0]!.text).toContain('Invalid output path');
       });
 
+      it('should reject attachment with an encoded output path', async () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = '/tmp/bitwarden-allowed';
+
+        const result = await handleGet({
+          object: 'attachment',
+          id: 'id_rsa',
+          itemid: '11111111-1111-1111-1111-111111111111',
+          output: '/tmp/bitwarden-allowed%2Fsub/',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]!.text).toContain('Invalid output path');
+      });
+
       it('should reject attachment with any output when allowlist is unset', async () => {
         delete process.env['BW_ALLOWED_DIRECTORIES'];
 

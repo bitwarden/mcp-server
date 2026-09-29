@@ -273,6 +273,13 @@ export function validateFilePath(filePath: string): boolean {
     // This converts fullwidth characters and other Unicode variants to standard form
     const normalizedPath = decodedPath.normalize('NFC');
 
+    // The raw string (not the decoded form) is what reaches the filesystem, and
+    // the filesystem does not URL-decode or normalize. If the forms differ, the
+    // checks below would validate a different path than the one used, so reject.
+    if (normalizedPath !== filePath) {
+      return false;
+    }
+
     // Step 6: Check for dangerous patterns after decoding/normalization
     // This catches encoded traversal sequences like %2e%2e%2f
     const dangerousPatterns = [
