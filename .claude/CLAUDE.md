@@ -27,9 +27,11 @@ The MCP server exposes two distinct operational interfaces:
 ```
 AI Client (Claude Desktop)
     ↓
-MCP Protocol (stdio transport)
+MCP Protocol (stdio, or loopback Streamable HTTP)
     ↓
-index.ts (tool routing)
+index.ts (transport selection)
+    ↓
+server.ts (shared tool catalog and routing)
     ↓
 ┌─────────────────────┬──────────────────────┐
 │   CLI Handler       │   API Handler        │
@@ -39,6 +41,12 @@ index.ts (tool routing)
 │   Bitwarden CLI     │   Bitwarden API      │
 └─────────────────────┴──────────────────────┘
 ```
+
+The zero-argument entry point remains stdio-compatible. HTTP mode requires
+both `--http-host 127.0.0.1` and `--http-port <port>`. `src/http.ts` owns the
+loopback/Host/Origin checks, request and concurrency bounds, sessionless
+2026-07-28 dispatcher, and isolated legacy SDK sessions. Transport code must
+delegate tool calls to `server.ts` so stdio and HTTP cannot drift.
 
 ## Code Organization
 
