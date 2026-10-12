@@ -1,4 +1,14 @@
-import { describe, it, expect, afterEach } from '@jest/globals';
+import {
+  describe,
+  it,
+  expect,
+  afterEach,
+  beforeAll,
+  afterAll,
+} from '@jest/globals';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
 import { validateFilePath } from '../src/utils/security.js';
@@ -2521,25 +2531,37 @@ import {
   handleCreateAttachment,
   buildTextSendPayload,
   buildFileSendPayload,
-  encodeSendPayload,
+  buildSendCreateArgs,
 } from '../src/handlers/cli.js';
+import {
+  createTextSendSchema,
+  createFileSendSchema,
+} from '../src/schemas/cli.js';
 
 describe('Send create payloads', () => {
-  const decode = (encoded: string) =>
-    JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+  // Mirrors what handleCreate*Send do: schema parse -> payload -> bw argv.
+  const argsFor = (
+    schema: typeof createTextSendSchema | typeof createFileSendSchema,
+    input: Record<string, unknown>,
+  ) => {
+    const parsed = schema.parse(input);
+    return buildSendCreateArgs(
+      'filePath' in parsed
+        ? buildFileSendPayload(parsed)
+        : buildTextSendPayload(parsed),
+    );
+  };
+  const decode = (args: string[]) => {
+    expect(args).toHaveLength(2);
+    expect(args[0]).toBe('create');
+    return JSON.parse(Buffer.from(args[1]!, 'base64').toString('utf8'));
+  };
 
   // Regression for #248: CLI 2026.9.1 rejects missing booleans with
   // "invalid type: unit value, expected a boolean".
   it('text send always includes required booleans', () => {
     const payload = decode(
-      encodeSendPayload(
-        buildTextSendPayload({
-          name: 'Test',
-          text: 'secret',
-          deletionDate: '2026-10-19T00:00:00.000Z',
-          disabled: false,
-        }),
-      ),
+      argsFor(createTextSendSchema, { name: 'Test', text: 'secret' }),
     );
 
     expect(payload).toEqual({
@@ -2548,54 +2570,73 @@ describe('Send create payloads', () => {
       text: { text: 'secret', hidden: false },
       disabled: false,
       hideEmail: false,
-      deletionDate: '2026-10-19T00:00:00.000Z',
+      deletionDate: expect.any(String),
     });
   });
 
   it('text send preserves hidden and optional fields', () => {
     const payload = decode(
-      encodeSendPayload(
-        buildTextSendPayload({
-          name: 'Test',
-          text: 'secret',
-          hidden: true,
-          notes: 'n',
-          password: 'pw',
-          maxAccessCount: 3,
-          expirationDate: '2026-10-18T00:00:00.000Z',
-          deletionDate: '2026-10-19T00:00:00.000Z',
-          disabled: true,
-        }),
-      ),
-    );
-
-    expect(payload.text.hidden).toBe(true);
-    expect(payload.disabled).toBe(true);
-    expect(payload.hideEmail).toBe(false);
-    expect(payload.notes).toBe('n');
-    expect(payload.password).toBe('pw');
-    expect(payload.maxAccessCount).toBe(3);
-    expect(payload.expirationDate).toBe('2026-10-18T00:00:00.000Z');
-  });
-
-  it('file send includes required booleans and passes the path in JSON', () => {
-    const encoded = encodeSendPayload(
-      buildFileSendPayload({
-        name: 'File',
-        filePath: '/tmp/allowed/file.txt',
+      argsFor(createTextSendSchema, {
+        name: 'Test',
+        text: 'secret',
+        hidden: true,
+        notes: 'n',
+        password: 'pw',
+        maxAccessCount: 3,
+        expirationDate: '2026-10-18T00:00:00.000Z',
         deletionDate: '2026-10-19T00:00:00.000Z',
-        disabled: false,
+        disabled: true,
       }),
     );
-    const payload = decode(encoded);
 
     expect(payload).toEqual({
-      type: 1,
-      name: 'File',
-      file: { fileName: '/tmp/allowed/file.txt' },
-      disabled: false,
-      hideEmail: false,
+      type: 0,
+      name: 'Test',
+      text: { text: 'secret', hidden: true },
+      notes: 'n',
+      password: 'pw',
+      maxAccessCount: 3,
+      expirationDate: '2026-10-18T00:00:00.000Z',
       deletionDate: '2026-10-19T00:00:00.000Z',
+      disabled: true,
+      hideEmail: false,
+    });
+  });
+
+  describe('file send', () => {
+    const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+    const dir = mkdtempSync(join(tmpdir(), 'mcp-send-'));
+    const filePath = join(dir, 'file.txt');
+
+    beforeAll(() => {
+      writeFileSync(filePath, 'hello');
+      process.env['BW_ALLOWED_DIRECTORIES'] = dir;
+    });
+
+    afterAll(() => {
+      rmSync(dir, { recursive: true, force: true });
+      if (originalEnv === undefined) {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+      } else {
+        process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+      }
+    });
+
+    // `bw send` has a boolean --file flag, so `send create <json> --file <path>`
+    // fails with "too many arguments". The path must travel in the JSON.
+    it('passes the path in JSON, not as a --file argument', () => {
+      const args = argsFor(createFileSendSchema, { name: 'File', filePath });
+      expect(args).not.toContain('--file');
+      expect(args).not.toContain(filePath);
+
+      expect(decode(args)).toEqual({
+        type: 1,
+        name: 'File',
+        file: { fileName: filePath },
+        disabled: false,
+        hideEmail: false,
+        deletionDate: expect.any(String),
+      });
     });
   });
 });

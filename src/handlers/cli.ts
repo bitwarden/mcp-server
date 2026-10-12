@@ -760,17 +760,21 @@ export function buildFileSendPayload(
   return send;
 }
 
-export function encodeSendPayload(
+// Arguments for `bw send ...`. Keep the path out of argv: `bw send` has a boolean
+// --file flag that breaks `send create <json> --file <path>`.
+export function buildSendCreateArgs(
   send: BitwardenTextSendCreate | BitwardenFileSendCreate,
-): string {
-  return Buffer.from(JSON.stringify(send)).toString('base64');
+): string[] {
+  return ['create', Buffer.from(JSON.stringify(send)).toString('base64')];
 }
 
 export const handleCreateTextSend = withValidation(
   createTextSendSchema,
   async (validatedArgs) => {
-    const encodedSend = encodeSendPayload(buildTextSendPayload(validatedArgs));
-    const response = await executeCliCommand('send', ['create', encodedSend]);
+    const response = await executeCliCommand(
+      'send',
+      buildSendCreateArgs(buildTextSendPayload(validatedArgs)),
+    );
     return toMcpFormat(response);
   },
 );
@@ -778,8 +782,10 @@ export const handleCreateTextSend = withValidation(
 export const handleCreateFileSend = withValidation(
   createFileSendSchema,
   async (validatedArgs) => {
-    const encodedSend = encodeSendPayload(buildFileSendPayload(validatedArgs));
-    const response = await executeCliCommand('send', ['create', encodedSend]);
+    const response = await executeCliCommand(
+      'send',
+      buildSendCreateArgs(buildFileSendPayload(validatedArgs)),
+    );
     return toMcpFormat(response);
   },
 );
