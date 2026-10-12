@@ -120,6 +120,7 @@ export interface BitwardenTextSendCreate extends BitwardenSendCreateBase {
 
 export interface BitwardenFileSendCreate extends BitwardenSendCreateBase {
   type: 1;
-  // The CLI sets file.fileName itself from the --file path, but needs the object to exist.
-  file: Record<string, never>;
+  // `bw send` defines a boolean -f/--file flag that swallows `send create --file <path>`,
+  // so the path must go here. The CLI reads it, then rewrites fileName to the basename.
+  file: { fileName: string };
 }

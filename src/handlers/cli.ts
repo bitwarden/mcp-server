@@ -743,6 +743,7 @@ export function buildTextSendPayload(
 export function buildFileSendPayload(
   args: {
     name: string;
+    filePath: string;
     deletionDate: string;
     disabled: boolean;
   } & SendCreateOptionalFields,
@@ -750,7 +751,7 @@ export function buildFileSendPayload(
   const send: BitwardenFileSendCreate = {
     type: 1,
     name: args.name,
-    file: {},
+    file: { fileName: args.filePath },
     disabled: args.disabled,
     hideEmail: false,
     deletionDate: args.deletionDate,
@@ -778,12 +779,7 @@ export const handleCreateFileSend = withValidation(
   createFileSendSchema,
   async (validatedArgs) => {
     const encodedSend = encodeSendPayload(buildFileSendPayload(validatedArgs));
-    const response = await executeCliCommand('send', [
-      'create',
-      encodedSend,
-      '--file',
-      validatedArgs.filePath,
-    ]);
+    const response = await executeCliCommand('send', ['create', encodedSend]);
     return toMcpFormat(response);
   },
 );

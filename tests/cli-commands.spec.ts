@@ -2578,10 +2578,11 @@ describe('Send create payloads', () => {
     expect(payload.expirationDate).toBe('2026-10-18T00:00:00.000Z');
   });
 
-  it('file send includes required booleans and an empty file object', () => {
+  it('file send includes required booleans and passes the path in JSON', () => {
     const encoded = encodeSendPayload(
       buildFileSendPayload({
         name: 'File',
+        filePath: '/tmp/allowed/file.txt',
         deletionDate: '2026-10-19T00:00:00.000Z',
         disabled: false,
       }),
@@ -2591,7 +2592,7 @@ describe('Send create payloads', () => {
     expect(payload).toEqual({
       type: 1,
       name: 'File',
-      file: {},
+      file: { fileName: '/tmp/allowed/file.txt' },
       disabled: false,
       hideEmail: false,
       deletionDate: '2026-10-19T00:00:00.000Z',
