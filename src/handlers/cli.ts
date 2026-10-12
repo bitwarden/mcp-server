@@ -768,10 +768,20 @@ export function buildSendCreateArgs(
   return ['create', Buffer.from(JSON.stringify(send)).toString('base64')];
 }
 
+/**
+ * Indirection so tests can substitute executeCliCommand without
+ * `jest.unstable_mockModule`, which is unreliable under ts-jest ESM.
+ *
+ * @internal
+ */
+export const __testable: { executeCliCommand: typeof executeCliCommand } = {
+  executeCliCommand,
+};
+
 export const handleCreateTextSend = withValidation(
   createTextSendSchema,
   async (validatedArgs) => {
-    const response = await executeCliCommand(
+    const response = await __testable.executeCliCommand(
       'send',
       buildSendCreateArgs(buildTextSendPayload(validatedArgs)),
     );
@@ -782,7 +792,7 @@ export const handleCreateTextSend = withValidation(
 export const handleCreateFileSend = withValidation(
   createFileSendSchema,
   async (validatedArgs) => {
-    const response = await executeCliCommand(
+    const response = await __testable.executeCliCommand(
       'send',
       buildSendCreateArgs(buildFileSendPayload(validatedArgs)),
     );

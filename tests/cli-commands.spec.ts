@@ -1,7 +1,9 @@
 import {
+  jest,
   describe,
   it,
   expect,
+  beforeEach,
   afterEach,
   beforeAll,
   afterAll,
@@ -2532,6 +2534,7 @@ import {
   buildTextSendPayload,
   buildFileSendPayload,
   buildSendCreateArgs,
+  __testable as handlersTestable,
 } from '../src/handlers/cli.js';
 import {
   createTextSendSchema,
@@ -2551,10 +2554,9 @@ describe('Send create payloads', () => {
         : buildTextSendPayload(parsed),
     );
   };
-  const decode = (args: string[]) => {
-    expect(args).toHaveLength(2);
-    expect(args[0]).toBe('create');
-    return JSON.parse(Buffer.from(args[1]!, 'base64').toString('utf8'));
+  const decode = (args: readonly string[] | undefined) => {
+    expect(args).toEqual(['create', expect.any(String)]);
+    return JSON.parse(Buffer.from(args![1]!, 'base64').toString('utf8'));
   };
 
   // Regression for #248: CLI 2026.9.1 rejects missing booleans with
@@ -2603,6 +2605,41 @@ describe('Send create payloads', () => {
     });
   });
 
+  describe('handlers', () => {
+    const realExecute = handlersTestable.executeCliCommand;
+    const executeMock = jest.fn<typeof handlersTestable.executeCliCommand>();
+
+    beforeEach(() => {
+      executeMock.mockReset();
+      executeMock.mockResolvedValue({ output: '{"object":"send"}' });
+      handlersTestable.executeCliCommand = executeMock;
+    });
+
+    afterEach(() => {
+      handlersTestable.executeCliCommand = realExecute;
+    });
+
+    it('handleCreateTextSend sends the built payload as the only argument', async () => {
+      const result = await handleCreateTextSend({
+        name: 'Test',
+        text: 'secret',
+      });
+
+      expect(result.isError).toBe(false);
+      expect(executeMock).toHaveBeenCalledTimes(1);
+      const [command, args] = executeMock.mock.calls[0]!;
+      expect(command).toBe('send');
+      expect(decode(args)).toEqual({
+        type: 0,
+        name: 'Test',
+        text: { text: 'secret', hidden: false },
+        disabled: false,
+        hideEmail: false,
+        deletionDate: expect.any(String),
+      });
+    });
+  });
+
   describe('file send', () => {
     const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
     const dir = mkdtempSync(join(tmpdir(), 'mcp-send-'));
@@ -2637,6 +2674,28 @@ describe('Send create payloads', () => {
         hideEmail: false,
         deletionDate: expect.any(String),
       });
+    });
+
+    it('handleCreateFileSend sends the path in JSON, not as --file', async () => {
+      const realExecute = handlersTestable.executeCliCommand;
+      const executeMock = jest
+        .fn<typeof handlersTestable.executeCliCommand>()
+        .mockResolvedValue({ output: '{"object":"send"}' });
+      handlersTestable.executeCliCommand = executeMock;
+      try {
+        const result = await handleCreateFileSend({ name: 'File', filePath });
+
+        expect(result.isError).toBe(false);
+        expect(executeMock).toHaveBeenCalledTimes(1);
+        const [command, args] = executeMock.mock.calls[0]!;
+        expect(command).toBe('send');
+        expect(args).not.toContain('--file');
+        expect(args).not.toContain(filePath);
+        expect(decode(args).file).toEqual({ fileName: filePath });
+        expect(decode(args).hideEmail).toBe(false);
+      } finally {
+        handlersTestable.executeCliCommand = realExecute;
+      }
     });
   });
 });
@@ -3180,14 +3239,6 @@ describe('CLI Handlers - Validation Tests', () => {
 
         expect(result.isError).toBe(true);
         expect(result.content[0]!.text).toContain('Validation error');
-      });
-
-      it('should accept valid text send', async () => {
-        const result = await handleCreateTextSend({
-          name: 'Test Send',
-          text: 'Secret content',
-        });
-        expect(result).toBeDefined();
       });
     });
 
