@@ -2519,7 +2519,85 @@ import {
   handleDeleteSend,
   handleRemoveSendPassword,
   handleCreateAttachment,
+  buildTextSendPayload,
+  buildFileSendPayload,
+  encodeSendPayload,
 } from '../src/handlers/cli.js';
+
+describe('Send create payloads', () => {
+  const decode = (encoded: string) =>
+    JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+
+  // Regression for #248: CLI 2026.9.1 rejects missing booleans with
+  // "invalid type: unit value, expected a boolean".
+  it('text send always includes required booleans', () => {
+    const payload = decode(
+      encodeSendPayload(
+        buildTextSendPayload({
+          name: 'Test',
+          text: 'secret',
+          deletionDate: '2026-10-19T00:00:00.000Z',
+          disabled: false,
+        }),
+      ),
+    );
+
+    expect(payload).toEqual({
+      type: 0,
+      name: 'Test',
+      text: { text: 'secret', hidden: false },
+      disabled: false,
+      hideEmail: false,
+      deletionDate: '2026-10-19T00:00:00.000Z',
+    });
+  });
+
+  it('text send preserves hidden and optional fields', () => {
+    const payload = decode(
+      encodeSendPayload(
+        buildTextSendPayload({
+          name: 'Test',
+          text: 'secret',
+          hidden: true,
+          notes: 'n',
+          password: 'pw',
+          maxAccessCount: 3,
+          expirationDate: '2026-10-18T00:00:00.000Z',
+          deletionDate: '2026-10-19T00:00:00.000Z',
+          disabled: true,
+        }),
+      ),
+    );
+
+    expect(payload.text.hidden).toBe(true);
+    expect(payload.disabled).toBe(true);
+    expect(payload.hideEmail).toBe(false);
+    expect(payload.notes).toBe('n');
+    expect(payload.password).toBe('pw');
+    expect(payload.maxAccessCount).toBe(3);
+    expect(payload.expirationDate).toBe('2026-10-18T00:00:00.000Z');
+  });
+
+  it('file send includes required booleans and an empty file object', () => {
+    const encoded = encodeSendPayload(
+      buildFileSendPayload({
+        name: 'File',
+        deletionDate: '2026-10-19T00:00:00.000Z',
+        disabled: false,
+      }),
+    );
+    const payload = decode(encoded);
+
+    expect(payload).toEqual({
+      type: 1,
+      name: 'File',
+      file: {},
+      disabled: false,
+      hideEmail: false,
+      deletionDate: '2026-10-19T00:00:00.000Z',
+    });
+  });
+});
 
 describe('CLI Handlers - Validation Tests', () => {
   describe('handleLock', () => {

@@ -43,6 +43,8 @@ import {
   BitwardenItem,
   BitwardenFolder,
   BitwardenSend,
+  BitwardenTextSendCreate,
+  BitwardenFileSendCreate,
 } from '../utils/types.js';
 
 function toMcpFormat(response: CliResponse) {
@@ -697,43 +699,76 @@ export const handleRestore = withValidation(
   },
 );
 
+type SendCreateOptionalFields = {
+  notes?: string | undefined;
+  password?: string | undefined;
+  maxAccessCount?: number | undefined;
+  expirationDate?: string | undefined;
+};
+
+function applyOptionalSendFields(
+  send: SendCreateOptionalFields,
+  args: SendCreateOptionalFields,
+) {
+  if (args.notes) send.notes = args.notes;
+  if (args.password) send.password = args.password;
+  if (args.maxAccessCount) send.maxAccessCount = args.maxAccessCount;
+  if (args.expirationDate) send.expirationDate = args.expirationDate;
+}
+
+export function buildTextSendPayload(
+  args: {
+    name: string;
+    text: string;
+    hidden?: boolean | undefined;
+    deletionDate: string;
+    disabled: boolean;
+  } & SendCreateOptionalFields,
+): BitwardenTextSendCreate {
+  const send: BitwardenTextSendCreate = {
+    type: 0,
+    name: args.name,
+    text: {
+      text: args.text,
+      hidden: args.hidden ?? false,
+    },
+    disabled: args.disabled,
+    hideEmail: false,
+    deletionDate: args.deletionDate,
+  };
+  applyOptionalSendFields(send, args);
+  return send;
+}
+
+export function buildFileSendPayload(
+  args: {
+    name: string;
+    deletionDate: string;
+    disabled: boolean;
+  } & SendCreateOptionalFields,
+): BitwardenFileSendCreate {
+  const send: BitwardenFileSendCreate = {
+    type: 1,
+    name: args.name,
+    file: {},
+    disabled: args.disabled,
+    hideEmail: false,
+    deletionDate: args.deletionDate,
+  };
+  applyOptionalSendFields(send, args);
+  return send;
+}
+
+export function encodeSendPayload(
+  send: BitwardenTextSendCreate | BitwardenFileSendCreate,
+): string {
+  return Buffer.from(JSON.stringify(send)).toString('base64');
+}
+
 export const handleCreateTextSend = withValidation(
   createTextSendSchema,
   async (validatedArgs) => {
-    const {
-      name,
-      text,
-      hidden,
-      notes,
-      password,
-      maxAccessCount,
-      expirationDate,
-      deletionDate,
-      disabled,
-    } = validatedArgs;
-
-    // Build the Send object
-    const send: BitwardenSend = {
-      type: 0, // Text Send
-      name,
-      text: {
-        text,
-      },
-      disabled,
-      deletionDate,
-    };
-
-    if (hidden !== undefined && send.text) {
-      send.text.hidden = hidden;
-    }
-
-    if (notes) send.notes = notes;
-    if (password) send.password = password;
-    if (maxAccessCount) send.maxAccessCount = maxAccessCount;
-    if (expirationDate) send.expirationDate = expirationDate;
-
-    const sendJson = JSON.stringify(send);
-    const encodedSend = Buffer.from(sendJson).toString('base64');
+    const encodedSend = encodeSendPayload(buildTextSendPayload(validatedArgs));
     const response = await executeCliCommand('send', ['create', encodedSend]);
     return toMcpFormat(response);
   },
@@ -742,37 +777,12 @@ export const handleCreateTextSend = withValidation(
 export const handleCreateFileSend = withValidation(
   createFileSendSchema,
   async (validatedArgs) => {
-    const {
-      name,
-      filePath,
-      notes,
-      password,
-      maxAccessCount,
-      expirationDate,
-      deletionDate,
-      disabled,
-    } = validatedArgs;
-
-    // Build the Send object
-    const send: BitwardenSend = {
-      type: 1, // File Send
-      name,
-      disabled,
-      deletionDate,
-    };
-
-    if (notes) send.notes = notes;
-    if (password) send.password = password;
-    if (maxAccessCount) send.maxAccessCount = maxAccessCount;
-    if (expirationDate) send.expirationDate = expirationDate;
-
-    const sendJson = JSON.stringify(send);
-    const encodedSend = Buffer.from(sendJson).toString('base64');
+    const encodedSend = encodeSendPayload(buildFileSendPayload(validatedArgs));
     const response = await executeCliCommand('send', [
       'create',
       encodedSend,
       '--file',
-      filePath,
+      validatedArgs.filePath,
     ]);
     return toMcpFormat(response);
   },
