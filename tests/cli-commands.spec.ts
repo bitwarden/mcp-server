@@ -1,4 +1,16 @@
-import { describe, it, expect, afterEach } from '@jest/globals';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  beforeAll,
+  afterAll,
+} from '@jest/globals';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { validateInput } from '../src/utils/validation.js';
 import { validateFilePath } from '../src/utils/security.js';
@@ -2519,7 +2531,174 @@ import {
   handleDeleteSend,
   handleRemoveSendPassword,
   handleCreateAttachment,
+  buildTextSendPayload,
+  buildFileSendPayload,
+  buildSendCreateArgs,
+  __testable as handlersTestable,
 } from '../src/handlers/cli.js';
+import {
+  createTextSendSchema,
+  createFileSendSchema,
+} from '../src/schemas/cli.js';
+
+describe('Send create payloads', () => {
+  // Mirrors what handleCreate*Send do: schema parse -> payload -> bw argv.
+  const argsFor = (
+    schema: typeof createTextSendSchema | typeof createFileSendSchema,
+    input: Record<string, unknown>,
+  ) => {
+    const parsed = schema.parse(input);
+    return buildSendCreateArgs(
+      'filePath' in parsed
+        ? buildFileSendPayload(parsed)
+        : buildTextSendPayload(parsed),
+    );
+  };
+  const decode = (args: readonly string[] | undefined) => {
+    expect(args).toEqual(['create', expect.any(String)]);
+    return JSON.parse(Buffer.from(args![1]!, 'base64').toString('utf8'));
+  };
+
+  // Regression for #248: CLI 2026.9.1 rejects missing booleans with
+  // "invalid type: unit value, expected a boolean".
+  it('text send always includes required booleans', () => {
+    const payload = decode(
+      argsFor(createTextSendSchema, { name: 'Test', text: 'secret' }),
+    );
+
+    expect(payload).toEqual({
+      type: 0,
+      name: 'Test',
+      text: { text: 'secret', hidden: false },
+      disabled: false,
+      hideEmail: false,
+      deletionDate: expect.any(String),
+    });
+  });
+
+  it('text send preserves hidden and optional fields', () => {
+    const payload = decode(
+      argsFor(createTextSendSchema, {
+        name: 'Test',
+        text: 'secret',
+        hidden: true,
+        notes: 'n',
+        password: 'pw',
+        maxAccessCount: 3,
+        expirationDate: '2026-10-18T00:00:00.000Z',
+        deletionDate: '2026-10-19T00:00:00.000Z',
+        disabled: true,
+      }),
+    );
+
+    expect(payload).toEqual({
+      type: 0,
+      name: 'Test',
+      text: { text: 'secret', hidden: true },
+      notes: 'n',
+      password: 'pw',
+      maxAccessCount: 3,
+      expirationDate: '2026-10-18T00:00:00.000Z',
+      deletionDate: '2026-10-19T00:00:00.000Z',
+      disabled: true,
+      hideEmail: false,
+    });
+  });
+
+  describe('handlers', () => {
+    const realExecute = handlersTestable.executeCliCommand;
+    const executeMock = jest.fn<typeof handlersTestable.executeCliCommand>();
+
+    beforeEach(() => {
+      executeMock.mockReset();
+      executeMock.mockResolvedValue({ output: '{"object":"send"}' });
+      handlersTestable.executeCliCommand = executeMock;
+    });
+
+    afterEach(() => {
+      handlersTestable.executeCliCommand = realExecute;
+    });
+
+    it('handleCreateTextSend sends the built payload as the only argument', async () => {
+      const result = await handleCreateTextSend({
+        name: 'Test',
+        text: 'secret',
+      });
+
+      expect(result.isError).toBe(false);
+      expect(executeMock).toHaveBeenCalledTimes(1);
+      const [command, args] = executeMock.mock.calls[0]!;
+      expect(command).toBe('send');
+      expect(decode(args)).toEqual({
+        type: 0,
+        name: 'Test',
+        text: { text: 'secret', hidden: false },
+        disabled: false,
+        hideEmail: false,
+        deletionDate: expect.any(String),
+      });
+    });
+  });
+
+  describe('file send', () => {
+    const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+    const dir = mkdtempSync(join(tmpdir(), 'mcp-send-'));
+    const filePath = join(dir, 'file.txt');
+
+    beforeAll(() => {
+      writeFileSync(filePath, 'hello');
+      process.env['BW_ALLOWED_DIRECTORIES'] = dir;
+    });
+
+    afterAll(() => {
+      rmSync(dir, { recursive: true, force: true });
+      if (originalEnv === undefined) {
+        delete process.env['BW_ALLOWED_DIRECTORIES'];
+      } else {
+        process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+      }
+    });
+
+    // `bw send` has a boolean --file flag, so `send create <json> --file <path>`
+    // fails with "too many arguments". The path must travel in the JSON.
+    it('passes the path in JSON, not as a --file argument', () => {
+      const args = argsFor(createFileSendSchema, { name: 'File', filePath });
+      expect(args).not.toContain('--file');
+      expect(args).not.toContain(filePath);
+
+      expect(decode(args)).toEqual({
+        type: 1,
+        name: 'File',
+        file: { fileName: filePath },
+        disabled: false,
+        hideEmail: false,
+        deletionDate: expect.any(String),
+      });
+    });
+
+    it('handleCreateFileSend sends the path in JSON, not as --file', async () => {
+      const realExecute = handlersTestable.executeCliCommand;
+      const executeMock = jest
+        .fn<typeof handlersTestable.executeCliCommand>()
+        .mockResolvedValue({ output: '{"object":"send"}' });
+      handlersTestable.executeCliCommand = executeMock;
+      try {
+        const result = await handleCreateFileSend({ name: 'File', filePath });
+
+        expect(result.isError).toBe(false);
+        expect(executeMock).toHaveBeenCalledTimes(1);
+        const [command, args] = executeMock.mock.calls[0]!;
+        expect(command).toBe('send');
+        expect(args).not.toContain('--file');
+        expect(args).not.toContain(filePath);
+        expect(decode(args).file).toEqual({ fileName: filePath });
+        expect(decode(args).hideEmail).toBe(false);
+      } finally {
+        handlersTestable.executeCliCommand = realExecute;
+      }
+    });
+  });
+});
 
 describe('CLI Handlers - Validation Tests', () => {
   describe('handleLock', () => {
@@ -3060,14 +3239,6 @@ describe('CLI Handlers - Validation Tests', () => {
 
         expect(result.isError).toBe(true);
         expect(result.content[0]!.text).toContain('Validation error');
-      });
-
-      it('should accept valid text send', async () => {
-        const result = await handleCreateTextSend({
-          name: 'Test Send',
-          text: 'Secret content',
-        });
-        expect(result).toBeDefined();
       });
     });
 
