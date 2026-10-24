@@ -9,6 +9,14 @@ import { buildSafeCommand, isValidBitwardenCommand } from './security.js';
 import type { CliResponse } from './types.js';
 
 /**
+ * Module-local indirection for `child_process.spawn` so tests can substitute a
+ * fake process without relying on ESM module mocking.
+ *
+ * @internal
+ */
+export const __testable: { spawn: typeof spawn } = { spawn };
+
+/**
  * Executes a Bitwarden CLI command safely using spawn() to prevent command injection
  * Internally calls buildSafeCommand() to validate and sanitize inputs
  * @param baseCommand - The base Bitwarden command (e.g., 'list', 'get', 'create')
@@ -47,10 +55,14 @@ export async function executeCliCommand(
 
     // Use spawn with array of arguments to avoid shell interpretation
     return new Promise<CliResponse>((resolve) => {
-      const child = spawn(bwExecutable, [...prefixArgs, command, ...args], {
-        env: childEnv,
-        shell: false, // Explicitly disable shell to prevent injection
-      });
+      const child = __testable.spawn(
+        bwExecutable,
+        [...prefixArgs, '--nointeraction', command, ...args],
+        {
+          env: childEnv,
+          shell: false, // Explicitly disable shell to prevent injection
+        },
+      );
 
       let stdout = '';
       let stderr = '';
