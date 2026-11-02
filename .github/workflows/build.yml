@@ -47,6 +47,11 @@ jobs:
           cache-dependency-path: "**/package-lock.json"
           node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
 
+      - name: Set up Aikido Endpoint Protection
+        uses: bitwarden/gh-actions/setup-aikido-endpoint-protection@main
+        with:
+          token: ${{ secrets.AIKIDO_TOKEN }}
+
       - name: Install Node dependencies
         run: npm ci
 
