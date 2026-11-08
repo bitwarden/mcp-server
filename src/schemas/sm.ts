@@ -9,12 +9,14 @@ import { validateFilePath } from '../utils/security.js';
 const projectId = z.string().uuid('Project ID must be a valid UUID');
 const secretId = z.string().uuid('Secret ID must be a valid UUID');
 
+export const INVALID_FILE_PATH_MESSAGE =
+  'Invalid file path: it must be inside BW_ALLOWED_DIRECTORIES and contain no path traversal patterns';
+
 const envFilePath = z
   .string()
   .min(1, 'File path is required')
   .refine((path) => validateFilePath(path), {
-    message:
-      'Invalid file path: it must be inside BW_ALLOWED_DIRECTORIES and contain no path traversal patterns',
+    message: INVALID_FILE_PATH_MESSAGE,
   });
 
 // Options for a server-generated secret value

@@ -9,6 +9,7 @@
 
 import fs from 'fs';
 import { withValidation } from '../utils/validation.js';
+import { validateFilePath } from '../utils/security.js';
 import {
   executeSmCommand,
   generateSecretValue,
@@ -29,6 +30,7 @@ import {
   deleteSmSecretSchema,
   importSmSecretsSchema,
   exportSmSecretsSchema,
+  INVALID_FILE_PATH_MESSAGE,
 } from '../schemas/sm.js';
 import type { CliResponse } from '../utils/types.js';
 
@@ -206,6 +208,12 @@ export const handleImportSmSecrets = withValidation(
   async (validatedArgs) => {
     const { filePath, projectId, overwrite } = validatedArgs;
 
+    // The schema already validated the path; checking again where the file
+    // is opened keeps the allowlist enforced if the schema ever changes.
+    if (!validateFilePath(filePath)) {
+      return textResult(INVALID_FILE_PATH_MESSAGE, true);
+    }
+
     let content: string;
     try {
       content = await fs.promises.readFile(filePath, 'utf8');
@@ -311,6 +319,12 @@ export const handleExportSmSecrets = withValidation(
   exportSmSecretsSchema,
   async (validatedArgs) => {
     const { filePath, projectId, overwrite } = validatedArgs;
+
+    // The schema already validated the path; checking again where the file
+    // is opened keeps the allowlist enforced if the schema ever changes.
+    if (!validateFilePath(filePath)) {
+      return textResult(INVALID_FILE_PATH_MESSAGE, true);
+    }
 
     const listResponse = await executeSmCommand(
       'secret',
