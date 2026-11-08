@@ -13,6 +13,7 @@ import path from 'path';
 import {
   __testable,
   executeSmCommand,
+  formatBwsError,
   generateSecretValue,
   isValidSmCommand,
   MISSING_ACCESS_TOKEN_ERROR,
@@ -181,6 +182,24 @@ describe('Secrets Manager CLI execution', () => {
     mockBws({ stderr: 'Error: Access token is not valid\n', code: 1 });
     const result = await executeSmCommand('project', 'list');
     expect(result.errorOutput).toBe('Error: Access token is not valid');
+  });
+
+  it('shortens bws error reports to their messages', async () => {
+    mockBws({
+      stderr:
+        "Error: \n   0: Doesn't contain a decryption key\n\nLocation:\n   crates/bws/src/main.rs:67\n\nBacktrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.\n",
+      code: 1,
+    });
+    const result = await executeSmCommand('project', 'list');
+    expect(result.errorOutput).toBe("Error: Doesn't contain a decryption key");
+  });
+
+  it('joins chained bws error causes', () => {
+    expect(
+      formatBwsError(
+        'Error: \n   0: Request failed\n   1: 401 Unauthorized\n\nLocation:\n   x.rs:1\n',
+      ),
+    ).toBe('Error: Request failed: 401 Unauthorized');
   });
 
   it('reports a spawn error', async () => {

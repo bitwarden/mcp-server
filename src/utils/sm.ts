@@ -46,6 +46,27 @@ export function validateSmParameter(value: string): boolean {
 }
 
 /**
+ * Shortens a `bws` error report to its messages. `bws` prints errors as
+ * numbered causes followed by a source location and backtrace hints:
+ *
+ *   Error:
+ *      0: Doesn't contain a decryption key
+ *
+ *   Location:
+ *      crates/bws/src/main.rs:67
+ *
+ * which becomes "Error: Doesn't contain a decryption key". Other stderr
+ * output is returned trimmed.
+ */
+export function formatBwsError(stderr: string): string {
+  const report = stderr.split(/\n\s*Location:/)[0] ?? '';
+  const causes = [...report.matchAll(/^\s*\d+: (.+)$/gm)].map((match) =>
+    match[1]!.trim(),
+  );
+  return causes.length > 0 ? `Error: ${causes.join(': ')}` : stderr.trim();
+}
+
+/**
  * Executes a Bitwarden Secrets Manager CLI command with spawn() and no shell.
  *
  * Options go before a `--` separator and positionals after it, so a value
@@ -124,7 +145,7 @@ export async function executeSmCommand(
         return;
       }
       resolve({
-        errorOutput: stderr.trim() || `bws exited with code ${code}`,
+        errorOutput: formatBwsError(stderr) || `bws exited with code ${code}`,
       });
     });
   });
