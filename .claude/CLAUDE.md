@@ -22,6 +22,20 @@ The MCP server exposes two distinct operational interfaces:
 - Uses RESTful JSON communication
 - Returns structured JSON responses
 
+**3. Secrets Manager Interface (Projects and Secrets)**
+
+- Wraps the Bitwarden Secrets Manager CLI (`bws`) for projects and secrets
+- Requires a machine account access token in `BWS_ACCESS_TOKEN`
+- Executes `bws` with spawn() and no shell (`src/utils/sm.ts`); options go before a `--` separator and positionals after it, and options carrying a user value use the `--name=value` form, so a value starting with `-` is never read as an option
+- Returns JSON responses from the CLI
+
+The Secrets Manager tools keep secret values out of responses. Any change to them must preserve these invariants:
+
+- **Only `get_sm_secret` returns a value.** Every other handler passes the `bws` output through `redactSecretValues`, which drops the `value` fields and returns a fixed message, never the raw output, when it cannot parse it.
+- **Generated values stay on the server.** `create_sm_secret` and `edit_sm_secret` with `generate` create the value with `crypto.randomInt` and never return it.
+- **Import and export report keys only.** `import_sm_secrets` and `export_sm_secrets` read and write files through `validateFilePath` (`BW_ALLOWED_DIRECTORIES`), report invalid dotenv lines by number only, and write exported files with mode `0600`, refusing to replace a file unless `overwrite` is set.
+- **Filtered child env.** `bws` receives `buildBwChildEnv` plus `BWS_ACCESS_TOKEN` and `BWS_SERVER_URL`; it never inherits `BW_SESSION` or the API client credentials.
+
 ### Request Flow
 
 ```
