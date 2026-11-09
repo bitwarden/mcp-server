@@ -8,7 +8,7 @@
     "full": 2
   },
   "escalation_list": [],
-  "doctrine_docs": ["CLAUDE.md"],
+  "doctrine_docs": [".claude/CLAUDE.md"],
   "context_ceiling_pct": 60,
   "project": "mcp-server",
   "landing": "draft-pr"
