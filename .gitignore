@@ -32,3 +32,10 @@ junit.xml
 
 # Distribution
 dist/
+
+# Abacus (Beads board stays local)
+.beads/
+.beads-credential-key
+*.gate.lock*
+.abacus-runs/
+.claude/worktrees/

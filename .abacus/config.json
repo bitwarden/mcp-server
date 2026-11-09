@@ -1,0 +1,15 @@
+{
+  "abacus_version": 1,
+  "default_branch": "main",
+  "gate": "npm run lint && npm test",
+  "fast_check": "npm run lint",
+  "fix_rounds": {
+    "lite": 1,
+    "full": 2
+  },
+  "escalation_list": [],
+  "doctrine_docs": [".claude/CLAUDE.md"],
+  "context_ceiling_pct": 60,
+  "project": "mcp-server",
+  "landing": "draft-pr"
+}
