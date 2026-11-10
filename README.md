@@ -310,6 +310,18 @@ export NODE_ENV=development
 - **Monitor API usage** through your organization's audit logs
 - Understand the security and privacy impacts of exposing sensitive vault data to LLM and AI tools. Using a self-hosted or local LLM may be appropriate, for example.
 
+## Verifying the container image
+
+Images published to `ghcr.io/bitwarden/mcp-server` are signed with Cosign using GitHub Actions keyless signing. Verify a tag before running it:
+
+```bash
+cosign verify ghcr.io/bitwarden/mcp-server:<tag> \
+  --certificate-identity https://github.com/bitwarden/mcp-server/.github/workflows/build.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The identity is the `build.yml` workflow ref on `refs/heads/main`. Only the `publish` job, which runs on pushes to `main` and is bound to the `ghcr-publish` environment, signs images, so a signature produced from a pull request or another branch carries a different ref and fails verification.
+
 ## Troubleshooting
 
 ### CLI Issues
