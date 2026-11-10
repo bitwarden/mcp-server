@@ -5,25 +5,126 @@
 import fs from 'fs';
 import path from 'path';
 
+// Upper bound on symlinks followed while canonicalizing, mirroring the
+// kernel's SYMLOOP_MAX so link cycles terminate.
+const MAX_SYMLINK_HOPS = 40;
+
+/**
+ * Whether a path is a Windows UNC or device path (`\\host\share`, `\\?\...`,
+ * `\\.\...`), in either slash spelling. Opening such a path makes Windows
+ * contact the named host and send the user's NetNTLM credentials.
+ */
+function isUncOrDevicePath(filePath: string): boolean {
+  return /^[\\/]{2}/.test(filePath);
+}
+
 /**
  * Canonicalize a filesystem path by resolving symbolic links.
  *
- * Uses fs.realpathSync.native() when the path exists. If the path does not
- * exist (e.g. a not-yet-created download target), we recursively canonicalize
- * the longest existing ancestor and re-attach the missing tail. This ensures
- * a partially-existing path cannot smuggle in a symlinked ancestor that
- * silently redirects outside the allowlist.
+ * Uses fs.realpathSync.native() when the path resolves. Otherwise each
+ * missing component is judged individually: a component that is absent keeps
+ * its name (e.g. a not-yet-created download target), while a component that
+ * exists as a symlink is replaced by its target, because writing through a
+ * dangling link creates the file at the target rather than at the link.
+ * Anything else that cannot be resolved throws, so the caller rejects it.
+ *
+ * `budget` is shared across the whole resolution so the total number of
+ * links followed is bounded, as the kernel bounds it per lookup.
  */
-function canonicalizePath(filePath: string): string {
+function canonicalizePath(
+  filePath: string,
+  budget = { hops: MAX_SYMLINK_HOPS },
+): string {
   try {
     return fs.realpathSync.native(filePath);
   } catch {
-    const parent = path.dirname(filePath);
-    if (parent === filePath) {
-      return filePath;
-    }
-    return path.join(canonicalizePath(parent), path.basename(filePath));
+    // Resolved component by component below.
   }
+
+  const parent = path.dirname(filePath);
+  if (parent === filePath) {
+    return filePath;
+  }
+
+  const linkDir = canonicalizePath(parent, budget);
+  const candidate = path.join(linkDir, path.basename(filePath));
+
+  let stats: fs.Stats;
+  try {
+    stats = fs.lstatSync(candidate);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return candidate;
+    }
+    throw error;
+  }
+
+  if (!stats.isSymbolicLink()) {
+    throw new Error('Path exists but could not be resolved');
+  }
+  if (budget.hops <= 0) {
+    throw new Error('Too many levels of symbolic links');
+  }
+  budget.hops -= 1;
+
+  return resolveLinkTarget(linkDir, fs.readlinkSync(candidate), budget);
+}
+
+/**
+ * Canonicalize the raw text of a symlink found in the canonical directory
+ * `linkDir`.
+ *
+ * The kernel resolves `..` in a link target physically, against whatever the
+ * preceding components resolve to. A lexical join would collapse `sub/..`
+ * without following `sub`, so with `sub` a link elsewhere the result would
+ * name a different directory than the one a write through the link reaches.
+ * Each `..` is therefore applied to the canonical form of the prefix before it.
+ */
+function resolveLinkTarget(
+  linkDir: string,
+  target: string,
+  budget: { hops: number },
+): string {
+  if (isUncOrDevicePath(path.resolve(linkDir, target))) {
+    throw new Error('Symlink targets a UNC or device path');
+  }
+
+  const { root } = path.parse(target);
+  if (root !== '' && !path.isAbsolute(target)) {
+    // A Windows drive-relative target such as `C:foo`.
+    throw new Error('Symlink target is drive-relative');
+  }
+
+  const separators = path.sep === '\\' ? /[\\/]+/ : /\/+/;
+  let current = root === '' ? linkDir : path.resolve(root);
+  for (const part of target.slice(root.length).split(separators)) {
+    if (part === '' || part === '.') {
+      continue;
+    }
+    current =
+      part === '..'
+        ? path.dirname(canonicalizePath(current, budget))
+        : path.join(current, part);
+  }
+  return canonicalizePath(current, budget);
+}
+
+/**
+ * Whether `candidate` is `dir` itself or lies beneath it. Both arguments must
+ * already be absolute and resolved in the same way.
+ */
+function isWithinDirectory(candidate: string, dir: string): boolean {
+  const normalizedDir = dir.endsWith(path.sep) ? dir : dir + path.sep;
+  const normalizedCandidate = candidate + path.sep;
+
+  // On Windows, paths are case-insensitive
+  if (process.platform === 'win32') {
+    return normalizedCandidate
+      .toLowerCase()
+      .startsWith(normalizedDir.toLowerCase());
+  }
+
+  return normalizedCandidate.startsWith(normalizedDir);
 }
 
 /**
@@ -216,7 +317,10 @@ export function sanitizeApiParameters(params: unknown): unknown {
  * Security measures:
  * - URL decoding (iterative to handle double encoding)
  * - Unicode normalization (NFC form)
- * - Path resolution to canonical form (with symlink resolution via realpath)
+ * - Rejection of UNC and device paths in any slash spelling
+ * - Lexical allowlist check before any filesystem call on the path
+ * - Path resolution to canonical form (with symlink resolution via realpath,
+ *   judging dangling symlinks by their target)
  * - Allowlist-based directory validation
  * - Protection against all known bypass techniques
  *
@@ -312,13 +416,14 @@ export function validateFilePath(filePath: string): boolean {
       return false;
     }
 
-    // Step 8: Resolve to absolute canonical path, including symlink resolution.
-    // Lexical resolution alone (path.resolve) only collapses ./ and ../; it does
-    // not follow symlinks. Without realpath, a symlink inside an allowed
-    // directory could target a file outside the allowlist and pass the prefix
-    // check below. canonicalizePath() resolves symlinks via realpath and falls
-    // back to lexical resolution for non-existent path segments.
-    const resolvedPath = canonicalizePath(path.resolve(normalizedPath));
+    // Step 8: Reject UNC and device paths after lexical resolution. Windows
+    // accepts forward slashes as separators, so //host/share, /\host\share and
+    // //?/UNC/host/share all resolve to \\host\share. Windows semantics are
+    // applied on every platform so the check does not depend on where the
+    // server runs, and no filesystem call has been made on the path yet.
+    if (isUncOrDevicePath(path.win32.resolve(normalizedPath))) {
+      return false;
+    }
 
     // Step 9: Get allowed directories from environment variable
     // Fail closed: if BW_ALLOWED_DIRECTORIES is unset, reject all file operations.
@@ -331,38 +436,42 @@ export function validateFilePath(filePath: string): boolean {
     }
 
     // Allowed directories are canonicalized too, so that a symlinked allow-list
-    // entry (e.g. /tmp on macOS → /private/tmp) compares consistently with
+    // entry (e.g. /tmp on macOS -> /private/tmp) compares consistently with
     // candidates that have been canonicalized through the symlink.
     const allowedDirectories = allowedDirsEnv
       .split(',')
       .map((dir) => dir.trim())
       .filter((dir) => dir.length > 0)
-      .map((dir) => canonicalizePath(path.resolve(dir)));
+      .map((dir) => {
+        const lexical = path.resolve(dir);
+        return { lexical, canonical: canonicalizePath(lexical) };
+      });
 
     if (allowedDirectories.length === 0) {
       return false;
     }
 
-    // Step 10: Verify resolved path starts with one of the allowed directories
-    const isAllowed = allowedDirectories.some((allowedDir) => {
-      // Ensure both paths end with separator for accurate comparison
-      const normalizedAllowedDir = allowedDir.endsWith(path.sep)
-        ? allowedDir
-        : allowedDir + path.sep;
-      const normalizedResolvedPath = resolvedPath + path.sep;
+    // Step 10: The candidate must lie lexically under an allowed directory,
+    // spelled either as configured or in its canonical form, before any
+    // filesystem call is made on it.
+    const lexicalPath = path.resolve(normalizedPath);
+    const isLexicallyAllowed = allowedDirectories.some(
+      ({ lexical, canonical }) =>
+        isWithinDirectory(lexicalPath, lexical) ||
+        isWithinDirectory(lexicalPath, canonical),
+    );
+    if (!isLexicallyAllowed) {
+      return false;
+    }
 
-      // On Windows, paths are case-insensitive
-      const isWindows = process.platform === 'win32';
-      if (isWindows) {
-        return normalizedResolvedPath
-          .toLowerCase()
-          .startsWith(normalizedAllowedDir.toLowerCase());
-      }
-
-      return normalizedResolvedPath.startsWith(normalizedAllowedDir);
-    });
-
-    return isAllowed;
+    // Step 11: Resolve symlinks and verify the canonical path is still under
+    // a canonical allowed directory. Lexical resolution alone does not follow
+    // symlinks, so a link inside an allowed directory could otherwise point
+    // outside it.
+    const resolvedPath = canonicalizePath(lexicalPath);
+    return allowedDirectories.some(({ canonical }) =>
+      isWithinDirectory(resolvedPath, canonical),
+    );
   } catch {
     // Any error in validation should result in rejection
     return false;
