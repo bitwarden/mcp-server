@@ -1000,7 +1000,8 @@ export const getSendTool: Tool = {
 
 export const editSendTool: Tool = {
   name: 'edit_send',
-  description: 'Edit an existing Bitwarden Send',
+  description:
+    'Edit an existing Bitwarden Send. If the Send is password protected, `password` must be supplied; otherwise the edit is refused, because the password cannot be preserved. Use remove_send_password to remove it deliberately.',
   inputSchema: {
     type: 'object',
     properties: {

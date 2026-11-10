@@ -819,6 +819,16 @@ export const handleEditSend = withValidation(
         getResponse.output || '{}',
       );
 
+      // `send get` never returns the password, and `send edit` re-infers the
+      // auth type from the submitted JSON, so an edit without a password would
+      // silently remove the Send's protection. Refuse instead.
+      if (existingSend.passwordSet === true && !password?.trim()) {
+        return toMcpFormat({
+          errorOutput:
+            'This Send is password protected and the password cannot be preserved on edit. Supply a new `password` with the edit, or use `remove_send_password` to remove the password deliberately.',
+        });
+      }
+
       // Update with new values
       if (name !== undefined) existingSend.name = name;
       if (notes !== undefined) existingSend.notes = notes;
