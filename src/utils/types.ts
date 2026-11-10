@@ -88,6 +88,7 @@ export interface BitwardenSend {
     sizeName?: string;
   };
   password?: string;
+  readonly passwordSet?: boolean;
   maxAccessCount?: number;
   accessCount?: number;
   revisionDate?: string;
