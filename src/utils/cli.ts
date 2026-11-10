@@ -8,6 +8,43 @@ import { buildBwChildEnv } from './bw-env.js';
 import { buildSafeCommand, isValidBitwardenCommand } from './security.js';
 import type { CliResponse } from './types.js';
 
+/** Default lifetime bound for a bw child. */
+const DEFAULT_TIMEOUT_MS = 120_000;
+/** Longer bound for subcommands that transfer data. */
+const LONG_TIMEOUT_MS = 300_000;
+const LONG_RUNNING_COMMANDS: ReadonlySet<string> = new Set([
+  'sync',
+  'export',
+  'import',
+  'create',
+  'get',
+  'send',
+]);
+/** Grace between SIGTERM and SIGKILL when the bound expires. */
+const KILL_GRACE_MS = 2_000;
+
+const overrides: {
+  timeoutMs?: number | undefined;
+  killGraceMs?: number | undefined;
+} = {};
+
+/** Test-only hooks to shorten the lifetime bound. */
+export const __testable = {
+  setTimeoutMs(ms: number | undefined): void {
+    overrides.timeoutMs = ms;
+  },
+  setKillGraceMs(ms: number | undefined): void {
+    overrides.killGraceMs = ms;
+  },
+};
+
+function lifetimeBoundMs(command: string): number {
+  return (
+    overrides.timeoutMs ??
+    (LONG_RUNNING_COMMANDS.has(command) ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS)
+  );
+}
+
 /**
  * Executes a Bitwarden CLI command safely using spawn() to prevent command injection
  * Internally calls buildSafeCommand() to validate and sanitize inputs
@@ -35,11 +72,13 @@ export async function executeCliCommand(
     // vars plus BW_SESSION when set — it must not inherit the API client
     // credentials or any other host env the operator set on the MCP
     // server process. See bw-env.ts for the full rationale.
-    const childEnv = buildBwChildEnv(
-      process.env['BW_SESSION']
+    // BW_NOINTERACTION makes a locked vault fail fast instead of prompting.
+    const childEnv = buildBwChildEnv({
+      BW_NOINTERACTION: 'true',
+      ...(process.env['BW_SESSION']
         ? { BW_SESSION: process.env['BW_SESSION'] }
-        : undefined,
-    );
+        : {}),
+    });
 
     // Resolve how to invoke `bw` (handles the Windows npm-shim case where
     // a bare `bw` is not directly spawnable). See bw-cli.ts.
@@ -50,7 +89,28 @@ export async function executeCliCommand(
       const child = spawn(bwExecutable, [...prefixArgs, command, ...args], {
         env: childEnv,
         shell: false, // Explicitly disable shell to prevent injection
+        stdio: ['ignore', 'pipe', 'pipe'], // stdin closed at spawn
       });
+
+      let settled = false;
+      const finish = (response: CliResponse): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(response);
+      };
+
+      const boundMs = lifetimeBoundMs(command);
+      let timedOut = false;
+      let killTimer: NodeJS.Timeout | undefined;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        timedOut = true;
+        child.kill('SIGTERM');
+        killTimer = setTimeout(() => {
+          child.kill('SIGKILL');
+        }, overrides.killGraceMs ?? KILL_GRACE_MS);
+      }, boundMs);
 
       let stdout = '';
       let stderr = '';
@@ -64,18 +124,25 @@ export async function executeCliCommand(
       });
 
       child.on('error', (error: Error) => {
-        resolve({
+        finish({
           errorOutput: `Failed to execute command: ${error.message}`,
         });
       });
 
       child.on('close', (code: number) => {
+        clearTimeout(killTimer);
+        if (timedOut) {
+          finish({
+            errorOutput: `bw ${command} timed out after ${boundMs / 1000}s and was terminated`,
+          });
+          return;
+        }
         const result: CliResponse = {};
         if (stdout) result.output = stdout.trim();
         if (stderr || code !== 0)
           result.errorOutput =
             stderr.trim() || `Command exited with code ${code}`;
-        resolve(result);
+        finish(result);
       });
     });
   } catch (error: unknown) {

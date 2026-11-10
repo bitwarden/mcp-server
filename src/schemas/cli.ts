@@ -12,6 +12,16 @@
 import { z } from 'zod';
 import { validateFilePath } from '../utils/security.js';
 
+// A positional ID handed to bw. A leading '-' would be parsed by bw's option
+// parser as a flag (VULN-1369), so it is rejected before spawn.
+const positionalId = (requiredMessage: string) =>
+  z
+    .string()
+    .min(1, requiredMessage)
+    .refine((value) => !value.startsWith('-'), {
+      message: 'ID must not start with "-"',
+    });
+
 // Schema for validating 'lock' command parameters (no parameters required)
 export const lockSchema = z.object({});
 
@@ -88,7 +98,7 @@ export const getSchema = z
       'fingerprint',
     ]),
     // ID or search term to identify the object (use 'me' for your own fingerprint, or filename for attachment)
-    id: z.string().min(1, 'ID or search term is required'),
+    id: positionalId('ID or search term is required'),
     // Organization ID (required for org-collection)
     organizationid: z.string().optional(),
     // Item ID (required for attachment)
@@ -397,7 +407,7 @@ export const editSecureNoteSchema = z.object({
 // Schema for validating 'edit item' command parameters
 export const editItemSchema = z.object({
   // ID of the item to edit
-  id: z.string().min(1, 'ID is required'),
+  id: positionalId('ID is required'),
   // New name for the item
   name: z.string().optional(),
   // New notes for the item
@@ -417,7 +427,7 @@ export const editItemSchema = z.object({
 // Schema for validating 'edit folder' command parameters
 export const editFolderSchema = z.object({
   // ID of the folder to edit
-  id: z.string().min(1, 'ID is required'),
+  id: positionalId('ID is required'),
   // New name for the folder
   name: z.string().min(1, 'Name is required'),
 });
@@ -427,7 +437,7 @@ export const deleteSchema = z.object({
   // Type of object to delete
   object: z.enum(['item', 'attachment', 'folder', 'org-collection']),
   // ID of the object to delete
-  id: z.string().min(1, 'Object ID is required'),
+  id: positionalId('Object ID is required'),
   // Whether to permanently delete the item (skip trash)
   permanent: z.boolean().optional(),
 });
@@ -435,9 +445,9 @@ export const deleteSchema = z.object({
 // Schema for validating 'confirm' command parameters
 export const confirmSchema = z.object({
   // Organization ID where the member is being confirmed
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Member ID (user identifier) to confirm
-  memberId: z.string().min(1, 'Member ID is required'),
+  memberId: positionalId('Member ID is required'),
 });
 
 // Schema for group access in collections
@@ -453,7 +463,7 @@ const collectionGroupSchema = z.object({
 // Schema for validating 'create org-collection' command parameters
 export const createOrgCollectionSchema = z.object({
   // Organization ID where the collection will be created
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Name of the collection
   name: z.string().min(1, 'Collection name is required'),
   // Optional external ID for the collection
@@ -465,9 +475,9 @@ export const createOrgCollectionSchema = z.object({
 // Schema for validating 'edit org-collection' command parameters
 export const editOrgCollectionSchema = z.object({
   // Organization ID where the collection exists
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Collection ID to edit
-  collectionId: z.string().min(1, 'Collection ID is required'),
+  collectionId: positionalId('Collection ID is required'),
   // New name for the collection
   name: z.string().optional(),
   // Optional external ID for the collection
@@ -479,9 +489,9 @@ export const editOrgCollectionSchema = z.object({
 // Schema for validating 'edit item-collections' command parameters
 export const editItemCollectionsSchema = z.object({
   // Item ID to edit collections for
-  itemId: z.string().min(1, 'Item ID is required'),
+  itemId: positionalId('Item ID is required'),
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Array of collection IDs the item should belong to
   collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
@@ -489,9 +499,9 @@ export const editItemCollectionsSchema = z.object({
 // Schema for validating 'move' command parameters
 export const moveSchema = z.object({
   // Item ID to move to organization
-  itemId: z.string().min(1, 'Item ID is required'),
+  itemId: positionalId('Item ID is required'),
   // Organization ID to move the item to
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Array of collection IDs the item should be added to
   collectionIds: z.array(z.string().min(1, 'Collection ID cannot be empty')),
 });
@@ -499,35 +509,35 @@ export const moveSchema = z.object({
 // Schema for validating 'device-approval list' command parameters
 export const deviceApprovalListSchema = z.object({
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
 });
 
 // Schema for validating 'device-approval approve' command parameters
 export const deviceApprovalApproveSchema = z.object({
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Device approval request ID
-  requestId: z.string().min(1, 'Request ID is required'),
+  requestId: positionalId('Request ID is required'),
 });
 
 // Schema for validating 'device-approval approve-all' command parameters
 export const deviceApprovalApproveAllSchema = z.object({
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
 });
 
 // Schema for validating 'device-approval deny' command parameters
 export const deviceApprovalDenySchema = z.object({
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
   // Device approval request ID
-  requestId: z.string().min(1, 'Request ID is required'),
+  requestId: positionalId('Request ID is required'),
 });
 
 // Schema for validating 'device-approval deny-all' command parameters
 export const deviceApprovalDenyAllSchema = z.object({
   // Organization ID
-  organizationId: z.string().min(1, 'Organization ID is required'),
+  organizationId: positionalId('Organization ID is required'),
 });
 
 // Schema for validating 'restore' command parameters
@@ -535,7 +545,7 @@ export const restoreSchema = z.object({
   // Type of object to restore
   object: z.enum(['item']),
   // ID of the object to restore from trash
-  id: z.string().min(1, 'Object ID is required'),
+  id: positionalId('Object ID is required'),
 });
 
 // Schema for validating 'send create' command parameters for text Sends
@@ -605,13 +615,13 @@ export const listSendSchema = z.object({});
 // Schema for validating 'send get' command parameters
 export const getSendSchema = z.object({
   // ID of the Send to retrieve
-  id: z.string().min(1, 'Send ID is required'),
+  id: positionalId('Send ID is required'),
 });
 
 // Schema for validating 'send edit' command parameters
 export const editSendSchema = z.object({
   // ID of the Send to edit
-  id: z.string().min(1, 'Send ID is required'),
+  id: positionalId('Send ID is required'),
   // New name for the Send
   name: z.string().optional(),
   // Private notes (not shared with recipient)
@@ -631,13 +641,13 @@ export const editSendSchema = z.object({
 // Schema for validating 'send delete' command parameters
 export const deleteSendSchema = z.object({
   // ID of the Send to delete
-  id: z.string().min(1, 'Send ID is required'),
+  id: positionalId('Send ID is required'),
 });
 
 // Schema for validating 'send remove-password' command parameters
 export const removeSendPasswordSchema = z.object({
   // ID of the Send to remove password from
-  id: z.string().min(1, 'Send ID is required'),
+  id: positionalId('Send ID is required'),
 });
 
 // Schema for validating 'create attachment' command parameters
@@ -650,5 +660,5 @@ export const createAttachmentSchema = z.object({
       message: 'Invalid file path: path traversal patterns are not allowed',
     }),
   // ID of the item to attach the file to
-  itemId: z.string().min(1, 'Item ID is required'),
+  itemId: positionalId('Item ID is required'),
 });
