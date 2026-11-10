@@ -16,10 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
+      # Required only so the Aikido Endpoint Protection step can sign in to Azure with OIDC.
       id-token: write
-    env:
-      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
 
     steps:
       - name: Check out repo
@@ -67,6 +65,33 @@ jobs:
           path: "*dist/**"
           if-no-files-found: error
 
+      - name: Validate Docker image build
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          file: Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: mcp-server:validate
+
+  publish:
+    name: Publish image
+    needs: build
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    environment: ghcr-publish
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      _IMAGE_NAME: ghcr.io/bitwarden/mcp-server
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
@@ -74,49 +99,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Docker image tag
-        id: tag
-        env:
-          EVENT_TYPE: ${{ contains(github.event_name, 'pull_request') && 'pull_request' || '' }}
-        run: |
-          if [[ "$EVENT_TYPE" == "pull_request" ]]; then
-            IMAGE_TAG="pr-${{ github.event.pull_request.number }}"
-          else
-            IMAGE_TAG=$(echo "${GITHUB_REF:11}" | sed "s#/#-#g")  # slash safe branch name
-            if [[ "$IMAGE_TAG" == "main" ]]; then
-              IMAGE_TAG=dev
-            fi
-          fi
-          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-
       - name: Generate image tag(s)
         id: image-tags
         env:
-          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
           SHA: ${{ github.sha }}
         run: |
-          TAGS="${_IMAGE_NAME}:${IMAGE_TAG}"
-          if [[ "$IMAGE_TAG" == "dev" ]]; then
-            SHORT_SHA="$(git rev-parse --short "${SHA}")"
-            TAGS="$TAGS,${_IMAGE_NAME}:${IMAGE_TAG}-${SHORT_SHA}"
-          fi
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          SHORT_SHA="$(git rev-parse --short "${SHA}")"
+          echo "tags=${_IMAGE_NAME}:dev,${_IMAGE_NAME}:dev-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         id: build-docker
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           file: Dockerfile
           platforms: linux/amd64
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           tags: ${{ steps.image-tags.outputs.tags }}
 
       - name: Install Cosign
-        if: ${{ github.ref == 'refs/heads/main' }}
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Sign image with Cosign
-        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           DIGEST: ${{ steps.build-docker.outputs.digest }}
           TAGS: ${{ steps.image-tags.outputs.tags }}
