@@ -94,4 +94,33 @@ export interface BitwardenSend {
   expirationDate?: string;
   deletionDate?: string;
   disabled?: boolean;
+  hideEmail?: boolean;
+}
+
+// Payload for `bw send create`. The CLI passes these booleans straight to the
+// SDK, which rejects missing values ("invalid type: unit value, expected a boolean").
+interface BitwardenSendCreateBase {
+  name: string;
+  notes?: string;
+  password?: string;
+  maxAccessCount?: number;
+  expirationDate?: string;
+  deletionDate: string;
+  disabled: boolean;
+  hideEmail: boolean;
+}
+
+export interface BitwardenTextSendCreate extends BitwardenSendCreateBase {
+  type: 0;
+  text: {
+    text: string;
+    hidden: boolean;
+  };
+}
+
+export interface BitwardenFileSendCreate extends BitwardenSendCreateBase {
+  type: 1;
+  // `bw send` defines a boolean -f/--file flag that swallows `send create --file <path>`,
+  // so the path must go here. The CLI reads it, then rewrites fileName to the basename.
+  file: { fileName: string };
 }
