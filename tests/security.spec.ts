@@ -1,7 +1,10 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
+import childProcess from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { handleGet } from '../src/handlers/cli.js';
+import { getSchema } from '../src/schemas/cli.js';
 import {
   sanitizeInput,
   validateParameter,
@@ -873,8 +876,238 @@ describe('Security - Command Injection Protection', () => {
           process.env['BW_ALLOWED_DIRECTORIES'] = symlinkedAllowEntry;
           expect(validateFilePath(insideFile)).toBe(true);
           expect(validateFilePath(symlinkToOutsideFile)).toBe(false);
+          // Candidates spelled through the symlinked entry, as with macOS
+          // /tmp -> /private/tmp: an existing file and a download target
+          // that does not exist yet.
+          expect(
+            validateFilePath(path.join(symlinkedAllowEntry, 'inside.txt')),
+          ).toBe(true);
+          expect(
+            validateFilePath(
+              path.join(symlinkedAllowEntry, 'not-yet-created.txt'),
+            ),
+          ).toBe(true);
+          expect(
+            validateFilePath(
+              path.join(symlinkedAllowEntry, 'link-to-secret.txt'),
+            ),
+          ).toBe(false);
         } finally {
           fs.unlinkSync(symlinkedAllowEntry);
+        }
+      });
+
+      describe('Dangling symlinks (VULN-1368)', () => {
+        // A dangling symlink is judged by its target: writing through it
+        // creates the file at the target, not at the link.
+        const outsideAbsentFile = path.join(outsideDir, 'absent.txt');
+        const outsideAbsentDir = path.join(outsideDir, 'absent-dir');
+        const danglingToOutsideFile = path.join(allowedDir, 'dangling-file');
+        const danglingToOutsideDir = path.join(allowedDir, 'dangling-dir');
+        const danglingToInside = path.join(allowedDir, 'dangling-inside');
+        const loopA = path.join(allowedDir, 'loop-a');
+        const loopB = path.join(allowedDir, 'loop-b');
+        // `..` in a link target is resolved physically by the kernel, so
+        // `sub/../absent.txt` with `sub` -> outsideDir/deep names
+        // outsideDir/absent.txt, not allowedDir/absent.txt.
+        const deepOutsideDir = path.join(outsideDir, 'deep');
+        const linkToDeepOutside = path.join(allowedDir, 'sub');
+        const dotDotToOutsideFile = path.join(allowedDir, 'dotdot-file');
+        const dotDotToOutsideDir = path.join(allowedDir, 'dotdot-dir');
+        const dotDotToInside = path.join(allowedDir, 'dotdot-inside');
+
+        beforeAll(() => {
+          fs.symlinkSync(outsideAbsentFile, danglingToOutsideFile);
+          fs.symlinkSync(outsideAbsentDir, danglingToOutsideDir);
+          fs.mkdirSync(deepOutsideDir);
+          fs.symlinkSync(deepOutsideDir, linkToDeepOutside);
+          // Joined by hand: path.join would normalize `sub/..` away.
+          fs.symlinkSync(
+            ['sub', '..', 'absent.txt'].join(path.sep),
+            dotDotToOutsideFile,
+          );
+          fs.symlinkSync(
+            ['sub', '..', 'absent-dir'].join(path.sep),
+            dotDotToOutsideDir,
+          );
+          fs.symlinkSync(
+            ['..', path.basename(allowedDir), 'absent-inside.txt'].join(
+              path.sep,
+            ),
+            dotDotToInside,
+          );
+          fs.symlinkSync(
+            path.join(allowedDir, 'absent-inside.txt'),
+            danglingToInside,
+          );
+          fs.symlinkSync(loopB, loopA);
+          fs.symlinkSync(loopA, loopB);
+        });
+
+        it('should reject a dangling symlink whose absent target is outside the allowlist', () => {
+          expect(fs.existsSync(outsideDir)).toBe(true);
+          expect(fs.existsSync(outsideAbsentFile)).toBe(false);
+          expect(validateFilePath(danglingToOutsideFile)).toBe(false);
+        });
+
+        it('should reject a path whose ancestor is a dangling symlink pointing outside the allowlist', () => {
+          expect(
+            validateFilePath(path.join(danglingToOutsideDir, 'file.txt')),
+          ).toBe(false);
+          expect(
+            validateFilePath(path.join(danglingToOutsideDir, 'sub', 'f.txt')),
+          ).toBe(false);
+        });
+
+        it('should reject a dangling symlink whose relative target leaves the allowlist through `..` after a symlinked component', () => {
+          expect(fs.existsSync(outsideAbsentFile)).toBe(false);
+          expect(validateFilePath(dotDotToOutsideFile)).toBe(false);
+        });
+
+        it('should reject a path whose ancestor is a dangling symlink leaving the allowlist through `..` after a symlinked component', () => {
+          expect(
+            validateFilePath(path.join(dotDotToOutsideDir, 'file.txt')),
+          ).toBe(false);
+        });
+
+        it('should accept a dangling symlink whose absent target is inside the allowlist', () => {
+          expect(validateFilePath(danglingToInside)).toBe(true);
+          expect(validateFilePath(dotDotToInside)).toBe(true);
+        });
+
+        it('should reject a symlink cycle', () => {
+          expect(validateFilePath(loopA)).toBe(false);
+          expect(validateFilePath(path.join(loopA, 'file.txt'))).toBe(false);
+        });
+
+        it.each([
+          ['an absolute', danglingToOutsideFile],
+          ['a `..`-through-symlink relative', dotDotToOutsideFile],
+        ])(
+          'should reject a get attachment output set to a dangling symlink with %s target without spawning bw',
+          async (_label, output) => {
+            const args = {
+              object: 'attachment',
+              id: 'file.txt',
+              itemid: 'item-id',
+              output,
+            };
+            expect(getSchema.safeParse(args).success).toBe(false);
+
+            const spawnSpy = jest
+              .spyOn(childProcess, 'spawn')
+              .mockImplementation(() => {
+                throw new Error('bw must not be spawned');
+              });
+            try {
+              const result = await handleGet(args);
+              expect(result.isError).toBe(true);
+              expect(spawnSpy).not.toHaveBeenCalled();
+            } finally {
+              spawnSpy.mockRestore();
+            }
+            expect(fs.existsSync(outsideAbsentFile)).toBe(false);
+          },
+        );
+      });
+    });
+
+    describe('UNC and device paths (VULN-1371)', () => {
+      // Windows treats forward slashes as separators, so each of these
+      // resolves to a UNC or device path. Opening one sends the user's
+      // NetNTLM response to the host, so validation must reject them before
+      // any filesystem call, regardless of the platform the server runs on.
+      const uncInputs = [
+        '//host/share/x',
+        '/\\host\\share\\x',
+        '//?/UNC/host/share/x',
+        '\\/host/share/x',
+        '\\\\?\\C:\\x',
+        '\\\\.\\pipe\\x',
+        '//./pipe/x',
+      ];
+      const fsSpyMethods = [
+        'realpathSync',
+        'lstatSync',
+        'statSync',
+        'existsSync',
+        'readlinkSync',
+        'accessSync',
+        'openSync',
+        'readdirSync',
+      ] as const;
+
+      // Spies on fs.realpathSync.native and the synchronous fs calls a path
+      // check could make. The realpathSync spy does not carry the original's
+      // `native` property, so the native spy is re-attached to it.
+      const spyOnFs = () => {
+        const nativeSpy = jest.spyOn(fs.realpathSync, 'native');
+        const methodSpies = fsSpyMethods.map((method) =>
+          jest.spyOn(fs as unknown as Record<string, () => unknown>, method),
+        );
+        Object.assign(fs.realpathSync, { native: nativeSpy });
+        return [...methodSpies.reverse(), nativeSpy];
+      };
+      const originalEnv = process.env['BW_ALLOWED_DIRECTORIES'];
+      const allowedRoot = path.parse(process.cwd()).root;
+
+      afterEach(() => {
+        if (originalEnv) {
+          process.env['BW_ALLOWED_DIRECTORIES'] = originalEnv;
+        } else {
+          delete process.env['BW_ALLOWED_DIRECTORIES'];
+        }
+      });
+
+      it('should treat every input as a UNC or device path under Windows path semantics', () => {
+        uncInputs.forEach((input) => {
+          expect(path.win32.resolve(input)).toMatch(/^\\\\/);
+        });
+      });
+
+      it('should reject UNC inputs even when the allowlist covers their POSIX resolution', () => {
+        process.env['BW_ALLOWED_DIRECTORIES'] = allowedRoot;
+        uncInputs.forEach((input) => {
+          expect(validateFilePath(input)).toBe(false);
+        });
+      });
+
+      it.each([
+        ['unset', undefined],
+        ['set', allowedRoot],
+      ])(
+        'should make no filesystem call on UNC inputs with BW_ALLOWED_DIRECTORIES %s',
+        (_label, allowlist) => {
+          if (allowlist === undefined) {
+            delete process.env['BW_ALLOWED_DIRECTORIES'];
+          } else {
+            process.env['BW_ALLOWED_DIRECTORIES'] = allowlist;
+          }
+
+          const spies = spyOnFs();
+          try {
+            uncInputs.forEach((input) => {
+              expect(validateFilePath(input)).toBe(false);
+            });
+            spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
+          } finally {
+            spies.forEach((spy) => spy.mockRestore());
+          }
+        },
+      );
+
+      it('should observe filesystem calls made by validateFilePath on ordinary paths', () => {
+        // Control for the spy test above: the same spy does see the
+        // canonicalization of a path that passes the lexical checks.
+        process.env['BW_ALLOWED_DIRECTORIES'] = allowedRoot;
+        const spies = spyOnFs();
+        try {
+          expect(validateFilePath(path.join(process.cwd(), 'file.txt'))).toBe(
+            true,
+          );
+          expect(spies[spies.length - 1]).toHaveBeenCalled();
+        } finally {
+          spies.forEach((spy) => spy.mockRestore());
         }
       });
     });
