@@ -7,6 +7,7 @@
  * Features:
  * - Personal vault operations (CLI-based)
  * - Organization management (API-based)
+ * - Secrets Manager projects and secrets (bws CLI-based)
  * - Secure OAuth2 authentication with token caching
  * - Input validation and sanitization
  * - Comprehensive error handling
@@ -23,7 +24,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // Import tool definitions
-import { cliTools, organizationApiTools } from './tools/index.js';
+import {
+  cliTools,
+  organizationApiTools,
+  secretsManagerTools,
+} from './tools/index.js';
 
 // Import handlers
 import {
@@ -90,6 +95,21 @@ import {
   handleUpdateOrgSubscription,
   handleImportOrgUsersAndGroups,
 } from './handlers/api.js';
+
+import {
+  handleListSmProjects,
+  handleGetSmProject,
+  handleCreateSmProject,
+  handleEditSmProject,
+  handleDeleteSmProject,
+  handleListSmSecrets,
+  handleGetSmSecret,
+  handleCreateSmSecret,
+  handleEditSmSecret,
+  handleDeleteSmSecret,
+  handleImportSmSecrets,
+  handleExportSmSecrets,
+} from './handlers/sm.js';
 
 /**
  * Main server setup and execution
@@ -251,6 +271,34 @@ async function runServer(): Promise<void> {
           case 'import_org_users_and_groups':
             return await handleImportOrgUsersAndGroups(args);
 
+          // Secrets Manager Tools - Projects
+          case 'list_sm_projects':
+            return await handleListSmProjects(args);
+          case 'get_sm_project':
+            return await handleGetSmProject(args);
+          case 'create_sm_project':
+            return await handleCreateSmProject(args);
+          case 'edit_sm_project':
+            return await handleEditSmProject(args);
+          case 'delete_sm_project':
+            return await handleDeleteSmProject(args);
+
+          // Secrets Manager Tools - Secrets
+          case 'list_sm_secrets':
+            return await handleListSmSecrets(args);
+          case 'get_sm_secret':
+            return await handleGetSmSecret(args);
+          case 'create_sm_secret':
+            return await handleCreateSmSecret(args);
+          case 'edit_sm_secret':
+            return await handleEditSmSecret(args);
+          case 'delete_sm_secret':
+            return await handleDeleteSmSecret(args);
+          case 'import_sm_secrets':
+            return await handleImportSmSecrets(args);
+          case 'export_sm_secrets':
+            return await handleExportSmSecrets(args);
+
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -271,7 +319,7 @@ async function runServer(): Promise<void> {
   // Set up tools list handler
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      tools: [...cliTools, ...organizationApiTools],
+      tools: [...cliTools, ...organizationApiTools, ...secretsManagerTools],
     };
   });
 

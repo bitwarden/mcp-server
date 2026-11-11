@@ -58,3 +58,22 @@ export {
   importOrgUsersAndGroupsTool,
   organizationApiTools,
 } from './api.js';
+
+// Import Secrets Manager tools (Projects and Secrets)
+export {
+  // Projects
+  listSmProjectsTool,
+  getSmProjectTool,
+  createSmProjectTool,
+  editSmProjectTool,
+  deleteSmProjectTool,
+  // Secrets
+  listSmSecretsTool,
+  getSmSecretTool,
+  createSmSecretTool,
+  editSmSecretTool,
+  deleteSmSecretTool,
+  importSmSecretsTool,
+  exportSmSecretsTool,
+  secretsManagerTools,
+} from './sm.js';
