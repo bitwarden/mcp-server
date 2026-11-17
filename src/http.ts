@@ -322,13 +322,17 @@ export async function startHttpServer(
     await handleLegacyRequest(request, response, body);
   };
 
+  const handleRequestFailure = (response: ServerResponse): void => {
+    if (!response.headersSent) {
+      writeJsonRpcError(response, 500, -32603, 'Internal server error', null);
+    } else {
+      response.destroy();
+    }
+  };
+
   const nodeServer = createNodeHttpServer((request, response) => {
     void handleRequest(request, response).catch(() => {
-      if (!response.headersSent) {
-        writeJsonRpcError(response, 500, -32603, 'Internal server error', null);
-      } else {
-        response.destroy();
-      }
+      handleRequestFailure(response);
     });
   });
   nodeServer.requestTimeout = 30_000;
